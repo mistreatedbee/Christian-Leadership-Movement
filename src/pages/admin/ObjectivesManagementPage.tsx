@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
+import { uploadFileWithUserCheck } from '../../lib/uploadHelpers';
+import { getStorageUrl } from '../../lib/connection';
 import { Button } from '../../components/ui/Button';
 import { Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
 
@@ -13,6 +15,7 @@ interface StrategicObjective {
   full_description: string;
   icon: string | null;
   image_url: string | null;
+  image_key: string | null;
 }
 
 interface PastWork {
@@ -22,6 +25,7 @@ interface PastWork {
   description: string;
   date: string;
   image_url: string | null;
+  image_key: string | null;
   attachment_url: string | null;
 }
 
@@ -58,6 +62,7 @@ export function ObjectivesManagementPage() {
   const [editingPastWork, setEditingPastWork] = useState<PastWork | null>(null);
   const [editingUpcomingWork, setEditingUpcomingWork] = useState<UpcomingWork | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [objectiveImageFiles, setObjectiveImageFiles] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const { register: registerObjective, handleSubmit: handleSubmitObjective, reset: resetObjective, formState: { errors: errorsObjective } } = useForm<StrategicObjective & { short_description: string; full_description: string }>();
@@ -141,15 +146,24 @@ export function ObjectivesManagementPage() {
       let imageUrl = editingObjective?.image_url || null;
       let imageKey = editingObjective?.image_key || null;
 
-      if (imageFile) {
+      if (imageFile && user) {
         const filePath = `objectives/${Date.now()}_${imageFile.name}`;
-        const { data: uploadData, error: uploadError } = await insforge.storage
-          .from('gallery')
-          .upload(filePath, imageFile);
-
-        if (uploadError) throw uploadError;
-        imageUrl = uploadData.url;
-        imageKey = uploadData.key;
+        const uploadData = await uploadFileWithUserCheck(
+          'gallery',
+          filePath,
+          imageFile,
+          user.id,
+          user.email || null,
+          user.name || null
+        );
+        // Use the key to construct proper URL, or use the URL if it's already a full URL
+        if (uploadData.key) {
+          imageKey = uploadData.key;
+          // Construct proper storage URL
+          imageUrl = getStorageUrl('gallery', uploadData.key);
+        } else {
+          imageUrl = uploadData.url;
+        }
       }
 
       const slug = data.slug || generateSlug(data.title);
@@ -157,6 +171,7 @@ export function ObjectivesManagementPage() {
         ...data,
         slug,
         image_url: imageUrl,
+        image_key: imageKey,
         icon: data.icon || null
       };
 
@@ -196,14 +211,19 @@ export function ObjectivesManagementPage() {
       let imageUrl = editingPastWork?.image_url || null;
       let attachmentUrl = editingPastWork?.attachment_url || null;
 
-      if (imageFile) {
+      let imageKey = editingPastWork?.image_key || null;
+      if (imageFile && user) {
         const filePath = `objectives/past-work/${Date.now()}_${imageFile.name}`;
-        const { data: uploadData, error: uploadError } = await insforge.storage
-          .from('gallery')
-          .upload(filePath, imageFile);
-
-        if (uploadError) throw uploadError;
+        const uploadData = await uploadFileWithUserCheck(
+          'gallery',
+          filePath,
+          imageFile,
+          user.id,
+          user.email || null,
+          user.name || null
+        );
         imageUrl = uploadData.url;
+        imageKey = uploadData.key || null;
       }
 
       const pastWorkData = {
@@ -212,6 +232,7 @@ export function ObjectivesManagementPage() {
         description: data.description,
         date: data.date,
         image_url: imageUrl,
+        image_key: imageKey,
         attachment_url: attachmentUrl
       };
 
@@ -250,13 +271,16 @@ export function ObjectivesManagementPage() {
     try {
       let imageUrl = editingUpcomingWork?.image_url || null;
 
-      if (imageFile) {
+      if (imageFile && user) {
         const filePath = `objectives/upcoming-work/${Date.now()}_${imageFile.name}`;
-        const { data: uploadData, error: uploadError } = await insforge.storage
-          .from('gallery')
-          .upload(filePath, imageFile);
-
-        if (uploadError) throw uploadError;
+        const uploadData = await uploadFileWithUserCheck(
+          'gallery',
+          filePath,
+          imageFile,
+          user.id,
+          user.email || null,
+          user.name || null
+        );
         imageUrl = uploadData.url;
       }
 
@@ -347,15 +371,21 @@ export function ObjectivesManagementPage() {
   };
 
   const handleUploadGallery = async () => {
-    if (!imageFile || !selectedObjective) return;
+    if (!imageFile || !selectedObjective || !user) {
+      setMessage({ type: 'error', text: 'Please select an objective and image' });
+      return;
+    }
 
     try {
       const filePath = `objectives/gallery/${Date.now()}_${imageFile.name}`;
-      const { data: uploadData, error: uploadError } = await insforge.storage
-        .from('gallery')
-        .upload(filePath, imageFile);
-
-      if (uploadError) throw uploadError;
+      const uploadData = await uploadFileWithUserCheck(
+        'gallery',
+        filePath,
+        imageFile,
+        user.id,
+        user.email || null,
+        user.name || null
+      );
 
       const { error } = await insforge.database
         .from('objective_gallery')
@@ -372,6 +402,55 @@ export function ObjectivesManagementPage() {
       fetchRelatedData();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to upload image' });
+    }
+  };
+
+  const handleUploadMultipleObjectiveImages = async () => {
+    if (!objectiveImageFiles.length || !editingObjective || !user) {
+      setMessage({ type: 'error', text: 'Please select at least one image' });
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const uploadPromises = objectiveImageFiles.map(async (file, index) => {
+        const filePath = `objectives/${editingObjective.id}/${Date.now()}_${index}_${file.name}`;
+        const uploadData = await uploadFileWithUserCheck(
+          'gallery',
+          filePath,
+          file,
+          user.id,
+          user.email || null,
+          user.name || null
+        );
+
+        return {
+          objective_id: editingObjective.id,
+          image_url: uploadData.url,
+          image_key: uploadData.key,
+          order_index: index
+        };
+      });
+
+      const uploadResults = await Promise.all(uploadPromises);
+
+      const { error } = await insforge.database
+        .from('objective_gallery')
+        .insert(uploadResults);
+
+      if (error) throw error;
+
+      setMessage({ 
+        type: 'success', 
+        text: `Successfully uploaded ${objectiveImageFiles.length} image${objectiveImageFiles.length > 1 ? 's' : ''}!` 
+      });
+      setObjectiveImageFiles([]);
+      fetchObjectives();
+      fetchRelatedData();
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || 'Failed to upload images' });
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -493,7 +572,7 @@ export function ObjectivesManagementPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-navy-ink mb-2">Image</label>
+                  <label className="block text-sm font-medium text-navy-ink mb-2">Main Image (for card display)</label>
                   <input
                     type="file"
                     accept="image/*"
@@ -501,9 +580,85 @@ export function ObjectivesManagementPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                   />
                   {editingObjective?.image_url && !imageFile && (
-                    <img src={editingObjective.image_url} alt="Current" className="mt-2 w-32 h-32 object-cover rounded-card" />
+                    <img 
+                      src={editingObjective.image_url} 
+                      alt="Current" 
+                      className="mt-2 w-32 h-32 object-cover rounded-card" 
+                    />
                   )}
                 </div>
+                
+                {editingObjective && (
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">
+                      Additional Images (Multiple selection allowed)
+                    </label>
+                    <div className="space-y-4">
+                      <input
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => setObjectiveImageFiles(Array.from(e.target.files || []))}
+                        className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      />
+                      {objectiveImageFiles.length > 0 && (
+                        <div className="grid grid-cols-4 gap-2">
+                          {objectiveImageFiles.map((file, index) => (
+                            <div key={index} className="relative">
+                              <img
+                                src={URL.createObjectURL(file)}
+                                alt={`Preview ${index + 1}`}
+                                className="w-full h-24 object-cover rounded-card"
+                              />
+                              <button
+                                onClick={() => setObjectiveImageFiles(prev => prev.filter((_, i) => i !== index))}
+                                className="absolute top-1 right-1 bg-red-500 text-white rounded-full p-1"
+                              >
+                                <X size={12} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleUploadMultipleObjectiveImages}
+                        disabled={!objectiveImageFiles.length || saving}
+                      >
+                        <Upload className="mr-2" size={16} />
+                        {saving ? 'Uploading...' : `Upload ${objectiveImageFiles.length} Image${objectiveImageFiles.length > 1 ? 's' : ''}`}
+                      </Button>
+                    </div>
+                    
+                    {/* Show existing objective gallery images */}
+                    {(() => {
+                      const objectiveGallery = gallery.filter(img => img.objective_id === editingObjective.id);
+                      return objectiveGallery.length > 0 && (
+                        <div className="mt-4">
+                          <label className="block text-sm font-medium text-navy-ink mb-2">Existing Images</label>
+                          <div className="grid grid-cols-4 gap-2">
+                            {objectiveGallery.map((img) => (
+                              <div key={img.id} className="relative group">
+                                <img
+                                  src={img.image_key ? getStorageUrl('gallery', img.image_key) : img.image_url}
+                                  alt="Gallery"
+                                  className="w-full h-24 object-cover rounded-card"
+                                />
+                                <button
+                                  onClick={() => handleDeleteGalleryImage(img.id, img.image_key || null)}
+                                  className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-card flex items-center justify-center"
+                                >
+                                  <Trash2 className="text-white" size={16} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
                 <div className="flex space-x-4">
                   <Button type="submit" variant="primary">
                     <Save className="mr-2" size={20} />
@@ -541,9 +696,26 @@ export function ObjectivesManagementPage() {
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-navy-ink mb-2">{obj.title}</h3>
-                      <p className="text-gray-600 text-sm mb-2">{obj.short_description}</p>
-                      <p className="text-gray-500 text-xs">Slug: {obj.slug}</p>
+                      <div className="flex items-start space-x-4">
+                        {obj.image_url && (
+                          <img
+                            src={obj.image_key ? getStorageUrl('gallery', obj.image_key) : obj.image_url}
+                            alt={obj.title}
+                            className="w-24 h-24 object-cover rounded-card flex-shrink-0"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              if (obj.image_key && target.src !== obj.image_url) {
+                                target.src = obj.image_url || '';
+                              }
+                            }}
+                          />
+                        )}
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-navy-ink mb-2">{obj.title}</h3>
+                          <p className="text-gray-600 text-sm mb-2">{obj.short_description}</p>
+                          <p className="text-gray-500 text-xs">Slug: {obj.slug}</p>
+                        </div>
+                      </div>
                     </div>
                     <div className="flex space-x-2 ml-4">
                       <button
@@ -650,10 +822,25 @@ export function ObjectivesManagementPage() {
                   {pastWork.map((work) => (
                     <div key={work.id} className="p-4 border border-gray-200 rounded-card">
                       <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-navy-ink mb-2">{work.title}</h3>
-                          <p className="text-gray-600 text-sm mb-2">{work.description}</p>
-                          <p className="text-gray-500 text-xs">{work.date}</p>
+                        <div className="flex-1 flex items-start space-x-4">
+                          {work.image_url && (
+                            <img
+                              src={work.image_key ? getStorageUrl('gallery', work.image_key) : work.image_url}
+                              alt={work.title}
+                              className="w-24 h-24 object-cover rounded-card flex-shrink-0"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (work.image_key && target.src !== work.image_url) {
+                                  target.src = work.image_url || '';
+                                }
+                              }}
+                            />
+                          )}
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-navy-ink mb-2">{work.title}</h3>
+                            <p className="text-gray-600 text-sm mb-2">{work.description}</p>
+                            <p className="text-gray-500 text-xs">{work.date}</p>
+                          </div>
                         </div>
                         <div className="flex space-x-2 ml-4">
                           <button

@@ -11,6 +11,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
+import { getStorageUrl } from '../../lib/connection';
 
 interface StrategicObjective {
   id: string;
@@ -96,11 +97,38 @@ export function StrategicObjectivesSection() {
                 className="group"
               >
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 h-full flex flex-col">
-                  {/* Icon */}
+                  {/* Image or Icon */}
                   <div className="mb-6 flex justify-center">
-                    <div className="bg-gold/10 p-4 rounded-2xl group-hover:bg-gold/20 transition-colors">
-                      <IconComponent className="text-gold" size={40} />
-                    </div>
+                    {objective.image_url ? (
+                      <div className="w-full h-48 rounded-xl overflow-hidden mb-4">
+                        <img
+                          src={objective.image_url.startsWith('http') 
+                            ? objective.image_url 
+                            : getStorageUrl('gallery', objective.image_url)}
+                          alt={objective.title}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            // Fallback to icon if image fails to load
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = `
+                                <div class="bg-gold/10 p-4 rounded-2xl group-hover:bg-gold/20 transition-colors">
+                                  <svg class="text-gold" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                  </svg>
+                                </div>
+                              `;
+                            }
+                          }}
+                        />
+                      </div>
+                    ) : (
+                      <div className="bg-gold/10 p-4 rounded-2xl group-hover:bg-gold/20 transition-colors">
+                        <IconComponent className="text-gold" size={40} />
+                      </div>
+                    )}
                   </div>
 
                   {/* Title */}
