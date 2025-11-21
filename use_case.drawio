@@ -1,0 +1,80 @@
+<mxfile host="65bd71144e">
+    <diagram name="Use Cases" id="0">
+        <mxGraphModel dx="1538" dy="779" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="actor_guest" value="Guest" style="shape=actor;strokeColor=#1B1C5F;fillColor=#FFCCCC;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="52" width="64" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="actor_user" value="Member" style="shape=actor;strokeColor=#1B1C5F;fillColor=#CCE5FF;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry y="230" width="74" height="116" as="geometry"/>
+                </mxCell>
+                <mxCell id="actor_admin" value="Admin" style="shape=actor;strokeColor=#1B1C5F;fillColor=#CCFFCC;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="420" width="64" height="96" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_public" value="Browse Public Site\n(View About, Partners, Events, Certificates)" style="ellipse;strokeColor=#12133F;fillColor=#F7F5F0;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="60" width="440" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_register" value="Register / Login\n(Email verification)" style="ellipse;strokeColor=#12133F;fillColor=#FFFFFF;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="170" y="160" width="340" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_dashboard" value="View Dashboard\n(Events, Bible School, Partners, Certificates)" style="ellipse;strokeColor=#12133F;fillColor=#F7F5F0;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="130" y="410" width="520" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_apply" value="Apply for CLM Membership\nApply for Bible School" style="ellipse;strokeColor=#12133F;fillColor=#FFFFFF;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="170" y="280" width="420" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_join" value="Join Online Meeting\n(Teams/Zoom links)" style="ellipse;strokeColor=#BD9E39;fillColor=#F7F5F0;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="620" y="200" width="320" height="90" as="geometry"/>
+                </mxCell>
+                <mxCell id="uc_manage" value="Admin: Manage Users, Applications, Events,\nBible School, Partners, Posts, Certificates" style="ellipse;strokeColor=#BD9E39;fillColor=#FFFFFF;fontSize=12;align=center;" parent="1" vertex="1">
+                    <mxGeometry x="680" y="370" width="480" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_g_pub" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="actor_guest" target="uc_public" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_user_register" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="actor_user" target="uc_register" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="42" y="200"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_user_dashboard" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="actor_user" target="uc_dashboard" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="42" y="390"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_user_apply" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="actor_user" target="uc_apply" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="100" y="320"/>
+                            <mxPoint x="100" y="320"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_user_join" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;exitX=0.781;exitY=0.135;exitDx=0;exitDy=0;exitPerimeter=0;" parent="1" source="actor_user" target="uc_join" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="60" y="260"/>
+                            <mxPoint x="840" y="260"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_admin_manage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;" parent="1" source="actor_admin" target="uc_manage" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="52" y="560"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="note_usecase" value="Use Case Diagram — actors &amp; core operations. Admin manages all content and approves applications." style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;fontColor=#12133F;fontSize=11;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="245" y="610" width="510" height="80" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>

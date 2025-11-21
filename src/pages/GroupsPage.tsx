@@ -1,0 +1,353 @@
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Users, Plus, Search, Calendar, MessageSquare, Settings, LayoutDashboard } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useUser } from '@insforge/react';
+import { insforge } from '../lib/insforge';
+import { Button } from '../components/ui/Button';
+
+interface Group {
+  id: string;
+  name: string;
+  description?: string;
+  group_type?: string;
+  image_url?: string;
+  is_public: boolean;
+  max_members?: number;
+  created_by: string;
+  group_members?: {
+    id: string;
+    user_id: string;
+    role: string;
+  }[];
+  users?: {
+    id: string;
+    nickname?: string;
+    email?: string;
+  };
+}
+
+export function GroupsPage() {
+  const navigate = useNavigate();
+  const { user } = useUser();
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [myGroups, setMyGroups] = useState<Group[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    group_type: 'ministry',
+    is_public: true,
+    max_members: ''
+  });
+
+  useEffect(() => {
+    fetchGroups();
+  }, [user]);
+
+  const fetchGroups = async () => {
+    try {
+      setLoading(true);
+      const [allGroupsRes, myGroupsRes] = await Promise.all([
+        insforge.database
+          .from('groups')
+          .select('*, users(*), group_members(*)')
+          .eq('is_public', true)
+          .order('created_at', { ascending: false }),
+        user ? insforge.database
+          .from('group_members')
+          .select('group_id, groups(*, users(*), group_members(*))')
+          .eq('user_id', user.id)
+          .then(res => res.data?.map((item: any) => item.groups).filter(Boolean) || [])
+        : Promise.resolve([])
+      ]);
+
+      setGroups(allGroupsRes.data || []);
+      setMyGroups(myGroupsRes || []);
+    } catch (error) {
+      console.error('Error fetching groups:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateGroup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    try {
+      const { data } = await insforge.database
+        .from('groups')
+        .insert({
+          ...formData,
+          max_members: formData.max_members ? parseInt(formData.max_members) : null,
+          created_by: user.id
+        })
+        .select()
+        .single();
+
+      // Add creator as admin
+      await insforge.database
+        .from('group_members')
+        .insert({
+          group_id: data.id,
+          user_id: user.id,
+          role: 'admin'
+        });
+
+      setFormData({
+        name: '',
+        description: '',
+        group_type: 'ministry',
+        is_public: true,
+        max_members: ''
+      });
+      setShowForm(false);
+      fetchGroups();
+      alert('Group created successfully!');
+    } catch (error: any) {
+      console.error('Error creating group:', error);
+      alert(error.message || 'Error creating group. Please try again.');
+    }
+  };
+
+  const handleJoinGroup = async (groupId: string) => {
+    if (!user) {
+      alert('Please log in to join groups');
+      return;
+    }
+
+    try {
+      await insforge.database
+        .from('group_members')
+        .insert({
+          group_id: groupId,
+          user_id: user.id,
+          role: 'member'
+        });
+      fetchGroups();
+      alert('Successfully joined group!');
+    } catch (error: any) {
+      console.error('Error joining group:', error);
+      if (error.code === '23505' || error.message?.includes('duplicate') || error.message?.includes('unique')) {
+        alert('You are already a member of this group.');
+      } else {
+        alert(error.message || 'Error joining group. Please try again.');
+      }
+    }
+  };
+
+  const filteredGroups = groups.filter(group =>
+    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Loading groups...</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-6xl mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold text-navy-ink mb-2">Groups & Ministries</h1>
+          <p className="text-gray-600">Join groups and connect with others</p>
+        </div>
+        <div className="flex items-center gap-2">
+          {user && (
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/dashboard')}
+              >
+                <LayoutDashboard className="w-4 h-4 mr-2" />
+                Dashboard
+              </Button>
+              <Button onClick={() => setShowForm(true)} variant="primary">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Group
+              </Button>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Create Group Form */}
+      {showForm && user && (
+        <div className="bg-white p-6 rounded-card shadow-soft mb-8">
+          <h2 className="text-xl font-bold text-navy-ink mb-4">Create New Group</h2>
+          <form onSubmit={handleCreateGroup} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Group Name *</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                rows={3}
+              />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+                <select
+                  value={formData.group_type}
+                  onChange={(e) => setFormData({ ...formData, group_type: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                >
+                  <option value="ministry">Ministry</option>
+                  <option value="small_group">Small Group</option>
+                  <option value="committee">Committee</option>
+                  <option value="team">Team</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Max Members (Optional)</label>
+                <input
+                  type="number"
+                  value={formData.max_members}
+                  onChange={(e) => setFormData({ ...formData, max_members: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                  min="1"
+                />
+              </div>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.is_public}
+                onChange={(e) => setFormData({ ...formData, is_public: e.target.checked })}
+                className="mr-2"
+              />
+              <label className="text-sm text-gray-700">Make group public</label>
+            </div>
+            <div className="flex gap-4">
+              <Button type="submit" variant="primary">Create Group</Button>
+              <Button type="button" onClick={() => setShowForm(false)} variant="outline">Cancel</Button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* My Groups */}
+      {myGroups.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-navy-ink mb-4">My Groups</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {myGroups.map((group) => (
+              <Link
+                key={group.id}
+                to={`/groups/${group.id}`}
+                className="bg-white p-6 rounded-card shadow-soft hover:shadow-lg transition-shadow"
+              >
+                {group.image_url && (
+                  <img
+                    src={group.image_url}
+                    alt={group.name}
+                    className="w-full h-32 object-cover rounded-lg mb-4"
+                  />
+                )}
+                <h3 className="text-xl font-bold text-navy-ink mb-2">{group.name}</h3>
+                {group.description && (
+                  <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
+                )}
+                <div className="flex items-center gap-4 text-sm text-gray-600">
+                  <span className="flex items-center gap-1">
+                    <Users className="w-4 h-4" />
+                    {group.group_members?.length || 0} members
+                  </span>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
+      <div className="bg-white p-6 rounded-card shadow-soft mb-8">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder="Search groups..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+          />
+        </div>
+      </div>
+
+      {/* All Groups */}
+      <div>
+        <h2 className="text-2xl font-bold text-navy-ink mb-4">All Groups</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredGroups.map((group) => {
+            const isMember = myGroups.some(g => g.id === group.id);
+            return (
+              <div key={group.id} className="bg-white p-6 rounded-card shadow-soft">
+                {group.image_url && (
+                  <img
+                    src={group.image_url}
+                    alt={group.name}
+                    className="w-full h-32 object-cover rounded-lg mb-4"
+                  />
+                )}
+                <h3 className="text-xl font-bold text-navy-ink mb-2">{group.name}</h3>
+                {group.description && (
+                  <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
+                )}
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Users className="w-4 h-4" />
+                      {group.group_members?.length || 0}
+                      {group.max_members && ` / ${group.max_members}`} members
+                    </span>
+                  </div>
+                  {!isMember && (
+                    <Button
+                      onClick={() => handleJoinGroup(group.id)}
+                      variant="primary"
+                      size="sm"
+                    >
+                      Join
+                    </Button>
+                  )}
+                  {isMember && (
+                    <Link to={`/groups/${group.id}`}>
+                      <Button variant="outline" size="sm">
+                        View
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {filteredGroups.length === 0 && (
+          <div className="bg-white p-12 rounded-card shadow-soft text-center">
+            <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">No groups found</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+

@@ -1,0 +1,203 @@
+import React, { useEffect, useState } from 'react';
+import { useUser } from '@insforge/react';
+import { insforge } from '../../lib/insforge';
+import { Button } from '../../components/ui/Button';
+import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+
+interface Event {
+  id: string;
+  title: string;
+  description: string | null;
+  event_date: string;
+  location: string | null;
+  capacity: number | null;
+  image_url: string | null;
+}
+
+export function EventsPage() {
+  const { user, isLoaded } = useUser();
+  const [events, setEvents] = useState<Event[]>([]);
+  const [registrations, setRegistrations] = useState<Record<string, boolean>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!isLoaded) return;
+    fetchEvents();
+  }, [user, isLoaded]);
+
+  const fetchEvents = async () => {
+    try {
+      const now = new Date().toISOString();
+      const { data, error } = await insforge.database
+        .from('events')
+        .select('*')
+        .gte('event_date', now)
+        .order('event_date', { ascending: true });
+
+      if (error) throw error;
+      setEvents(data || []);
+
+      // Check user registrations
+      if (user) {
+        const { data: userRegs } = await insforge.database
+          .from('event_registrations')
+          .select('event_id')
+          .eq('user_id', user.id);
+
+        const regMap: Record<string, boolean> = {};
+        userRegs?.forEach((reg: any) => {
+          regMap[reg.event_id] = true;
+        });
+        setRegistrations(regMap);
+      }
+    } catch (err) {
+      console.error('Error fetching events:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (eventId: string) => {
+    if (!user) {
+      alert('Please log in to register for events');
+      return;
+    }
+
+    try {
+      // Check capacity
+      const event = events.find(e => e.id === eventId);
+      if (event && event.capacity) {
+        const { data: currentRegs } = await insforge.database
+          .from('event_registrations')
+          .select('*', { count: 'exact' })
+          .eq('event_id', eventId);
+
+        if (currentRegs && currentRegs.length >= event.capacity) {
+          alert('Event is full');
+          return;
+        }
+      }
+
+      const { error } = await insforge.database
+        .from('event_registrations')
+        .insert([{
+          event_id: eventId,
+          user_id: user.id,
+          status: 'registered'
+        }]);
+
+      if (error) throw error;
+
+      // Create notification
+      await insforge.database
+        .from('notifications')
+        .insert([{
+          user_id: user.id,
+          type: 'event',
+          title: 'Event Registration Confirmed',
+          message: `You have successfully registered for ${event?.title}`,
+          related_id: eventId
+        }]);
+
+      setRegistrations(prev => ({ ...prev, [eventId]: true }));
+      alert('Successfully registered for event!');
+    } catch (err: any) {
+      alert(err.message || 'Failed to register for event');
+    }
+  };
+
+  if (!isLoaded) {
+    return <div className="text-center py-12">Loading...</div>;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-navy-ink mb-2">Upcoming Events</h1>
+        <p className="text-gray-600">Register for upcoming events and conferences</p>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-12">
+          <p className="text-gray-600">Loading events...</p>
+        </div>
+      ) : events.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-gray-600">No upcoming events at the moment.</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {events.map(event => {
+            const eventDate = new Date(event.event_date);
+            const isRegistered = registrations[event.id];
+            const isOnline = event.location?.toLowerCase().includes('online') || 
+                           event.location?.toLowerCase().includes('zoom');
+
+            return (
+              <div key={event.id} className="bg-white rounded-card shadow-soft overflow-hidden">
+                {event.image_url && (
+                  <div className="h-48 overflow-hidden">
+                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
+                  </div>
+                )}
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-navy-ink mb-2">{event.title}</h3>
+                  <p className="text-gray-600 mb-4">{event.description}</p>
+                  
+                  <div className="space-y-2 mb-4">
+                    <div className="flex items-center text-gray-600">
+                      <Calendar className="mr-2" size={16} />
+                      <span>{eventDate.toLocaleDateString('en-US', { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      })}</span>
+                    </div>
+                    <div className="flex items-center text-gray-600">
+                      <Clock className="mr-2" size={16} />
+                      <span>{eventDate.toLocaleTimeString('en-US', { 
+                        hour: 'numeric', 
+                        minute: '2-digit' 
+                      })}</span>
+                    </div>
+                    <div className="flex items-center text-gray-600">
+                      <MapPin className="mr-2" size={16} />
+                      <span>{event.location || 'TBA'}</span>
+                      {isOnline && (
+                        <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
+                          Online
+                        </span>
+                      )}
+                    </div>
+                    {event.capacity && (
+                      <div className="flex items-center text-gray-600">
+                        <Users className="mr-2" size={16} />
+                        <span>Capacity: {event.capacity} attendees</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {isRegistered ? (
+                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-card text-center">
+                      ✓ Registered
+                    </div>
+                  ) : (
+                    <Button
+                      variant="primary"
+                      className="w-full"
+                      onClick={() => handleRegister(event.id)}
+                    >
+                      Register Now
+                    </Button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+

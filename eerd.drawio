@@ -1,0 +1,70 @@
+<mxfile host="65bd71144e">
+    <diagram name="EERD" id="0">
+        <mxGraphModel dx="1560" dy="705" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="ent_user" value="User&#xa;PK: user_id&#xa;first_name&#xa;last_name&#xa;email (unique)&#xa;password_hash&#xa;role {GUEST, MEMBER, ADMIN}&#xa;phone&#xa;profile_image&#xa;status" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="40" width="260" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_application" value="Application&#xa;PK: application_id&#xa;FK: user_id&#xa;type {MEMBERSHIP,BIBLESCHOOL}&#xa;status {PENDING,APPROVED,REJECTED}&#xa;submitted_at&#xa;reviewed_at&#xa;admin_notes" style="rounded=1;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="310" y="240" width="300" height="180" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_attachment" value="ApplicationAttachment&#xa;PK: attachment_id&#xa;application_id (FK)&#xa;file_url&#xa;file_type" style="rounded=1;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="200" y="460" width="300" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_post" value="Post&#xa;PK: post_id&#xa;author_id (FK)&#xa;post_type {VERSE,ANNOUNCEMENT}&#xa;content&#xa;image_url&#xa;created_at" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="800" y="240" width="320" height="150" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_notification" value="Notification&#xa;PK: notification_id&#xa;user_id (FK)&#xa;type&#xa;message&#xa;is_read&#xa;created_at" style="rounded=1;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1100" y="440" width="300" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_event" value="Event&#xa;PK: event_id&#xa;title&#xa;description&#xa;start_datetime&#xa;end_datetime&#xa;location&#xa;meeting_link&#xa;poster_url" style="rounded=1;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="400" y="640" width="320" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_biblesession" value="BibleSchoolSession&#xa;PK: session_id&#xa;title&#xa;description&#xa;start_datetime&#xa;end_datetime&#xa;meeting_link&#xa;materials[]" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="800" y="640" width="300" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_attendance" value="Attendance&#xa;PK: attendance_id&#xa;user_id (FK)&#xa;event_id (FK) nullable&#xa;session_id (FK) nullable&#xa;joined_at" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="600" y="860" width="260" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_partner" value="Partner&#xa;PK: partner_id&#xa;name&#xa;logo_url&#xa;website&#xa;description&#xa;contact_email" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="640" width="300" height="170" as="geometry"/>
+                </mxCell>
+                <mxCell id="ent_certificate" value="Certificate&#xa;PK: certificate_id&#xa;title&#xa;file_url&#xa;issued_by&#xa;issued_date" style="rounded=1;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;fontSize=12;align=left;spacing=8;" parent="1" vertex="1">
+                    <mxGeometry x="1145" y="630" width="260" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_user_application" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_user" target="ent_application" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_application_attachment" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_application" target="ent_attachment" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_user_post" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_user" target="ent_post" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_user_notification" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_user" target="ent_notification" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_user_event" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_user" target="ent_event" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_user_biblesession" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_user" target="ent_biblesession" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_event_attendance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_event" target="ent_attendance" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_session_attendance" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="ent_biblesession" target="ent_attendance" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="rel_event_partner" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;" parent="1" source="ent_partner" target="ent_event" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="legend" value="EERD Legend: PK = Primary Key, FK = Foreign Key. Colors: navy/gold theme. Relationships shown as plain lines (no cardinality signs)." style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;fontColor=#12133F;fontSize=11;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="1030" width="1320" height="60" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
