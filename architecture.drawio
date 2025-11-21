@@ -1,0 +1,76 @@
+<mxfile host="65bd71144e">
+    <diagram name="System Architecture" id="0">
+        <mxGraphModel dx="1538" dy="779" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="client_web" value="Clients\n- Web Browser\n- Mobile Web\n- Mobile App (optional)" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;align=left;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="10" y="10" width="340" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="cdn" value="CDN / Static Hosting\n(Vercel / Netlify / Firebase Hosting)" style="rounded=1;strokeColor=#12133F;fillColor=#F7F5F0;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="420" y="30" width="330" height="100" as="geometry"/>
+                </mxCell>
+                <mxCell id="backend" value="Backend API\n(Node.js / Express or Firebase Functions)\n- Auth\n- Business Logic\n- File handling\n- Notifications (email / push)" style="rounded=1;strokeColor=#12133F;fillColor=#FFFFFF;fontColor=#12133F;align=left;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="900" y="30" width="690" height="160" as="geometry"/>
+                </mxCell>
+                <mxCell id="db" value="Database\n(Postgres / MySQL / Firestore)\n- Users\n- Applications\n- Events\n- Posts\n- Partners" style="shape=cylinder;strokeColor=#1B1C5F;fillColor=#F7F5F0;fontColor=#12133F;align=left;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="790" y="430" width="530" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="storage" value="File Storage\n(S3 / Firebase Storage)\n- Certificates\n- Posters\n- Materials" style="rounded=1;strokeColor=#12133F;fillColor=#FFFFFF;fontColor=#12133F;align=left;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="1340" y="320" width="410" height="120" as="geometry"/>
+                </mxCell>
+                <mxCell id="teams" value="Microsoft Teams\n(Embed / Links for meetings)" style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="630" y="230" width="260" height="70" as="geometry"/>
+                </mxCell>
+                <mxCell id="email" value="Email Provider\n(SendGrid / SES)\n- Email notifications" style="rounded=1;strokeColor=#BD9E39;fillColor=#F7F5F0;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="280" y="460" width="300" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="fcm" value="Push Notifications\n(FCM / APNs)" style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;fontColor=#12133F;" parent="1" vertex="1">
+                    <mxGeometry x="470" y="580" width="300" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="admin_panel" value="Admin Panel\n- Manage Users\n- Manage Content\n- Analytics" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;fontColor=#12133F;align=left;spacing=6;" parent="1" vertex="1">
+                    <mxGeometry x="20" y="240" width="340" height="140" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_client_cdn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#1B1C5F;endArrow=block;" parent="1" source="client_web" target="cdn" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_cdn_backend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#1B1C5F;endArrow=block;" parent="1" source="cdn" target="backend" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_backend_db" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;endArrow=block;" parent="1" source="backend" target="db" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_backend_storage" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;endArrow=block;" parent="1" source="backend" target="storage" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="e_backend_teams" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;endArrow=block;" parent="1" source="backend" target="teams" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="760" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_backend_email" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;endArrow=block;" parent="1" source="backend" target="email" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="420" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_backend_fcm" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#BD9E39;endArrow=block;" parent="1" source="backend" target="fcm" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="620" y="150"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="e_admin_backend" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#1B1C5F;endArrow=block;" parent="1" source="admin_panel" target="backend" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="note_arch2" value="Deployment recommendation: Frontend (Vercel), Backend (Render/Heroku/Firebase), DB (Managed RDS/Firestore), Storage (S3/Firebase). Secure with HTTPS + Auth." style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;fontColor=#12133F;fontSize=11;align=left;" parent="1" vertex="1">
+                    <mxGeometry x="40" y="760" width="850" height="80" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
