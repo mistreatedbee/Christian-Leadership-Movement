@@ -106,18 +106,40 @@ export function UserManagementPage() {
     setLoadingApplications(true);
     
     try {
-      // Fetch user's applications
-      const { data: applications, error } = await insforge.database
+      // Fetch user's applications - try with programs join first, fallback to without if it fails
+      let applications: any[] = [];
+      let error: any = null;
+
+      // First try with programs join
+      const result = await insforge.database
         .from('applications')
         .select('*, programs(title)')
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      setUserApplications(applications || []);
+      if (result.error) {
+        // If join fails, try without the join
+        console.warn('Programs join failed, fetching without join:', result.error);
+        const fallbackResult = await insforge.database
+          .from('applications')
+          .select('*')
+          .eq('user_id', user.user_id)
+          .order('created_at', { ascending: false });
+        
+        if (fallbackResult.error) {
+          throw fallbackResult.error;
+        }
+        applications = fallbackResult.data || [];
+      } else {
+        applications = result.data || [];
+      }
+
+      setUserApplications(applications);
+      setMessage(null); // Clear any previous errors
     } catch (err: any) {
       console.error('Error fetching applications:', err);
-      setMessage({ type: 'error', text: 'Failed to fetch user applications' });
+      setMessage({ type: 'error', text: `Failed to fetch user applications: ${err.message || 'Unknown error'}` });
+      setUserApplications([]); // Set empty array on error
     } finally {
       setLoadingApplications(false);
     }
@@ -125,12 +147,26 @@ export function UserManagementPage() {
 
   const handleExportPDF = async (user: User) => {
     try {
-      // Fetch full user data and applications
-      const { data: applications } = await insforge.database
+      // Fetch full user data and applications - handle potential join errors
+      let applications: any[] = [];
+      const result = await insforge.database
         .from('applications')
         .select('*, programs(title)')
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false });
+
+      if (result.error) {
+        // Fallback to fetching without programs join
+        const fallbackResult = await insforge.database
+          .from('applications')
+          .select('*')
+          .eq('user_id', user.user_id)
+          .order('created_at', { ascending: false });
+        
+        applications = fallbackResult.data || [];
+      } else {
+        applications = result.data || [];
+      }
 
       const doc = new jsPDF();
       
@@ -701,7 +737,9 @@ export function UserManagementPage() {
                       <div key={app.id} className="p-4 bg-muted-gray rounded-card">
                         <div className="flex justify-between items-start">
                           <div>
-                            <p className="font-medium text-navy-ink">{app.programs?.title || app.program_type}</p>
+                            <p className="font-medium text-navy-ink">
+                              {app.programs?.title || app.program_type?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'Application'}
+                            </p>
                             <p className="text-sm text-gray-600 mt-1">
                               Status: <span className={`font-medium ${
                                 app.status === 'approved' ? 'text-green-600' :
