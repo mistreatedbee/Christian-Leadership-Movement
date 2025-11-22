@@ -48,7 +48,7 @@ export function AdminDashboardHome() {
           insforge.database.from('donations').select('amount').eq('status', 'confirmed'),
           insforge.database.from('payments').select('amount').eq('status', 'confirmed'),
           insforge.database.from('mentors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+          insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending').catch(() => ({ data: null, error: null, count: 0 }))
         ]);
 
         setStats({
@@ -64,7 +64,34 @@ export function AdminDashboardHome() {
           pendingPrayerRequests: prayerRequestsRes.count || 0
         });
 
-        // Fetch all recent activities
+        // Fetch all recent activities - handle join errors gracefully
+        const fetchWithFallback = async (table: string, select: string, fallbackSelect: string = '*') => {
+          try {
+            const result = await insforge.database
+              .from(table)
+              .select(select)
+              .order('created_at', { ascending: false })
+              .limit(10);
+            if (result.error && select !== fallbackSelect) {
+              // Try fallback without joins
+              const fallback = await insforge.database
+                .from(table)
+                .select(fallbackSelect)
+                .order('created_at', { ascending: false })
+                .limit(10);
+              return fallback;
+            }
+            return result;
+          } catch (err) {
+            // If join fails, try without join
+            return await insforge.database
+              .from(table)
+              .select(fallbackSelect)
+              .order('created_at', { ascending: false })
+              .limit(10);
+          }
+        };
+
         const [
           recentApps,
           recentMentors,
@@ -72,31 +99,15 @@ export function AdminDashboardHome() {
           recentGroups,
           recentPrayerRequests
         ] = await Promise.all([
-          insforge.database
-            .from('applications')
-            .select('*, programs(title), users(nickname, email)')
-            .order('created_at', { ascending: false })
-            .limit(10),
-          insforge.database
-            .from('mentors')
-            .select('*, users(nickname, email), mentorship_programs(name)')
-            .order('created_at', { ascending: false })
-            .limit(10),
+          fetchWithFallback('applications', '*, programs(title), users(nickname, email)', '*'),
+          fetchWithFallback('mentors', '*, users(nickname, email), mentorship_programs(name)', '*'),
           insforge.database
             .from('users')
             .select('*')
             .order('created_at', { ascending: false })
             .limit(10),
-          insforge.database
-            .from('groups')
-            .select('*, users(nickname, email)')
-            .order('created_at', { ascending: false })
-            .limit(10),
-          insforge.database
-            .from('prayer_requests')
-            .select('*, users(nickname, email)')
-            .order('created_at', { ascending: false })
-            .limit(10)
+          fetchWithFallback('groups', '*, users(nickname, email)', '*'),
+          fetchWithFallback('prayer_requests', '*, users(nickname, email)', '*')
         ]);
 
         // Combine and sort all recent activity
@@ -124,7 +135,7 @@ export function AdminDashboardHome() {
         }
 
         // Add mentor applications
-        if (recentMentors.data) {
+        if (recentMentors?.data) {
           recentMentors.data.forEach((mentor: any) => {
             allRecentActivity.push({
               id: mentor.id,
