@@ -185,7 +185,7 @@ export function AdminDashboardHome() {
         }
 
         // Add new groups
-        if (recentGroups.data) {
+        if (recentGroups?.data && Array.isArray(recentGroups.data)) {
           recentGroups.data.forEach((group: any) => {
             allRecentActivity.push({
               id: group.id,
