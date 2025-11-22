@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { useUser } from '@insforge/react';
 import { Button } from '../components/ui/Button';
-import { Upload, X, CheckCircle, User, Mail, Phone, MapPin, Calendar, FileText, Save } from 'lucide-react';
+import { Upload, X, CheckCircle, User, Mail, Phone, MapPin, Calendar, FileText, Save, ArrowLeft } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { sendEmailNotification } from '../lib/email';
 import { uploadFileWithUserCheck } from '../lib/uploadHelpers';
@@ -450,6 +450,16 @@ export function ApplyMembershipPage() {
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-card shadow-soft p-8">
             <div className="mb-8">
+              <div className="flex items-center space-x-4 mb-4">
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(-1)}
+                  className="flex items-center"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" />
+                  Back
+                </Button>
+              </div>
               <h1 className="text-3xl font-bold text-navy-ink mb-2">
                 CLM Membership Application Form
               </h1>

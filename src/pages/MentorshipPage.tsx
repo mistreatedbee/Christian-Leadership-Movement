@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard } from 'lucide-react';
+import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard, ArrowLeft } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
+import { TopNav } from '../components/layout/TopNav';
+import { Footer } from '../components/layout/Footer';
 
 interface MentorshipProgram {
   id: string;
@@ -542,6 +544,9 @@ export function MentorshipPage() {
           )}
         </div>
       )}
+        </div>
+      </main>
+      <Footer />
     </div>
   );
 }
