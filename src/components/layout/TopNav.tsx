@@ -4,7 +4,6 @@ import { MenuIcon, X as CloseIcon, User, LogOut, BookOpen, LayoutDashboard } fro
 import { useUser, useAuth } from '@insforge/react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ThemeToggle';
-import { LanguageSwitcher } from '../LanguageSwitcher';
 import { checkAdminAccess } from '../../lib/auth';
 
 export function TopNav() {
@@ -49,9 +48,6 @@ export function TopNav() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
-          <Link to="/" className="text-navy-ink hover:text-gold transition-colors">
-            Home
-          </Link>
           <Link to="/blog" className="text-navy-ink hover:text-gold transition-colors">
             News
           </Link>
@@ -82,7 +78,6 @@ export function TopNav() {
         {/* Login/User Menu */}
         <div className="hidden md:flex items-center space-x-2">
           <ThemeToggle />
-          <LanguageSwitcher />
           {isLoaded && user ? (
             <>
               {isAdmin && (
@@ -121,13 +116,10 @@ export function TopNav() {
         </button>
       </div>
 
-      {/* Mobile Menu */}
-      {isMenuOpen && (
-        <div className="md:hidden bg-white border-t border-gray-100">
-          <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link to="/" className="text-navy-ink py-2" onClick={toggleMenu}>
-              Home
-            </Link>
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden bg-white border-t border-gray-100">
+            <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
             <Link to="/blog" className="text-navy-ink py-2" onClick={toggleMenu}>
               News
             </Link>
