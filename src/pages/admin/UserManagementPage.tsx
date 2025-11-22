@@ -108,6 +108,15 @@ export function UserManagementPage() {
     setEnrichedUserData(null); // Reset enriched data
     
     try {
+      // First, fetch the user's email from the users table (in case it's not in user_profiles)
+      const { data: userData, error: userError } = await insforge.database
+        .from('users')
+        .select('email, nickname, avatar_url, bio')
+        .eq('id', user.user_id)
+        .single();
+
+      console.log('User data from users table:', userData);
+
       // Fetch user's applications - skip join to avoid errors
       const result = await insforge.database
         .from('applications')
@@ -116,14 +125,25 @@ export function UserManagementPage() {
         .order('created_at', { ascending: false });
 
       if (result.error) {
-        throw result.error;
+        console.warn('Error fetching applications:', result.error);
       }
 
       const applications = result.data || [];
       console.log('Fetched applications:', applications);
+      console.log('User ID used for query:', user.user_id);
       setUserApplications(applications);
 
-      // Enrich user data with information from applications
+      // Enrich user data - start with user profile, add from users table, then from applications
+      let enriched: any = {
+        ...user,
+        // Override with data from users table (email, nickname, avatar, bio)
+        email: userData?.email || user.email || null,
+        nickname: userData?.nickname || user.nickname || null,
+        avatar_url: userData?.avatar_url || user.avatar_url || null,
+        bio: userData?.bio || user.bio || null,
+      };
+
+      // If applications exist, merge their data (prioritize application data)
       if (applications.length > 0) {
         // Get the most recent application for primary data
         const mostRecentApp = applications[0];
@@ -146,17 +166,17 @@ export function UserManagementPage() {
         
         console.log('Combined application data:', combinedAppData);
         
-        // Merge application data with user profile data, prioritizing application data
-        const enriched = {
-          ...user,
+        // Merge application data, prioritizing application data over profile data
+        enriched = {
+          ...enriched,
           // Personal Information from applications - prioritize application data
-          email: combinedAppData.email || user.email || null,
-          phone: combinedAppData.phone || combinedAppData.contact_number || user.phone || null,
-          address: combinedAppData.physical_address || combinedAppData.address || user.address || null,
-          city: combinedAppData.city || user.city || null,
-          province: combinedAppData.province || user.province || null,
-          postal_code: combinedAppData.postal_code || user.postal_code || null,
-          date_of_birth: combinedAppData.date_of_birth || user.date_of_birth || null,
+          email: combinedAppData.email || enriched.email || null,
+          phone: combinedAppData.phone || combinedAppData.contact_number || enriched.phone || null,
+          address: combinedAppData.physical_address || combinedAppData.address || enriched.address || null,
+          city: combinedAppData.city || enriched.city || null,
+          province: combinedAppData.province || enriched.province || null,
+          postal_code: combinedAppData.postal_code || enriched.postal_code || null,
+          date_of_birth: combinedAppData.date_of_birth || enriched.date_of_birth || null,
           // Additional fields from applications
           id_number: combinedAppData.id_number || null,
           nationality: combinedAppData.nationality || null,
@@ -167,23 +187,20 @@ export function UserManagementPage() {
           population_group: combinedAppData.population_group || null,
           residential_status: combinedAppData.residential_status || null,
           // Name fields - prioritize application data
-          full_name: combinedAppData.full_name || user.nickname || null,
+          full_name: combinedAppData.full_name || enriched.nickname || null,
           first_name: combinedAppData.first_name || null,
           middle_name: combinedAppData.middle_name || null,
           last_name: combinedAppData.last_name || null,
           preferred_name: combinedAppData.preferred_name || null,
           title: combinedAppData.title || null,
         };
-        
-        console.log('Enriched user data:', enriched);
-        console.log('Email from enriched:', enriched.email);
-        console.log('Phone from enriched:', enriched.phone);
-        console.log('Address from enriched:', enriched.address);
-        setEnrichedUserData(enriched);
-      } else {
-        console.log('No applications found, using user data only');
-        setEnrichedUserData(user);
       }
+      
+      console.log('Final enriched user data:', enriched);
+      console.log('Email from enriched:', enriched.email);
+      console.log('Phone from enriched:', enriched.phone);
+      console.log('Address from enriched:', enriched.address);
+      setEnrichedUserData(enriched);
 
       setMessage(null); // Clear any previous errors
     } catch (err: any) {
