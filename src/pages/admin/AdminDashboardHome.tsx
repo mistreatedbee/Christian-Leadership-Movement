@@ -24,7 +24,7 @@ export function AdminDashboardHome() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch all stats with proper counts
+        // Fetch all stats with proper counts - handle errors individually
         const [
           usersRes, 
           allApplicationsRes,
@@ -37,7 +37,7 @@ export function AdminDashboardHome() {
           paymentsRes,
           pendingMentorsRes,
           prayerRequestsRes
-        ] = await Promise.all([
+        ] = await Promise.allSettled([
           insforge.database.from('users').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -51,17 +51,38 @@ export function AdminDashboardHome() {
           insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
         ]);
 
+        // Extract results from Promise.allSettled
+        const getResult = (result: PromiseSettledResult<any>) => {
+          if (result.status === 'fulfilled') {
+            return result.value;
+          }
+          console.warn('Query failed:', result.reason);
+          return { count: 0, data: [] };
+        };
+
+        const usersResData = getResult(usersRes);
+        const allApplicationsResData = getResult(allApplicationsRes);
+        const pendingAppsResData = getResult(pendingAppsRes);
+        const bibleSchoolAppsResData = getResult(bibleSchoolAppsRes);
+        const membershipAppsResData = getResult(membershipAppsRes);
+        const coursesResData = getResult(coursesRes);
+        const eventsResData = getResult(eventsRes);
+        const donationsResData = getResult(donationsRes);
+        const paymentsResData = getResult(paymentsRes);
+        const pendingMentorsResData = getResult(pendingMentorsRes);
+        const prayerRequestsResData = getResult(prayerRequestsRes);
+
         setStats({
-          totalUsers: usersRes?.count || 0,
-          pendingApplications: pendingAppsRes?.count || 0,
-          activeCourses: coursesRes?.count || 0,
-          upcomingEvents: eventsRes?.count || 0,
-          totalDonations: donationsRes?.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
-          totalPayments: paymentsRes?.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
-          bibleSchoolApplications: bibleSchoolAppsRes?.count || 0,
-          membershipApplications: membershipAppsRes?.count || 0,
-          pendingMentors: pendingMentorsRes?.count || 0,
-          pendingPrayerRequests: prayerRequestsRes?.count || 0
+          totalUsers: usersResData?.count || 0,
+          pendingApplications: pendingAppsResData?.count || 0,
+          activeCourses: coursesResData?.count || 0,
+          upcomingEvents: eventsResData?.count || 0,
+          totalDonations: donationsResData?.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
+          totalPayments: paymentsResData?.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
+          bibleSchoolApplications: bibleSchoolAppsResData?.count || 0,
+          membershipApplications: membershipAppsResData?.count || 0,
+          pendingMentors: pendingMentorsResData?.count || 0,
+          pendingPrayerRequests: prayerRequestsResData?.count || 0
         });
 
         // Fetch all recent activities - handle join errors gracefully
