@@ -24,65 +24,110 @@ export function AdminDashboardHome() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch all stats
+        // Fetch all stats with proper counts
         const [
-          users, 
-          applications, 
-          courses, 
-          events, 
-          donations, 
-          payments,
-          mentors,
-          prayerRequests
+          usersRes, 
+          allApplicationsRes,
+          pendingAppsRes,
+          bibleSchoolAppsRes,
+          membershipAppsRes,
+          coursesRes, 
+          eventsRes, 
+          donationsRes, 
+          paymentsRes,
+          pendingMentorsRes,
+          prayerRequestsRes
         ] = await Promise.all([
-          insforge.database.from('user_profiles').select('*', { count: 'exact' }),
-          insforge.database.from('applications').select('*', { count: 'exact' }),
-          insforge.database.from('courses').select('*', { count: 'exact' }),
-          insforge.database.from('events').select('*', { count: 'exact' }).gte('event_date', new Date().toISOString()),
+          insforge.database.from('user_profiles').select('id', { count: 'exact', head: true }),
+          insforge.database.from('applications').select('id', { count: 'exact', head: true }),
+          insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+          insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('program_type', 'bible_school'),
+          insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('program_type', 'membership'),
+          insforge.database.from('courses').select('id', { count: 'exact', head: true }),
+          insforge.database.from('events').select('id', { count: 'exact', head: true }).gte('event_date', new Date().toISOString()),
           insforge.database.from('donations').select('amount').eq('status', 'confirmed'),
           insforge.database.from('payments').select('amount').eq('status', 'confirmed'),
-          insforge.database.from('mentors').select('id').eq('status', 'pending'),
-          insforge.database.from('prayer_requests').select('id').eq('status', 'pending')
+          insforge.database.from('mentors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+          insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
         ]);
 
-        const allApps = applications.data || [];
-        const pendingApps = allApps.filter((a: any) => a.status === 'pending') || [];
-        const bibleSchoolApps = allApps.filter((a: any) => a.program_type === 'bible_school') || [];
-        const membershipApps = allApps.filter((a: any) => a.program_type === 'membership') || [];
-
         setStats({
-          totalUsers: users.count || 0,
-          pendingApplications: pendingApps.length,
-          activeCourses: courses.count || 0,
-          upcomingEvents: events.count || 0,
-          totalDonations: donations.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
-          totalPayments: payments.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
-          bibleSchoolApplications: bibleSchoolApps.length,
-          membershipApplications: membershipApps.length,
-          pendingMentors: mentors.data?.length || 0,
-          pendingPrayerRequests: prayerRequests.data?.length || 0
+          totalUsers: usersRes.count || 0,
+          pendingApplications: pendingAppsRes.count || 0,
+          activeCourses: coursesRes.count || 0,
+          upcomingEvents: eventsRes.count || 0,
+          totalDonations: donationsRes.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
+          totalPayments: paymentsRes.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
+          bibleSchoolApplications: bibleSchoolAppsRes.count || 0,
+          membershipApplications: membershipAppsRes.count || 0,
+          pendingMentors: pendingMentorsRes.count || 0,
+          pendingPrayerRequests: prayerRequestsRes.count || 0
         });
 
         // Fetch recent applications with full details
         const { data: recentApps } = await insforge.database
           .from('applications')
-          .select('*, programs(title)')
+          .select('*, programs(title), users(nickname, email)')
           .order('created_at', { ascending: false })
           .limit(10);
 
-        setRecentApplications(recentApps?.map((app: any) => ({
-          id: app.id,
-          name: app.full_name,
-          email: app.email,
-          phone: app.phone || app.contact_number,
-          program: app.programs?.title || app.program_type,
-          programType: app.program_type,
-          date: new Date(app.created_at).toLocaleString(),
-          status: app.status,
-          paymentStatus: app.payment_status,
-          idNumber: app.id_number,
-          address: app.physical_address || app.address
-        })) || []);
+        // Fetch recent mentor applications
+        const { data: recentMentors } = await insforge.database
+          .from('mentors')
+          .select('*, users(nickname, email), mentorship_programs(name)')
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        // Combine and sort all recent activity
+        const allRecentActivity: any[] = [];
+
+        // Add regular applications
+        if (recentApps) {
+          recentApps.forEach((app: any) => {
+            allRecentActivity.push({
+              id: app.id,
+              type: 'application',
+              name: app.full_name || app.users?.nickname || app.users?.email || 'Unknown',
+              email: app.email || app.users?.email,
+              phone: app.phone || app.contact_number,
+              program: app.programs?.title || app.program_type,
+              programType: app.program_type,
+              date: app.created_at,
+              status: app.status,
+              paymentStatus: app.payment_status,
+              idNumber: app.id_number,
+              address: app.physical_address || app.address,
+              userId: app.user_id
+            });
+          });
+        }
+
+        // Add mentor applications
+        if (recentMentors) {
+          recentMentors.forEach((mentor: any) => {
+            allRecentActivity.push({
+              id: mentor.id,
+              type: 'mentor',
+              name: mentor.users?.nickname || mentor.users?.email || 'Unknown',
+              email: mentor.users?.email,
+              phone: null,
+              program: mentor.mentorship_programs?.name || 'Mentorship Program',
+              programType: 'mentor',
+              date: mentor.created_at,
+              status: mentor.status,
+              paymentStatus: null,
+              idNumber: null,
+              address: null,
+              userId: mentor.user_id,
+              bio: mentor.bio,
+              expertiseAreas: mentor.expertise_areas
+            });
+          });
+        }
+
+        // Sort by date (most recent first) and limit to 15
+        allRecentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+        setRecentApplications(allRecentActivity.slice(0, 15));
 
         // Fetch recent notifications
         const { data: recentNotifications } = await insforge.database
@@ -285,77 +330,112 @@ export function AdminDashboardHome() {
             </Link>)}
         </div>
       </div>
-      {/* Recent Applications */}
+      {/* Recent Activity - Applications & Mentor Applications */}
       <div className="bg-white p-6 rounded-card shadow-soft">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-bold text-navy-ink">
-            Recent Applications
+            Recent Activity
           </h2>
-          <Link to="/admin/applications" className="text-gold hover:underline text-sm font-medium">
-            View All
-          </Link>
+          <div className="flex space-x-4">
+            <Link to="/admin/applications" className="text-gold hover:underline text-sm font-medium">
+              View All Applications
+            </Link>
+            <Link to="/admin/mentorship" className="text-gold hover:underline text-sm font-medium">
+              View All Mentors
+            </Link>
+          </div>
         </div>
         {recentApplications.length === 0 ? (
-          <p className="text-gray-600 text-center py-8">No recent applications</p>
+          <p className="text-gray-600 text-center py-8">No recent activity</p>
         ) : (
           <div className="space-y-3">
-            {recentApplications.map(app => (
-              <div key={app.id} className="p-4 bg-muted-gray rounded-card hover:bg-gray-100 transition-colors">
+            {recentApplications.map(item => (
+              <div key={`${item.type}-${item.id}`} className="p-4 bg-muted-gray rounded-card hover:bg-gray-100 transition-colors">
                 <div className="flex items-start justify-between">
                   <div className="flex items-start space-x-4 flex-1">
-                    <div className="w-12 h-12 rounded-full bg-gold flex items-center justify-center text-white font-bold flex-shrink-0">
-                      {app.name?.charAt(0) || 'A'}
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0 ${
+                      item.type === 'mentor' ? 'bg-blue-500' : 'bg-gold'
+                    }`}>
+                      {item.name?.charAt(0) || 'A'}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center space-x-2 mb-1">
-                        <p className="font-medium text-navy-ink">{app.name || 'N/A'}</p>
+                        <p className="font-medium text-navy-ink">{item.name || 'N/A'}</p>
                         <span className={`px-2 py-1 text-xs rounded-full ${
-                          app.programType === 'bible_school' ? 'bg-blue-100 text-blue-800' :
-                          app.programType === 'membership' ? 'bg-purple-100 text-purple-800' :
+                          item.type === 'mentor' ? 'bg-blue-100 text-blue-800' :
+                          item.programType === 'bible_school' ? 'bg-blue-100 text-blue-800' :
+                          item.programType === 'membership' ? 'bg-purple-100 text-purple-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
-                          {app.programType?.replace('_', ' ').toUpperCase() || app.program}
+                          {item.type === 'mentor' ? 'MENTOR APPLICATION' : 
+                           item.programType?.replace('_', ' ').toUpperCase() || item.program}
                         </span>
                       </div>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
-                        <div>
-                          <span className="font-medium">Email:</span> {app.email || 'N/A'}
+                      {item.type === 'mentor' ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Email:</span> {item.email || 'N/A'}
+                          </div>
+                          {item.bio && (
+                            <div className="text-sm text-gray-600 line-clamp-2">
+                              <span className="font-medium">Bio:</span> {item.bio}
+                            </div>
+                          )}
+                          {item.expertiseAreas && item.expertiseAreas.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {item.expertiseAreas.slice(0, 3).map((area: string, idx: number) => (
+                                <span key={idx} className="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded">
+                                  {area}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Applied: {new Date(item.date).toLocaleString()}
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-medium">Phone:</span> {app.phone || 'N/A'}
+                      ) : (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-gray-600">
+                          <div>
+                            <span className="font-medium">Email:</span> {item.email || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Phone:</span> {item.phone || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">ID:</span> {item.idNumber || 'N/A'}
+                          </div>
+                          <div>
+                            <span className="font-medium">Date:</span> {new Date(item.date).toLocaleDateString()}
+                          </div>
                         </div>
-                        <div>
-                          <span className="font-medium">ID:</span> {app.idNumber || 'N/A'}
-                        </div>
-                        <div>
-                          <span className="font-medium">Date:</span> {new Date(app.date).toLocaleDateString()}
-                        </div>
-                      </div>
-                      {app.address && (
+                      )}
+                      {item.address && (
                         <div className="text-sm text-gray-600 mt-1">
-                          <span className="font-medium">Address:</span> {app.address}
+                          <span className="font-medium">Address:</span> {item.address}
                         </div>
                       )}
                     </div>
                   </div>
                   <div className="flex flex-col items-end space-y-2 ml-4">
                     <span className={`px-2 py-1 text-xs rounded-full ${
-                      app.status === 'approved' ? 'bg-green-100 text-green-800' :
-                      app.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      item.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      item.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      item.status === 'available' ? 'bg-green-100 text-green-800' :
                       'bg-amber-100 text-amber-800'
                     }`}>
-                      {app.status}
+                      {item.status}
                     </span>
-                    {app.paymentStatus && (
+                    {item.paymentStatus && (
                       <span className={`px-2 py-1 text-xs rounded-full ${
-                        app.paymentStatus === 'confirmed' ? 'bg-green-100 text-green-800' :
-                        app.paymentStatus === 'pending' ? 'bg-amber-100 text-amber-800' :
+                        item.paymentStatus === 'confirmed' ? 'bg-green-100 text-green-800' :
+                        item.paymentStatus === 'pending' ? 'bg-amber-100 text-amber-800' :
                         'bg-red-100 text-red-800'
                       }`}>
-                        Payment: {app.paymentStatus}
+                        Payment: {item.paymentStatus}
                       </span>
                     )}
-                    <Link to={`/admin/applications`}>
+                    <Link to={item.type === 'mentor' ? '/admin/mentorship' : '/admin/applications'}>
                       <Button variant="outline" size="sm">
                         <Eye size={14} className="mr-1" />
                         View Details
