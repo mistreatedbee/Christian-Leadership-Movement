@@ -105,54 +105,41 @@ export function UserManagementPage() {
     setSelectedUser(user);
     setShowDetailsModal(true);
     setLoadingApplications(true);
+    setEnrichedUserData(null); // Reset enriched data
     
     try {
-      // Fetch user's applications - try with programs join first, fallback to without if it fails
-      let applications: any[] = [];
-      let error: any = null;
-
-      // First try with programs join
+      // Fetch user's applications - skip join to avoid errors
       const result = await insforge.database
         .from('applications')
-        .select('*, programs(title)')
+        .select('*')
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false });
 
       if (result.error) {
-        // If join fails, try without the join
-        console.warn('Programs join failed, fetching without join:', result.error);
-        const fallbackResult = await insforge.database
-          .from('applications')
-          .select('*')
-          .eq('user_id', user.user_id)
-          .order('created_at', { ascending: false });
-        
-        if (fallbackResult.error) {
-          throw fallbackResult.error;
-        }
-        applications = fallbackResult.data || [];
-      } else {
-        applications = result.data || [];
+        throw result.error;
       }
 
+      const applications = result.data || [];
+      console.log('Fetched applications:', applications);
       setUserApplications(applications);
 
       // Enrich user data with information from applications
       if (applications.length > 0) {
         // Get the most recent application for primary data
         const mostRecentApp = applications[0];
+        console.log('Most recent application data:', mostRecentApp);
         
         // Merge application data with user profile data, prioritizing application data
         const enriched = {
           ...user,
-          // Personal Information from applications
-          email: user.email || mostRecentApp.email || null,
-          phone: user.phone || mostRecentApp.phone || mostRecentApp.contact_number || null,
-          address: user.address || mostRecentApp.physical_address || mostRecentApp.address || null,
-          city: user.city || mostRecentApp.city || null,
-          province: user.province || mostRecentApp.province || null,
-          postal_code: user.postal_code || mostRecentApp.postal_code || null,
-          date_of_birth: user.date_of_birth || mostRecentApp.date_of_birth || null,
+          // Personal Information from applications - prioritize application data
+          email: mostRecentApp.email || user.email || null,
+          phone: mostRecentApp.phone || mostRecentApp.contact_number || user.phone || null,
+          address: mostRecentApp.physical_address || mostRecentApp.address || user.address || null,
+          city: mostRecentApp.city || user.city || null,
+          province: mostRecentApp.province || user.province || null,
+          postal_code: mostRecentApp.postal_code || user.postal_code || null,
+          date_of_birth: mostRecentApp.date_of_birth || user.date_of_birth || null,
           // Additional fields from applications
           id_number: mostRecentApp.id_number || null,
           nationality: mostRecentApp.nationality || null,
@@ -162,7 +149,7 @@ export function UserManagementPage() {
           home_language: mostRecentApp.home_language || null,
           population_group: mostRecentApp.population_group || null,
           residential_status: mostRecentApp.residential_status || null,
-          // Name fields
+          // Name fields - prioritize application data
           full_name: mostRecentApp.full_name || user.nickname || null,
           first_name: mostRecentApp.first_name || null,
           middle_name: mostRecentApp.middle_name || null,
@@ -171,8 +158,10 @@ export function UserManagementPage() {
           title: mostRecentApp.title || null,
         };
         
+        console.log('Enriched user data:', enriched);
         setEnrichedUserData(enriched);
       } else {
+        console.log('No applications found, using user data only');
         setEnrichedUserData(user);
       }
 
@@ -706,51 +695,47 @@ export function UserManagementPage() {
               <div>
                 <h3 className="text-lg font-semibold text-navy-ink mb-4">Personal Information</h3>
                 <div className="grid grid-cols-2 gap-4">
-                  {(enrichedUserData?.title || enrichedUserData?.first_name || enrichedUserData?.last_name) && (
-                    <>
-                      {enrichedUserData.title && (
-                        <div>
-                          <p className="text-sm text-gray-600">Title</p>
-                          <p className="font-medium">{enrichedUserData.title}</p>
-                        </div>
-                      )}
-                      {enrichedUserData.first_name && (
-                        <div>
-                          <p className="text-sm text-gray-600">First Name</p>
-                          <p className="font-medium">{enrichedUserData.first_name}</p>
-                        </div>
-                      )}
-                      {enrichedUserData.middle_name && (
-                        <div>
-                          <p className="text-sm text-gray-600">Middle Name</p>
-                          <p className="font-medium">{enrichedUserData.middle_name}</p>
-                        </div>
-                      )}
-                      {enrichedUserData.last_name && (
-                        <div>
-                          <p className="text-sm text-gray-600">Last Name</p>
-                          <p className="font-medium">{enrichedUserData.last_name}</p>
-                        </div>
-                      )}
-                      {enrichedUserData.preferred_name && (
-                        <div>
-                          <p className="text-sm text-gray-600">Preferred Name</p>
-                          <p className="font-medium">{enrichedUserData.preferred_name}</p>
-                        </div>
-                      )}
-                    </>
+                  {enrichedUserData?.title && (
+                    <div>
+                      <p className="text-sm text-gray-600">Title</p>
+                      <p className="font-medium">{enrichedUserData.title}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.first_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">First Name</p>
+                      <p className="font-medium">{enrichedUserData.first_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.middle_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">Middle Name</p>
+                      <p className="font-medium">{enrichedUserData.middle_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.last_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">Last Name</p>
+                      <p className="font-medium">{enrichedUserData.last_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.preferred_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">Preferred Name</p>
+                      <p className="font-medium">{enrichedUserData.preferred_name}</p>
+                    </div>
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Full Name / Nickname</p>
-                    <p className="font-medium">{enrichedUserData?.full_name || selectedUser.nickname || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.full_name || selectedUser.nickname || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
-                    <p className="font-medium break-all">{enrichedUserData?.email || selectedUser.email || 'N/A'}</p>
+                    <p className="font-medium break-all">{(enrichedUserData || selectedUser)?.email || selectedUser.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone Number</p>
-                    <p className="font-medium">{enrichedUserData?.phone || selectedUser.phone || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.phone || selectedUser.phone || 'N/A'}</p>
                   </div>
                   {enrichedUserData?.id_number && (
                     <div>
@@ -766,7 +751,11 @@ export function UserManagementPage() {
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
-                    <p className="font-medium">{enrichedUserData?.date_of_birth ? new Date(enrichedUserData.date_of_birth).toLocaleDateString() : (selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A')}</p>
+                    <p className="font-medium">
+                      {(enrichedUserData || selectedUser)?.date_of_birth 
+                        ? new Date((enrichedUserData || selectedUser).date_of_birth).toLocaleDateString() 
+                        : 'N/A'}
+                    </p>
                   </div>
                   {enrichedUserData?.gender && (
                     <div>
@@ -782,19 +771,19 @@ export function UserManagementPage() {
                   )}
                   <div className="col-span-2">
                     <p className="text-sm text-gray-600">Physical Address</p>
-                    <p className="font-medium">{enrichedUserData?.address || selectedUser.address || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.address || selectedUser.address || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">City</p>
-                    <p className="font-medium">{enrichedUserData?.city || selectedUser.city || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.city || selectedUser.city || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
-                    <p className="font-medium">{enrichedUserData?.province || selectedUser.province || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.province || selectedUser.province || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Postal Code</p>
-                    <p className="font-medium">{enrichedUserData?.postal_code || selectedUser.postal_code || 'N/A'}</p>
+                    <p className="font-medium">{(enrichedUserData || selectedUser)?.postal_code || selectedUser.postal_code || 'N/A'}</p>
                   </div>
                   {enrichedUserData?.country && (
                     <div>
