@@ -38,7 +38,7 @@ export function AdminDashboardHome() {
           pendingMentorsRes,
           prayerRequestsRes
         ] = await Promise.all([
-          insforge.database.from('user_profiles').select('id', { count: 'exact', head: true }),
+          insforge.database.from('users').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('program_type', 'bible_school'),

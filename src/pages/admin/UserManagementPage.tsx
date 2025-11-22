@@ -143,24 +143,48 @@ export function UserManagementPage() {
       let yPos = 35;
       
       doc.setFontSize(10);
-      doc.text(`Name: ${user.nickname || 'N/A'}`, 14, yPos);
+      doc.setFont(undefined, 'bold');
+      doc.text('Personal Information', 14, yPos);
+      yPos += 8;
+      doc.setFont(undefined, 'normal');
+      
+      doc.text(`Full Name / Nickname: ${user.nickname || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Email: ${user.email || 'N/A'}`, 14, yPos);
+      doc.text(`Email Address: ${user.email || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Phone: ${user.phone || 'N/A'}`, 14, yPos);
-      yPos += 7;
-      doc.text(`Address: ${user.address || 'N/A'}`, 14, yPos);
-      yPos += 7;
-      doc.text(`City: ${user.city || 'N/A'}, Province: ${user.province || 'N/A'}`, 14, yPos);
-      yPos += 7;
-      doc.text(`Postal Code: ${user.postal_code || 'N/A'}`, 14, yPos);
+      doc.text(`Phone Number: ${user.phone || 'N/A'}`, 14, yPos);
       yPos += 7;
       doc.text(`Date of Birth: ${user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Role: ${user.role}`, 14, yPos);
+      doc.text(`Physical Address: ${user.address || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Joined: ${new Date(user.created_at).toLocaleDateString()}`, 14, yPos);
-      yPos += 10;
+      doc.text(`City: ${user.city || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Province: ${user.province || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Postal Code: ${user.postal_code || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`User Role: ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Account Created: ${new Date(user.created_at).toLocaleString()}`, 14, yPos);
+      yPos += 7;
+      if (user.updated_at) {
+        doc.text(`Last Updated: ${new Date(user.updated_at).toLocaleString()}`, 14, yPos);
+        yPos += 7;
+      }
+      if (user.bio) {
+        yPos += 3;
+        doc.setFont(undefined, 'bold');
+        doc.text('Bio:', 14, yPos);
+        yPos += 7;
+        doc.setFont(undefined, 'normal');
+        const bioLines = doc.splitTextToSize(user.bio, 180);
+        bioLines.forEach((line: string) => {
+          doc.text(line, 14, yPos);
+          yPos += 7;
+        });
+      }
+      yPos += 5;
 
       // Applications Section
       if (applications && applications.length > 0) {
@@ -433,12 +457,25 @@ export function UserManagementPage() {
                   <tr key={user.user_id} className="hover:bg-muted-gray/50">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
-                          {user.nickname?.charAt(0) || 'U'}
+                        <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 overflow-hidden">
+                          {user.avatar_url ? (
+                            <img 
+                              src={user.avatar_url} 
+                              alt={user.nickname || 'User'} 
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                target.parentElement!.textContent = user.nickname?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U';
+                              }}
+                            />
+                          ) : (
+                            user.nickname?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'
+                          )}
                         </div>
                         <div>
                           <p className="font-medium text-navy-ink">{user.nickname || 'No name'}</p>
-                          <p className="text-sm text-gray-600">{user.email || 'No email'}</p>
+                          <p className="text-sm text-gray-600 break-all">{user.email || 'No email'}</p>
                         </div>
                       </div>
                     </td>
@@ -557,48 +594,99 @@ export function UserManagementPage() {
             </div>
 
             <div className="space-y-6">
+              {/* User Profile Header */}
+              <div className="flex items-start space-x-4 pb-4 border-b">
+                <div className="w-20 h-20 rounded-full bg-gold flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden">
+                  {selectedUser.avatar_url ? (
+                    <img 
+                      src={selectedUser.avatar_url} 
+                      alt={selectedUser.nickname || 'User'} 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.textContent = selectedUser.nickname?.charAt(0)?.toUpperCase() || selectedUser.email?.charAt(0)?.toUpperCase() || 'U';
+                      }}
+                    />
+                  ) : (
+                    selectedUser.nickname?.charAt(0)?.toUpperCase() || selectedUser.email?.charAt(0)?.toUpperCase() || 'U'
+                  )}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-xl font-bold text-navy-ink mb-1">
+                    {selectedUser.nickname || selectedUser.email || 'Unknown User'}
+                  </h3>
+                  <p className="text-gray-600 mb-2">{selectedUser.email || 'No email'}</p>
+                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
+                    {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                  </span>
+                </div>
+              </div>
+
               {/* User Information */}
               <div>
                 <h3 className="text-lg font-semibold text-navy-ink mb-4">Personal Information</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="text-sm text-gray-600">Full Name / Nickname</p>
                     <p className="font-medium">{selectedUser.nickname || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium">{selectedUser.email || 'N/A'}</p>
+                    <p className="text-sm text-gray-600">Email Address</p>
+                    <p className="font-medium break-all">{selectedUser.email || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-sm text-gray-600">Phone Number</p>
                     <p className="font-medium">{selectedUser.phone || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
                     <p className="font-medium">{selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A'}</p>
                   </div>
-                  <div>
-                    <p className="text-sm text-gray-600">Address</p>
+                  <div className="col-span-2">
+                    <p className="text-sm text-gray-600">Physical Address</p>
                     <p className="font-medium">{selectedUser.address || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">City, Province</p>
-                    <p className="font-medium">{selectedUser.city || 'N/A'}, {selectedUser.province || 'N/A'}</p>
+                    <p className="text-sm text-gray-600">City</p>
+                    <p className="font-medium">{selectedUser.city || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Province</p>
+                    <p className="font-medium">{selectedUser.province || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Postal Code</p>
                     <p className="font-medium">{selectedUser.postal_code || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Role</p>
-                    <p className="font-medium">{selectedUser.role}</p>
+                    <p className="text-sm text-gray-600">User Role</p>
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
+                      {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
+                    </span>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Joined</p>
+                    <p className="text-sm text-gray-600">Account Created</p>
                     <p className="font-medium">{new Date(selectedUser.created_at).toLocaleString()}</p>
                   </div>
+                  {selectedUser.updated_at && (
+                    <div>
+                      <p className="text-sm text-gray-600">Last Updated</p>
+                      <p className="font-medium">{new Date(selectedUser.updated_at).toLocaleString()}</p>
+                    </div>
+                  )}
                 </div>
               </div>
+
+              {/* Bio Section */}
+              {selectedUser.bio && (
+                <div>
+                  <h3 className="text-lg font-semibold text-navy-ink mb-4">Bio</h3>
+                  <p className="text-gray-700 whitespace-pre-wrap bg-gray-50 p-4 rounded-card">
+                    {selectedUser.bio}
+                  </p>
+                </div>
+              )}
 
               {/* Applications */}
               <div>
@@ -663,3 +751,4 @@ export function UserManagementPage() {
     </div>
   );
 }
+
