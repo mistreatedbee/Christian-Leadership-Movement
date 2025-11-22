@@ -70,14 +70,31 @@ export function UserManagementPage() {
 
       if (profilesError) throw profilesError;
 
+      // Fetch all applications to get emails as fallback
+      const { data: allApplications } = await insforge.database
+        .from('applications')
+        .select('user_id, email')
+        .not('email', 'is', null);
+
+      // Create a map of user_id to email from applications
+      const emailMap = new Map<string, string>();
+      (allApplications || []).forEach((app: any) => {
+        if (app.user_id && app.email && !emailMap.has(app.user_id)) {
+          emailMap.set(app.user_id, app.email);
+        }
+      });
+
       // Combine users with their profiles
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
+        // Get email from users table, or fallback to applications
+        const userEmail = user.email || emailMap.get(user.id) || null;
+        
         return {
           id: profile?.id || user.id,
           user_id: user.id,
           nickname: user.nickname || null,
-          email: user.email || null,
+          email: userEmail,
           phone: profile?.phone || null,
           city: profile?.city || null,
           province: profile?.province || null,
@@ -92,6 +109,7 @@ export function UserManagementPage() {
         };
       });
 
+      console.log('Fetched users with emails:', usersData.map(u => ({ id: u.user_id, email: u.email, nickname: u.nickname })));
       setUsers(usersData);
     } catch (err: any) {
       console.error('Error fetching users:', err);
