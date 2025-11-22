@@ -46,6 +46,7 @@ export function UserManagementPage() {
   const [userApplications, setUserApplications] = useState<UserApplication[]>([]);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [loadingApplications, setLoadingApplications] = useState(false);
+  const [enrichedUserData, setEnrichedUserData] = useState<any>(null);
 
   useEffect(() => {
     fetchUsers();
@@ -135,11 +136,52 @@ export function UserManagementPage() {
       }
 
       setUserApplications(applications);
+
+      // Enrich user data with information from applications
+      if (applications.length > 0) {
+        // Get the most recent application for primary data
+        const mostRecentApp = applications[0];
+        
+        // Merge application data with user profile data, prioritizing application data
+        const enriched = {
+          ...user,
+          // Personal Information from applications
+          email: user.email || mostRecentApp.email || null,
+          phone: user.phone || mostRecentApp.phone || mostRecentApp.contact_number || null,
+          address: user.address || mostRecentApp.physical_address || mostRecentApp.address || null,
+          city: user.city || mostRecentApp.city || null,
+          province: user.province || mostRecentApp.province || null,
+          postal_code: user.postal_code || mostRecentApp.postal_code || null,
+          date_of_birth: user.date_of_birth || mostRecentApp.date_of_birth || null,
+          // Additional fields from applications
+          id_number: mostRecentApp.id_number || null,
+          nationality: mostRecentApp.nationality || null,
+          gender: mostRecentApp.gender || null,
+          marital_status: mostRecentApp.marital_status || null,
+          country: mostRecentApp.country || null,
+          home_language: mostRecentApp.home_language || null,
+          population_group: mostRecentApp.population_group || null,
+          residential_status: mostRecentApp.residential_status || null,
+          // Name fields
+          full_name: mostRecentApp.full_name || user.nickname || null,
+          first_name: mostRecentApp.first_name || null,
+          middle_name: mostRecentApp.middle_name || null,
+          last_name: mostRecentApp.last_name || null,
+          preferred_name: mostRecentApp.preferred_name || null,
+          title: mostRecentApp.title || null,
+        };
+        
+        setEnrichedUserData(enriched);
+      } else {
+        setEnrichedUserData(user);
+      }
+
       setMessage(null); // Clear any previous errors
     } catch (err: any) {
       console.error('Error fetching applications:', err);
       setMessage({ type: 'error', text: `Failed to fetch user applications: ${err.message || 'Unknown error'}` });
       setUserApplications([]); // Set empty array on error
+      setEnrichedUserData(user); // Fallback to user data only
     } finally {
       setLoadingApplications(false);
     }
@@ -636,23 +678,24 @@ export function UserManagementPage() {
                   {selectedUser.avatar_url ? (
                     <img 
                       src={selectedUser.avatar_url} 
-                      alt={selectedUser.nickname || 'User'} 
+                      alt={enrichedUserData?.full_name || selectedUser.nickname || 'User'} 
                       className="w-full h-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
+                        const displayName = enrichedUserData?.full_name || selectedUser.nickname || selectedUser.email || 'U';
                         target.style.display = 'none';
-                        target.parentElement!.textContent = selectedUser.nickname?.charAt(0)?.toUpperCase() || selectedUser.email?.charAt(0)?.toUpperCase() || 'U';
+                        target.parentElement!.textContent = displayName.charAt(0).toUpperCase();
                       }}
                     />
                   ) : (
-                    selectedUser.nickname?.charAt(0)?.toUpperCase() || selectedUser.email?.charAt(0)?.toUpperCase() || 'U'
+                    (enrichedUserData?.full_name || selectedUser.nickname || selectedUser.email || 'U').charAt(0).toUpperCase()
                   )}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-navy-ink mb-1">
-                    {selectedUser.nickname || selectedUser.email || 'Unknown User'}
+                    {enrichedUserData?.full_name || selectedUser.nickname || enrichedUserData?.email || selectedUser.email || 'Unknown User'}
                   </h3>
-                  <p className="text-gray-600 mb-2">{selectedUser.email || 'No email'}</p>
+                  <p className="text-gray-600 mb-2">{enrichedUserData?.email || selectedUser.email || 'No email'}</p>
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
                     {selectedUser.role.charAt(0).toUpperCase() + selectedUser.role.slice(1)}
                   </span>
@@ -663,38 +706,120 @@ export function UserManagementPage() {
               <div>
                 <h3 className="text-lg font-semibold text-navy-ink mb-4">Personal Information</h3>
                 <div className="grid grid-cols-2 gap-4">
+                  {(enrichedUserData?.title || enrichedUserData?.first_name || enrichedUserData?.last_name) && (
+                    <>
+                      {enrichedUserData.title && (
+                        <div>
+                          <p className="text-sm text-gray-600">Title</p>
+                          <p className="font-medium">{enrichedUserData.title}</p>
+                        </div>
+                      )}
+                      {enrichedUserData.first_name && (
+                        <div>
+                          <p className="text-sm text-gray-600">First Name</p>
+                          <p className="font-medium">{enrichedUserData.first_name}</p>
+                        </div>
+                      )}
+                      {enrichedUserData.middle_name && (
+                        <div>
+                          <p className="text-sm text-gray-600">Middle Name</p>
+                          <p className="font-medium">{enrichedUserData.middle_name}</p>
+                        </div>
+                      )}
+                      {enrichedUserData.last_name && (
+                        <div>
+                          <p className="text-sm text-gray-600">Last Name</p>
+                          <p className="font-medium">{enrichedUserData.last_name}</p>
+                        </div>
+                      )}
+                      {enrichedUserData.preferred_name && (
+                        <div>
+                          <p className="text-sm text-gray-600">Preferred Name</p>
+                          <p className="font-medium">{enrichedUserData.preferred_name}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Full Name / Nickname</p>
-                    <p className="font-medium">{selectedUser.nickname || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.full_name || selectedUser.nickname || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
-                    <p className="font-medium break-all">{selectedUser.email || 'N/A'}</p>
+                    <p className="font-medium break-all">{enrichedUserData?.email || selectedUser.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone Number</p>
-                    <p className="font-medium">{selectedUser.phone || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.phone || selectedUser.phone || 'N/A'}</p>
                   </div>
+                  {enrichedUserData?.id_number && (
+                    <div>
+                      <p className="text-sm text-gray-600">ID Number</p>
+                      <p className="font-medium">{enrichedUserData.id_number}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.nationality && (
+                    <div>
+                      <p className="text-sm text-gray-600">Nationality</p>
+                      <p className="font-medium">{enrichedUserData.nationality}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
-                    <p className="font-medium">{selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.date_of_birth ? new Date(enrichedUserData.date_of_birth).toLocaleDateString() : (selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A')}</p>
                   </div>
+                  {enrichedUserData?.gender && (
+                    <div>
+                      <p className="text-sm text-gray-600">Gender</p>
+                      <p className="font-medium">{enrichedUserData.gender}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.marital_status && (
+                    <div>
+                      <p className="text-sm text-gray-600">Marital Status</p>
+                      <p className="font-medium">{enrichedUserData.marital_status}</p>
+                    </div>
+                  )}
                   <div className="col-span-2">
                     <p className="text-sm text-gray-600">Physical Address</p>
-                    <p className="font-medium">{selectedUser.address || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.address || selectedUser.address || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">City</p>
-                    <p className="font-medium">{selectedUser.city || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.city || selectedUser.city || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
-                    <p className="font-medium">{selectedUser.province || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.province || selectedUser.province || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Postal Code</p>
-                    <p className="font-medium">{selectedUser.postal_code || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.postal_code || selectedUser.postal_code || 'N/A'}</p>
                   </div>
+                  {enrichedUserData?.country && (
+                    <div>
+                      <p className="text-sm text-gray-600">Country</p>
+                      <p className="font-medium">{enrichedUserData.country}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.home_language && (
+                    <div>
+                      <p className="text-sm text-gray-600">Home Language</p>
+                      <p className="font-medium">{enrichedUserData.home_language}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.population_group && (
+                    <div>
+                      <p className="text-sm text-gray-600">Population Group</p>
+                      <p className="font-medium">{enrichedUserData.population_group}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.residential_status && (
+                    <div>
+                      <p className="text-sm text-gray-600">Residential Status</p>
+                      <p className="font-medium">{enrichedUserData.residential_status}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">User Role</p>
                     <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
