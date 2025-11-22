@@ -667,7 +667,7 @@ export function ApplicationManagementPage() {
               </button>
             </div>
             <div className="p-6 space-y-6">
-              {/* Personal Information */}
+              {/* Personal Information - Complete */}
               <div>
                 <h3 className="text-lg font-bold text-navy-ink mb-4">Personal Information</h3>
                 <div className="grid grid-cols-2 gap-4">
@@ -675,17 +675,51 @@ export function ApplicationManagementPage() {
                     <p className="text-sm text-gray-600">Full Name</p>
                     <p className="font-medium">{selectedApplication.full_name || 'N/A'}</p>
                   </div>
+                  {selectedApplication.program_type === 'membership' && (
+                    <>
+                      <div>
+                        <p className="text-sm text-gray-600">Title</p>
+                        <p className="font-medium">{selectedApplication.title || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">First Name</p>
+                        <p className="font-medium">{selectedApplication.first_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Middle Name</p>
+                        <p className="font-medium">{selectedApplication.middle_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Last Name</p>
+                        <p className="font-medium">{selectedApplication.last_name || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Initials</p>
+                        <p className="font-medium">{selectedApplication.initials || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Preferred Name</p>
+                        <p className="font-medium">{selectedApplication.preferred_name || 'N/A'}</p>
+                      </div>
+                    </>
+                  )}
+                  <div>
+                    <p className="text-sm text-gray-600">ID Number</p>
+                    <p className="font-medium">{selectedApplication.id_number || 'N/A'}</p>
+                  </div>
+                  {selectedApplication.program_type === 'membership' && (
+                    <div>
+                      <p className="text-sm text-gray-600">Nationality</p>
+                      <p className="font-medium">{selectedApplication.nationality || 'N/A'}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Email</p>
                     <p className="font-medium">{selectedApplication.email || 'N/A'}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="text-sm text-gray-600">Phone / Contact Number</p>
                     <p className="font-medium">{selectedApplication.phone || selectedApplication.contact_number || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-600">ID Number</p>
-                    <p className="font-medium">{selectedApplication.id_number || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
@@ -695,6 +729,12 @@ export function ApplicationManagementPage() {
                     <p className="text-sm text-gray-600">Gender</p>
                     <p className="font-medium">{selectedApplication.gender || 'N/A'}</p>
                   </div>
+                  {selectedApplication.program_type === 'bible_school' && (
+                    <div>
+                      <p className="text-sm text-gray-600">Marital Status</p>
+                      <p className="font-medium">{selectedApplication.marital_status || 'N/A'}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
                     <p className="font-medium">{selectedApplication.province || 'N/A'}</p>
@@ -703,16 +743,295 @@ export function ApplicationManagementPage() {
                     <p className="text-sm text-gray-600">City</p>
                     <p className="font-medium">{selectedApplication.city || 'N/A'}</p>
                   </div>
+                  {selectedApplication.program_type === 'membership' && (
+                    <>
+                      <div>
+                        <p className="text-sm text-gray-600">Postal Code</p>
+                        <p className="font-medium">{selectedApplication.postal_code || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Residential Status</p>
+                        <p className="font-medium">{selectedApplication.residential_status || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Home Language</p>
+                        <p className="font-medium">{selectedApplication.home_language || 'N/A'}</p>
+                      </div>
+                      <div>
+                        <p className="text-sm text-gray-600">Population Group</p>
+                        <p className="font-medium">{selectedApplication.population_group || 'N/A'}</p>
+                      </div>
+                    </>
+                  )}
                   <div className="col-span-2">
-                    <p className="text-sm text-gray-600">Address</p>
+                    <p className="text-sm text-gray-600">Physical Address</p>
                     <p className="font-medium">{selectedApplication.physical_address || selectedApplication.address || 'N/A'}</p>
                   </div>
+                  {selectedApplication.program_type === 'bible_school' && (
+                    <div>
+                      <p className="text-sm text-gray-600">Country</p>
+                      <p className="font-medium">{selectedApplication.country || 'N/A'}</p>
+                    </div>
+                  )}
+                  {selectedApplication.program_type === 'membership' && selectedApplication.disabilities && Array.isArray(selectedApplication.disabilities) && selectedApplication.disabilities.length > 0 && (
+                    <div className="col-span-2">
+                      <p className="text-sm text-gray-600">Disabilities</p>
+                      <p className="font-medium">{selectedApplication.disabilities.join(', ')}</p>
+                    </div>
+                  )}
                 </div>
               </div>
 
+              {/* Spiritual Background - Bible School Only */}
+              {selectedApplication.program_type === 'bible_school' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Spiritual Background</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Date Accepted Christ</p>
+                      <p className="font-medium">{selectedApplication.date_accepted_christ ? new Date(selectedApplication.date_accepted_christ).toLocaleDateString() : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Baptized</p>
+                      <p className="font-medium">{selectedApplication.is_baptized ? 'Yes' : 'No'}</p>
+                    </div>
+                    {selectedApplication.is_baptized && (
+                      <div>
+                        <p className="text-sm text-gray-600">Baptism Date</p>
+                        <p className="font-medium">{selectedApplication.baptism_date ? new Date(selectedApplication.baptism_date).toLocaleDateString() : 'N/A'}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-600">Attends Local Church</p>
+                      <p className="font-medium">{selectedApplication.attends_local_church ? 'Yes' : 'No'}</p>
+                    </div>
+                    {selectedApplication.attends_local_church && (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600">Church Name</p>
+                          <p className="font-medium">{selectedApplication.church_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Denomination</p>
+                          <p className="font-medium">{selectedApplication.denomination || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Pastor Name</p>
+                          <p className="font-medium">{selectedApplication.pastor_name || 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-600">Serves in Ministry</p>
+                      <p className="font-medium">{selectedApplication.serves_in_ministry ? 'Yes' : 'No'}</p>
+                    </div>
+                    {selectedApplication.serves_in_ministry && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-600">Ministry Service Description</p>
+                        <p className="font-medium">{selectedApplication.ministry_service_description || 'N/A'}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Leadership Interests - Bible School Only */}
+              {selectedApplication.program_type === 'bible_school' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Leadership Interests</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {selectedApplication.why_join_bible_school && (
+                      <div>
+                        <p className="text-sm text-gray-600">Why Join Bible School</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.why_join_bible_school}</p>
+                      </div>
+                    )}
+                    {selectedApplication.previous_leadership_experience && (
+                      <div>
+                        <p className="text-sm text-gray-600">Previous Leadership Experience</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.previous_leadership_experience}</p>
+                      </div>
+                    )}
+                    {selectedApplication.leadership_roles && Array.isArray(selectedApplication.leadership_roles) && selectedApplication.leadership_roles.length > 0 && (
+                      <div>
+                        <p className="text-sm text-gray-600 mb-2">Leadership Roles</p>
+                        <div className="space-y-2">
+                          {selectedApplication.leadership_roles.map((role: any, idx: number) => (
+                            <div key={idx} className="p-3 bg-gray-50 rounded">
+                              <p className="font-medium">{role.title || `Role ${idx + 1}`}</p>
+                              {role.description && <p className="text-sm text-gray-600 mt-1">{role.description}</p>}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Vision & Calling - Bible School Only */}
+              {selectedApplication.program_type === 'bible_school' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Vision & Calling</h3>
+                  <div className="grid grid-cols-1 gap-4">
+                    {selectedApplication.calling_statement && (
+                      <div>
+                        <p className="text-sm text-gray-600">Calling Statement</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.calling_statement}</p>
+                      </div>
+                    )}
+                    {selectedApplication.leadership_ambitions && (
+                      <div>
+                        <p className="text-sm text-gray-600">Leadership Ambitions</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.leadership_ambitions}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Ministry Involvement - Membership Only */}
+              {selectedApplication.program_type === 'membership' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Ministry Involvement</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Current Ministry Name</p>
+                      <p className="font-medium">{selectedApplication.current_ministry_name || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Denomination</p>
+                      <p className="font-medium">{selectedApplication.denomination || 'N/A'}</p>
+                    </div>
+                    {selectedApplication.ministry_types && Array.isArray(selectedApplication.ministry_types) && selectedApplication.ministry_types.length > 0 && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-600">Ministry Types</p>
+                        <p className="font-medium">{selectedApplication.ministry_types.join(', ')}</p>
+                      </div>
+                    )}
+                    <div>
+                      <p className="text-sm text-gray-600">Ministry Position</p>
+                      <p className="font-medium">{selectedApplication.ministry_position || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Ministry Website</p>
+                      <p className="font-medium">{selectedApplication.ministry_website ? (
+                        <a href={selectedApplication.ministry_website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                          {selectedApplication.ministry_website}
+                        </a>
+                      ) : 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Years Part-Time Ministry</p>
+                      <p className="font-medium">{selectedApplication.years_part_time || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Years Full-Time Ministry</p>
+                      <p className="font-medium">{selectedApplication.years_full_time || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Primary Income Source</p>
+                      <p className="font-medium">{selectedApplication.primary_income_source || 'N/A'}</p>
+                    </div>
+                    {selectedApplication.primary_income_other && (
+                      <div>
+                        <p className="text-sm text-gray-600">Primary Income Other</p>
+                        <p className="font-medium">{selectedApplication.primary_income_other}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Qualifications - Membership Only */}
+              {selectedApplication.program_type === 'membership' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Qualifications</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">High School</p>
+                      <p className="font-medium">{selectedApplication.high_school || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Highest Ministry Qualification</p>
+                      <p className="font-medium">{selectedApplication.highest_ministry_qualification || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Highest Other Qualification</p>
+                      <p className="font-medium">{selectedApplication.highest_other_qualification || 'N/A'}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Other Training</p>
+                      <p className="font-medium">{selectedApplication.other_training || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Reference Information - Complete */}
+              {(selectedApplication.referee_name || selectedApplication.reference_first_name || selectedApplication.reference_contact) && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Reference Information</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedApplication.program_type === 'bible_school' ? (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600">Referee Name</p>
+                          <p className="font-medium">{selectedApplication.referee_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Referee Contact</p>
+                          <p className="font-medium">{selectedApplication.referee_contact || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Relationship to Referee</p>
+                          <p className="font-medium">{selectedApplication.relationship_to_referee || 'N/A'}</p>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div>
+                          <p className="text-sm text-gray-600">Reference First Name</p>
+                          <p className="font-medium">{selectedApplication.reference_first_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Reference Last Name</p>
+                          <p className="font-medium">{selectedApplication.reference_last_name || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Reference Contact</p>
+                          <p className="font-medium">{selectedApplication.reference_contact || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Reference Email</p>
+                          <p className="font-medium">{selectedApplication.reference_email || 'N/A'}</p>
+                        </div>
+                        <div>
+                          <p className="text-sm text-gray-600">Reference Title</p>
+                          <p className="font-medium">{selectedApplication.reference_title || 'N/A'}</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Registration Option - Bible School Only */}
+              {selectedApplication.program_type === 'bible_school' && selectedApplication.registration_option && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Registration & Payment</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-sm text-gray-600">Registration Option</p>
+                      <p className="font-medium">{selectedApplication.registration_option?.replace('_', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()) || 'N/A'}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Program Information */}
               <div>
-                <h3 className="text-lg font-bold text-navy-ink mb-4">Program Information</h3>
+                <h3 className="text-lg font-bold text-navy-ink mb-4">Application Status</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Program Type</p>
@@ -738,80 +1057,6 @@ export function ApplicationManagementPage() {
                   </div>
                 </div>
               </div>
-
-              {/* Additional Information based on program type */}
-              {selectedApplication.program_type === 'membership' && (
-                <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Ministry Involvement</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Current Ministry</p>
-                      <p className="font-medium">{selectedApplication.current_ministry_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Denomination</p>
-                      <p className="font-medium">{selectedApplication.denomination || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Ministry Position</p>
-                      <p className="font-medium">{selectedApplication.ministry_position || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Primary Income Source</p>
-                      <p className="font-medium">{selectedApplication.primary_income_source || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {selectedApplication.program_type === 'bible_school' && (
-                <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Spiritual Background</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Church Name</p>
-                      <p className="font-medium">{selectedApplication.church_name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Denomination</p>
-                      <p className="font-medium">{selectedApplication.denomination || 'N/A'}</p>
-                    </div>
-                    {selectedApplication.why_join_bible_school && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-600">Why Join Bible School</p>
-                        <p className="font-medium">{selectedApplication.why_join_bible_school}</p>
-                      </div>
-                    )}
-                    {selectedApplication.calling_statement && (
-                      <div className="col-span-2">
-                        <p className="text-sm text-gray-600">Calling Statement</p>
-                        <p className="font-medium">{selectedApplication.calling_statement}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Reference Information */}
-              {(selectedApplication.referee_name || selectedApplication.reference_first_name) && (
-                <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Reference Information</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm text-gray-600">Reference Name</p>
-                      <p className="font-medium">{selectedApplication.referee_name || `${selectedApplication.reference_first_name || ''} ${selectedApplication.reference_last_name || ''}`.trim() || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Reference Contact</p>
-                      <p className="font-medium">{selectedApplication.referee_contact || selectedApplication.reference_contact || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-gray-600">Reference Email</p>
-                      <p className="font-medium">{selectedApplication.reference_email || 'N/A'}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
 
               {/* Documents */}
               {selectedApplication.documents && (

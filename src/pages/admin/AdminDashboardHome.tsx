@@ -64,26 +64,47 @@ export function AdminDashboardHome() {
           pendingPrayerRequests: prayerRequestsRes.count || 0
         });
 
-        // Fetch recent applications with full details
-        const { data: recentApps } = await insforge.database
-          .from('applications')
-          .select('*, programs(title), users(nickname, email)')
-          .order('created_at', { ascending: false })
-          .limit(10);
-
-        // Fetch recent mentor applications
-        const { data: recentMentors } = await insforge.database
-          .from('mentors')
-          .select('*, users(nickname, email), mentorship_programs(name)')
-          .order('created_at', { ascending: false })
-          .limit(10);
+        // Fetch all recent activities
+        const [
+          recentApps,
+          recentMentors,
+          recentUsers,
+          recentGroups,
+          recentPrayerRequests
+        ] = await Promise.all([
+          insforge.database
+            .from('applications')
+            .select('*, programs(title), users(nickname, email)')
+            .order('created_at', { ascending: false })
+            .limit(10),
+          insforge.database
+            .from('mentors')
+            .select('*, users(nickname, email), mentorship_programs(name)')
+            .order('created_at', { ascending: false })
+            .limit(10),
+          insforge.database
+            .from('users')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(10),
+          insforge.database
+            .from('groups')
+            .select('*, users(nickname, email)')
+            .order('created_at', { ascending: false })
+            .limit(10),
+          insforge.database
+            .from('prayer_requests')
+            .select('*, users(nickname, email)')
+            .order('created_at', { ascending: false })
+            .limit(10)
+        ]);
 
         // Combine and sort all recent activity
         const allRecentActivity: any[] = [];
 
         // Add regular applications
-        if (recentApps) {
-          recentApps.forEach((app: any) => {
+        if (recentApps.data) {
+          recentApps.data.forEach((app: any) => {
             allRecentActivity.push({
               id: app.id,
               type: 'application',
@@ -103,8 +124,8 @@ export function AdminDashboardHome() {
         }
 
         // Add mentor applications
-        if (recentMentors) {
-          recentMentors.forEach((mentor: any) => {
+        if (recentMentors.data) {
+          recentMentors.data.forEach((mentor: any) => {
             allRecentActivity.push({
               id: mentor.id,
               type: 'mentor',
@@ -125,9 +146,75 @@ export function AdminDashboardHome() {
           });
         }
 
-        // Sort by date (most recent first) and limit to 15
+        // Add new users
+        if (recentUsers.data) {
+          recentUsers.data.forEach((newUser: any) => {
+            allRecentActivity.push({
+              id: newUser.id,
+              type: 'user',
+              name: newUser.nickname || newUser.email || 'Unknown',
+              email: newUser.email,
+              phone: null,
+              program: 'User Registration',
+              programType: 'user',
+              date: newUser.created_at,
+              status: 'registered',
+              paymentStatus: null,
+              idNumber: null,
+              address: null,
+              userId: newUser.id
+            });
+          });
+        }
+
+        // Add new groups
+        if (recentGroups.data) {
+          recentGroups.data.forEach((group: any) => {
+            allRecentActivity.push({
+              id: group.id,
+              type: 'group',
+              name: group.name,
+              email: group.users?.email,
+              phone: null,
+              program: `Group: ${group.group_type || 'ministry'}`,
+              programType: 'group',
+              date: group.created_at,
+              status: group.is_public ? 'public' : 'private',
+              paymentStatus: null,
+              idNumber: null,
+              address: null,
+              userId: group.created_by,
+              description: group.description
+            });
+          });
+        }
+
+        // Add prayer requests
+        if (recentPrayerRequests.data) {
+          recentPrayerRequests.data.forEach((prayer: any) => {
+            allRecentActivity.push({
+              id: prayer.id,
+              type: 'prayer',
+              name: prayer.is_anonymous ? 'Anonymous' : (prayer.users?.nickname || prayer.users?.email || 'Unknown'),
+              email: prayer.is_anonymous ? null : prayer.users?.email,
+              phone: null,
+              program: 'Prayer Request',
+              programType: 'prayer',
+              date: prayer.created_at,
+              status: prayer.status,
+              paymentStatus: null,
+              idNumber: null,
+              address: null,
+              userId: prayer.user_id,
+              title: prayer.title,
+              request: prayer.request
+            });
+          });
+        }
+
+        // Sort by date (most recent first) and limit to 20
         allRecentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-        setRecentApplications(allRecentActivity.slice(0, 15));
+        setRecentApplications(allRecentActivity.slice(0, 20));
 
         // Fetch recent notifications
         const { data: recentNotifications } = await insforge.database
@@ -363,11 +450,17 @@ export function AdminDashboardHome() {
                         <p className="font-medium text-navy-ink">{item.name || 'N/A'}</p>
                         <span className={`px-2 py-1 text-xs rounded-full ${
                           item.type === 'mentor' ? 'bg-blue-100 text-blue-800' :
+                          item.type === 'user' ? 'bg-green-100 text-green-800' :
+                          item.type === 'group' ? 'bg-indigo-100 text-indigo-800' :
+                          item.type === 'prayer' ? 'bg-pink-100 text-pink-800' :
                           item.programType === 'bible_school' ? 'bg-blue-100 text-blue-800' :
                           item.programType === 'membership' ? 'bg-purple-100 text-purple-800' :
                           'bg-gray-100 text-gray-800'
                         }`}>
                           {item.type === 'mentor' ? 'MENTOR APPLICATION' : 
+                           item.type === 'user' ? 'NEW USER' :
+                           item.type === 'group' ? 'NEW GROUP' :
+                           item.type === 'prayer' ? 'PRAYER REQUEST' :
                            item.programType?.replace('_', ' ').toUpperCase() || item.program}
                         </span>
                       </div>
@@ -392,6 +485,45 @@ export function AdminDashboardHome() {
                           )}
                           <div className="text-xs text-gray-500 mt-1">
                             Applied: {new Date(item.date).toLocaleString()}
+                          </div>
+                        </div>
+                      ) : item.type === 'user' ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Email:</span> {item.email || 'N/A'}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            Registered: {new Date(item.date).toLocaleString()}
+                          </div>
+                        </div>
+                      ) : item.type === 'group' ? (
+                        <div className="space-y-1">
+                          <div className="text-sm text-gray-600">
+                            <span className="font-medium">Type:</span> {item.program}
+                          </div>
+                          {item.description && (
+                            <div className="text-sm text-gray-600 line-clamp-2">
+                              <span className="font-medium">Description:</span> {item.description}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Created: {new Date(item.date).toLocaleString()}
+                          </div>
+                        </div>
+                      ) : item.type === 'prayer' ? (
+                        <div className="space-y-1">
+                          {item.title && (
+                            <div className="text-sm text-gray-600">
+                              <span className="font-medium">Title:</span> {item.title}
+                            </div>
+                          )}
+                          {item.request && (
+                            <div className="text-sm text-gray-600 line-clamp-2">
+                              <span className="font-medium">Request:</span> {item.request}
+                            </div>
+                          )}
+                          <div className="text-xs text-gray-500 mt-1">
+                            Submitted: {new Date(item.date).toLocaleString()}
                           </div>
                         </div>
                       ) : (
@@ -435,7 +567,13 @@ export function AdminDashboardHome() {
                         Payment: {item.paymentStatus}
                       </span>
                     )}
-                    <Link to={item.type === 'mentor' ? '/admin/mentorship' : '/admin/applications'}>
+                    <Link to={
+                      item.type === 'mentor' ? '/admin/mentorship' :
+                      item.type === 'user' ? '/admin/users' :
+                      item.type === 'group' ? '/admin/groups' :
+                      item.type === 'prayer' ? '/admin/prayer-requests' :
+                      '/admin/applications'
+                    }>
                       <Button variant="outline" size="sm">
                         <Eye size={14} className="mr-1" />
                         View Details

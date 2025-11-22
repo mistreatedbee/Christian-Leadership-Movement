@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Mail, Shield, Save, X } from 'lucide-react';
+import { Search, Filter, Plus, Edit, Trash2, Mail, Shield, Save, X, Eye, Download, FileText, X as CloseIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { insforge } from '../../lib/insforge';
 import { useUser } from '@insforge/react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface User {
   id: string;
@@ -18,6 +20,17 @@ interface User {
   role: string;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null;
+  bio?: string | null;
+}
+
+interface UserApplication {
+  id: string;
+  program_type: string;
+  status: string;
+  payment_status: string;
+  created_at: string;
+  programs?: { title: string };
 }
 
 export function UserManagementPage() {
@@ -29,6 +42,10 @@ export function UserManagementPage() {
   const [editingUser, setEditingUser] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<User>>({});
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [userApplications, setUserApplications] = useState<UserApplication[]>([]);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [loadingApplications, setLoadingApplications] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -37,33 +54,42 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Fetch all user profiles with user details
-      const { data: profiles, error } = await insforge.database
-        .from('user_profiles')
-        .select(`
-          *,
-          users!inner(id, nickname, avatar_url, bio, created_at)
-        `)
+      // Fetch ALL users from users table (including those who just registered)
+      const { data: allUsers, error: usersError } = await insforge.database
+        .from('users')
+        .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (usersError) throw usersError;
 
-      // Transform data to include email from auth (we'll need to get it differently)
-      const usersData = (profiles || []).map((profile: any) => ({
-        id: profile.id,
-        user_id: profile.user_id,
-        nickname: profile.users?.nickname || null,
-        email: null, // Email is in auth.users, not accessible directly
-        phone: profile.phone,
-        city: profile.city,
-        province: profile.province,
-        postal_code: profile.postal_code,
-        address: profile.address,
-        date_of_birth: profile.date_of_birth,
-        role: profile.role || 'user',
-        created_at: profile.created_at,
-        updated_at: profile.updated_at
-      }));
+      // Fetch all user profiles
+      const { data: profiles, error: profilesError } = await insforge.database
+        .from('user_profiles')
+        .select('*');
+
+      if (profilesError) throw profilesError;
+
+      // Combine users with their profiles
+      const usersData = (allUsers || []).map((user: any) => {
+        const profile = profiles?.find((p: any) => p.user_id === user.id);
+        return {
+          id: profile?.id || user.id,
+          user_id: user.id,
+          nickname: user.nickname || null,
+          email: user.email || null,
+          phone: profile?.phone || null,
+          city: profile?.city || null,
+          province: profile?.province || null,
+          postal_code: profile?.postal_code || null,
+          address: profile?.address || null,
+          date_of_birth: profile?.date_of_birth || null,
+          role: profile?.role || 'user',
+          created_at: user.created_at,
+          updated_at: profile?.updated_at || user.updated_at,
+          avatar_url: user.avatar_url || null,
+          bio: user.bio || null
+        };
+      });
 
       setUsers(usersData);
     } catch (err: any) {
@@ -71,6 +97,105 @@ export function UserManagementPage() {
       setMessage({ type: 'error', text: err.message || 'Failed to fetch users' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleViewDetails = async (user: User) => {
+    setSelectedUser(user);
+    setShowDetailsModal(true);
+    setLoadingApplications(true);
+    
+    try {
+      // Fetch user's applications
+      const { data: applications, error } = await insforge.database
+        .from('applications')
+        .select('*, programs(title)')
+        .eq('user_id', user.user_id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setUserApplications(applications || []);
+    } catch (err: any) {
+      console.error('Error fetching applications:', err);
+      setMessage({ type: 'error', text: 'Failed to fetch user applications' });
+    } finally {
+      setLoadingApplications(false);
+    }
+  };
+
+  const handleExportPDF = async (user: User) => {
+    try {
+      // Fetch full user data and applications
+      const { data: applications } = await insforge.database
+        .from('applications')
+        .select('*, programs(title)')
+        .eq('user_id', user.user_id)
+        .order('created_at', { ascending: false });
+
+      const doc = new jsPDF();
+      
+      // Title
+      doc.setFontSize(18);
+      doc.text('User Information Report', 14, 20);
+      
+      // User Information
+      doc.setFontSize(12);
+      let yPos = 35;
+      
+      doc.setFontSize(10);
+      doc.text(`Name: ${user.nickname || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Email: ${user.email || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Phone: ${user.phone || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Address: ${user.address || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`City: ${user.city || 'N/A'}, Province: ${user.province || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Postal Code: ${user.postal_code || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Date of Birth: ${user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'N/A'}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Role: ${user.role}`, 14, yPos);
+      yPos += 7;
+      doc.text(`Joined: ${new Date(user.created_at).toLocaleDateString()}`, 14, yPos);
+      yPos += 10;
+
+      // Applications Section
+      if (applications && applications.length > 0) {
+        doc.setFontSize(14);
+        doc.text('Applications', 14, yPos);
+        yPos += 10;
+
+        applications.forEach((app: any, index: number) => {
+          if (yPos > 270) {
+            doc.addPage();
+            yPos = 20;
+          }
+
+          doc.setFontSize(10);
+          doc.text(`Application ${index + 1}:`, 14, yPos);
+          yPos += 6;
+          doc.text(`  Program: ${app.programs?.title || app.program_type}`, 20, yPos);
+          yPos += 6;
+          doc.text(`  Status: ${app.status}`, 20, yPos);
+          yPos += 6;
+          doc.text(`  Payment Status: ${app.payment_status || 'N/A'}`, 20, yPos);
+          yPos += 6;
+          doc.text(`  Date: ${new Date(app.created_at).toLocaleDateString()}`, 20, yPos);
+          yPos += 8;
+        });
+      } else {
+        doc.setFontSize(10);
+        doc.text('No applications found', 14, yPos);
+      }
+
+      doc.save(`user-${user.user_id.substring(0, 8)}-${Date.now()}.pdf`);
+      setMessage({ type: 'success', text: 'PDF exported successfully!' });
+    } catch (err: any) {
+      console.error('Error exporting PDF:', err);
+      setMessage({ type: 'error', text: 'Failed to export PDF' });
     }
   };
 
@@ -89,23 +214,49 @@ export function UserManagementPage() {
 
   const handleSave = async (userId: string) => {
     try {
-      const { error } = await insforge.database
+      // Check if profile exists
+      const { data: existingProfile } = await insforge.database
         .from('user_profiles')
-        .update({
-          role: editForm.role,
-          phone: editForm.phone || null,
-          city: editForm.city || null,
-          province: editForm.province || null,
-          postal_code: editForm.postal_code || null,
-          address: editForm.address || null,
-          date_of_birth: editForm.date_of_birth || null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .single();
 
-      if (error) throw error;
+      if (existingProfile) {
+        // Update existing profile
+        const { error } = await insforge.database
+          .from('user_profiles')
+          .update({
+            role: editForm.role,
+            phone: editForm.phone || null,
+            city: editForm.city || null,
+            province: editForm.province || null,
+            postal_code: editForm.postal_code || null,
+            address: editForm.address || null,
+            date_of_birth: editForm.date_of_birth || null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
 
-      // Also update users table if nickname changed
+        if (error) throw error;
+      } else {
+        // Create new profile
+        const { error } = await insforge.database
+          .from('user_profiles')
+          .insert({
+            user_id: userId,
+            role: editForm.role || 'user',
+            phone: editForm.phone || null,
+            city: editForm.city || null,
+            province: editForm.province || null,
+            postal_code: editForm.postal_code || null,
+            address: editForm.address || null,
+            date_of_birth: editForm.date_of_birth || null
+          });
+
+        if (error) throw error;
+      }
+
+      // Update users table if nickname changed
       if (editForm.nickname) {
         await insforge.database
           .from('users')
@@ -116,7 +267,7 @@ export function UserManagementPage() {
       setMessage({ type: 'success', text: 'User updated successfully!' });
       setEditingUser(null);
       setEditForm({});
-      fetchUsers(); // Refresh list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error updating user:', err);
       setMessage({ type: 'error', text: err.message || 'Failed to update user' });
@@ -134,16 +285,15 @@ export function UserManagementPage() {
     }
 
     try {
-      // Delete user profile (user record will be cascade deleted)
-      const { error } = await insforge.database
+      // Delete user profile first
+      await insforge.database
         .from('user_profiles')
         .delete()
         .eq('user_id', userId);
 
-      if (error) throw error;
-
+      // User record will be cascade deleted from auth.users
       setMessage({ type: 'success', text: 'User deleted successfully!' });
-      fetchUsers(); // Refresh list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error deleting user:', err);
       setMessage({ type: 'error', text: err.message || 'Failed to delete user' });
@@ -152,15 +302,25 @@ export function UserManagementPage() {
 
   const handleRoleChange = async (userId: string, newRole: string) => {
     try {
-      const { error } = await insforge.database
+      const { data: existingProfile } = await insforge.database
         .from('user_profiles')
-        .update({ role: newRole, updated_at: new Date().toISOString() })
-        .eq('user_id', userId);
+        .select('id')
+        .eq('user_id', userId)
+        .single();
 
-      if (error) throw error;
+      if (existingProfile) {
+        await insforge.database
+          .from('user_profiles')
+          .update({ role: newRole, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+      } else {
+        await insforge.database
+          .from('user_profiles')
+          .insert({ user_id: userId, role: newRole });
+      }
 
       setMessage({ type: 'success', text: 'User role updated successfully!' });
-      fetchUsers(); // Refresh list
+      fetchUsers();
     } catch (err: any) {
       console.error('Error updating role:', err);
       setMessage({ type: 'error', text: err.message || 'Failed to update role' });
@@ -170,6 +330,7 @@ export function UserManagementPage() {
   const filteredUsers = users.filter(user => {
     const matchesSearch = !searchTerm || 
       user.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.city?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.province?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -198,7 +359,7 @@ export function UserManagementPage() {
           <h1 className="text-3xl font-bold text-navy-ink mb-2">
             User Management
           </h1>
-          <p className="text-gray-600">Manage user accounts and permissions</p>
+          <p className="text-gray-600">Manage all registered users and their applications</p>
         </div>
       </div>
 
@@ -277,7 +438,7 @@ export function UserManagementPage() {
                         </div>
                         <div>
                           <p className="font-medium text-navy-ink">{user.nickname || 'No name'}</p>
-                          <p className="text-sm text-gray-600">ID: {user.user_id.substring(0, 8)}...</p>
+                          <p className="text-sm text-gray-600">{user.email || 'No email'}</p>
                         </div>
                       </div>
                     </td>
@@ -341,8 +502,22 @@ export function UserManagementPage() {
                       ) : (
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => handleEdit(user)}
+                            onClick={() => handleViewDetails(user)}
                             className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
+                            title="View Details"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleExportPDF(user)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-card"
+                            title="Export PDF"
+                          >
+                            <Download size={18} />
+                          </button>
+                          <button
+                            onClick={() => handleEdit(user)}
+                            className="p-2 text-green-600 hover:bg-green-50 rounded-card"
                             title="Edit"
                           >
                             <Edit size={18} />
@@ -366,6 +541,125 @@ export function UserManagementPage() {
           </table>
         </div>
       </div>
+
+      {/* User Details Modal */}
+      {showDetailsModal && selectedUser && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setShowDetailsModal(false)}>
+          <div className="bg-white rounded-card p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-navy-ink">User Details</h2>
+              <button
+                onClick={() => setShowDetailsModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-card"
+              >
+                <CloseIcon size={24} />
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* User Information */}
+              <div>
+                <h3 className="text-lg font-semibold text-navy-ink mb-4">Personal Information</h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-gray-600">Name</p>
+                    <p className="font-medium">{selectedUser.nickname || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Email</p>
+                    <p className="font-medium">{selectedUser.email || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Phone</p>
+                    <p className="font-medium">{selectedUser.phone || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Date of Birth</p>
+                    <p className="font-medium">{selectedUser.date_of_birth ? new Date(selectedUser.date_of_birth).toLocaleDateString() : 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Address</p>
+                    <p className="font-medium">{selectedUser.address || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">City, Province</p>
+                    <p className="font-medium">{selectedUser.city || 'N/A'}, {selectedUser.province || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Postal Code</p>
+                    <p className="font-medium">{selectedUser.postal_code || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Role</p>
+                    <p className="font-medium">{selectedUser.role}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Joined</p>
+                    <p className="font-medium">{new Date(selectedUser.created_at).toLocaleString()}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Applications */}
+              <div>
+                <h3 className="text-lg font-semibold text-navy-ink mb-4">Applications</h3>
+                {loadingApplications ? (
+                  <p className="text-gray-600">Loading applications...</p>
+                ) : userApplications.length === 0 ? (
+                  <p className="text-gray-600">No applications found</p>
+                ) : (
+                  <div className="space-y-3">
+                    {userApplications.map((app: any) => (
+                      <div key={app.id} className="p-4 bg-muted-gray rounded-card">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="font-medium text-navy-ink">{app.programs?.title || app.program_type}</p>
+                            <p className="text-sm text-gray-600 mt-1">
+                              Status: <span className={`font-medium ${
+                                app.status === 'approved' ? 'text-green-600' :
+                                app.status === 'rejected' ? 'text-red-600' :
+                                'text-amber-600'
+                              }`}>{app.status}</span>
+                            </p>
+                            <p className="text-sm text-gray-600">
+                              Payment: <span className={`font-medium ${
+                                app.payment_status === 'confirmed' ? 'text-green-600' :
+                                app.payment_status === 'pending' ? 'text-amber-600' :
+                                'text-gray-600'
+                              }`}>{app.payment_status || 'N/A'}</span>
+                            </p>
+                            <p className="text-xs text-gray-500 mt-1">
+                              Applied: {new Date(app.created_at).toLocaleString()}
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => window.open(`/admin/applications`, '_blank')}
+                          >
+                            <FileText size={14} className="mr-1" />
+                            View Full Application
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex justify-end space-x-2">
+                <Button variant="outline" onClick={() => setShowDetailsModal(false)}>
+                  Close
+                </Button>
+                <Button variant="primary" onClick={() => handleExportPDF(selectedUser)}>
+                  <Download size={16} className="mr-2" />
+                  Export PDF
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -97,6 +97,27 @@ export function GroupsPage() {
           role: 'admin'
         });
 
+      // Create notification for admins
+      const { data: admins } = await insforge.database
+        .from('user_profiles')
+        .select('user_id')
+        .in('role', ['admin', 'super_admin']);
+
+      if (admins && admins.length > 0) {
+        const notifications = admins.map((admin: any) => ({
+          user_id: admin.user_id,
+          type: 'system',
+          title: 'New Group Created',
+          message: `A new group "${formData.name}" has been created by ${user.email || 'a user'}`,
+          related_id: data.id,
+          read: false
+        }));
+
+        await insforge.database
+          .from('notifications')
+          .insert(notifications);
+      }
+
       setFormData({
         name: '',
         description: '',

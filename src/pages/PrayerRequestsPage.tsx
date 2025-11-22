@@ -59,18 +59,41 @@ export function PrayerRequestsPage() {
     if (!user) return;
 
     try {
-      await insforge.database
+      const { data: prayerRequest } = await insforge.database
         .from('prayer_requests')
         .insert({
           user_id: user.id,
           ...formData,
-          status: 'active'
-        });
+          status: 'pending' // Set to pending for admin review
+        })
+        .select()
+        .single();
+
+      // Create notification for admins
+      const { data: admins } = await insforge.database
+        .from('user_profiles')
+        .select('user_id')
+        .in('role', ['admin', 'super_admin']);
+
+      if (admins && admins.length > 0 && prayerRequest) {
+        const notifications = admins.map((admin: any) => ({
+          user_id: admin.user_id,
+          type: 'system',
+          title: 'New Prayer Request',
+          message: `A new prayer request "${formData.title}" has been submitted${formData.is_anonymous ? ' (anonymous)' : ''}`,
+          related_id: prayerRequest.id,
+          read: false
+        }));
+
+        await insforge.database
+          .from('notifications')
+          .insert(notifications);
+      }
 
       setFormData({ title: '', request: '', is_public: true, is_anonymous: false });
       setShowForm(false);
       fetchRequests();
-      alert('Prayer request submitted successfully!');
+      alert('Prayer request submitted successfully! It will be reviewed by administrators.');
     } catch (error: any) {
       console.error('Error submitting prayer request:', error);
       alert(error.message || 'Error submitting prayer request. Please try again.');
