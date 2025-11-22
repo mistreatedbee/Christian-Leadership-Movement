@@ -75,10 +75,13 @@ export function GroupsPage() {
 
   const handleCreateGroup = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) return;
+    if (!user) {
+      alert('Please log in to create a group');
+      return;
+    }
 
     try {
-      const { data } = await insforge.database
+      const { data, error } = await insforge.database
         .from('groups')
         .insert({
           ...formData,
@@ -88,8 +91,16 @@ export function GroupsPage() {
         .select()
         .single();
 
+      if (error) {
+        throw error;
+      }
+
+      if (!data || !data.id) {
+        throw new Error('Group creation failed: No data returned');
+      }
+
       // Add creator as admin
-      await insforge.database
+      const { error: memberError } = await insforge.database
         .from('group_members')
         .insert({
           group_id: data.id,
@@ -97,25 +108,35 @@ export function GroupsPage() {
           role: 'admin'
         });
 
+      if (memberError) {
+        console.error('Error adding creator as admin:', memberError);
+        // Continue anyway - group was created
+      }
+
       // Create notification for admins
-      const { data: admins } = await insforge.database
-        .from('user_profiles')
-        .select('user_id')
-        .in('role', ['admin', 'super_admin']);
+      try {
+        const { data: admins } = await insforge.database
+          .from('user_profiles')
+          .select('user_id')
+          .in('role', ['admin', 'super_admin']);
 
-      if (admins && admins.length > 0) {
-        const notifications = admins.map((admin: any) => ({
-          user_id: admin.user_id,
-          type: 'system',
-          title: 'New Group Created',
-          message: `A new group "${formData.name}" has been created by ${user.email || 'a user'}`,
-          related_id: data.id,
-          read: false
-        }));
+        if (admins && admins.length > 0) {
+          const notifications = admins.map((admin: any) => ({
+            user_id: admin.user_id,
+            type: 'new_group',
+            title: `New Group Created: ${formData.name}`,
+            message: `A new group "${formData.name}" has been created by ${user.email || user.nickname || 'a user'}.`,
+            related_id: data.id,
+            read: false
+          }));
 
-        await insforge.database
-          .from('notifications')
-          .insert(notifications);
+          await insforge.database
+            .from('notifications')
+            .insert(notifications);
+        }
+      } catch (notifError) {
+        console.error('Error creating notifications:', notifError);
+        // Continue anyway - notifications are not critical
       }
 
       setFormData({
