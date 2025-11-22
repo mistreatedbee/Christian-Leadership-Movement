@@ -132,15 +132,19 @@ export function MentorshipPage() {
         .insert({
           user_id: user.id,
           program_id: mentorFormData.program_id || null,
-          expertise_areas: mentorFormData.expertise_areas,
-          bio: mentorFormData.bio,
-          max_mentees: mentorFormData.max_mentees,
+          expertise_areas: mentorFormData.expertise_areas || [],
+          bio: mentorFormData.bio || null,
+          max_mentees: mentorFormData.max_mentees || 5,
+          current_mentees: 0, // Initialize to 0
           status: 'pending' // New mentors need admin approval
         })
         .select()
         .single();
 
-      if (mentorError) throw mentorError;
+      if (mentorError) {
+        console.error('Mentor insert error:', mentorError);
+        throw mentorError;
+      }
 
       // Create notification for admin (we'll notify all admins)
       // Note: In a real system, you might want to create notifications for specific admin users
@@ -155,9 +159,10 @@ export function MentorshipPage() {
       });
       fetchData();
       alert('Your mentor application has been submitted! It is pending admin approval. You will be notified once it is reviewed.');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error registering mentor:', error);
-      alert('Error registering as mentor');
+      const errorMessage = error?.message || 'Error registering as mentor';
+      alert(`Error: ${errorMessage}. Please check the console for details.`);
     }
   };
 
