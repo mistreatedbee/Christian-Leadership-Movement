@@ -891,4 +891,3 @@ export function ApplicationManagementPage() {
       )}
     </div>;
 }
-}
