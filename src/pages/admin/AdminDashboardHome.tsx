@@ -52,16 +52,16 @@ export function AdminDashboardHome() {
         ]);
 
         setStats({
-          totalUsers: usersRes.count || 0,
-          pendingApplications: pendingAppsRes.count || 0,
-          activeCourses: coursesRes.count || 0,
-          upcomingEvents: eventsRes.count || 0,
-          totalDonations: donationsRes.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
-          totalPayments: paymentsRes.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
-          bibleSchoolApplications: bibleSchoolAppsRes.count || 0,
-          membershipApplications: membershipAppsRes.count || 0,
-          pendingMentors: pendingMentorsRes.count || 0,
-          pendingPrayerRequests: prayerRequestsRes.count || 0
+          totalUsers: usersRes?.count || 0,
+          pendingApplications: pendingAppsRes?.count || 0,
+          activeCourses: coursesRes?.count || 0,
+          upcomingEvents: eventsRes?.count || 0,
+          totalDonations: donationsRes?.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
+          totalPayments: paymentsRes?.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
+          bibleSchoolApplications: bibleSchoolAppsRes?.count || 0,
+          membershipApplications: membershipAppsRes?.count || 0,
+          pendingMentors: pendingMentorsRes?.count || 0,
+          pendingPrayerRequests: prayerRequestsRes?.count || 0
         });
 
         // Fetch all recent activities - handle join errors gracefully
