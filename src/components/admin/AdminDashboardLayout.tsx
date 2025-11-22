@@ -12,6 +12,11 @@ export function AdminDashboardLayout() {
   const [adminRole, setAdminRole] = useState<string>('Admin');
   const [adminName, setAdminName] = useState<string>('Admin User');
   const [adminAvatar, setAdminAvatar] = useState<string | null>(null);
+  const [notificationCounts, setNotificationCounts] = useState({
+    applications: 0,
+    mentors: 0,
+    prayerRequests: 0
+  });
 
   useEffect(() => {
     if (user) {
@@ -46,6 +51,43 @@ export function AdminDashboardLayout() {
 
       fetchAdminInfo();
     }
+  }, [user]);
+
+  // Fetch notification counts
+  useEffect(() => {
+    const fetchNotificationCounts = async () => {
+      if (!user) return;
+      
+      try {
+        const [pendingApps, pendingMentors, pendingPrayers] = await Promise.all([
+          insforge.database
+            .from('applications')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          insforge.database
+            .from('mentors')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          insforge.database
+            .from('prayer_requests')
+            .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending')
+        ]);
+
+        setNotificationCounts({
+          applications: pendingApps.count || 0,
+          mentors: pendingMentors.count || 0,
+          prayerRequests: pendingPrayers.count || 0
+        });
+      } catch (error) {
+        console.error('Error fetching notification counts:', error);
+      }
+    };
+
+    fetchNotificationCounts();
+    // Refresh counts every 30 seconds
+    const interval = setInterval(fetchNotificationCounts, 30000);
+    return () => clearInterval(interval);
   }, [user]);
 
   const handleLogout = async () => {
@@ -189,10 +231,35 @@ export function AdminDashboardLayout() {
             <div className="text-sm text-gray-300">{adminRole}</div>
           </div>
           <nav className="flex-1 overflow-y-auto px-6 pb-4 space-y-2">
-            {navItems.map(item => <Link key={item.path} to={item.path} className="flex items-center space-x-3 p-3 rounded-card hover:bg-white/10 transition-colors" onClick={() => setIsSidebarOpen(false)}>
-                <item.icon size={20} />
-                <span>{item.label}</span>
-              </Link>)}
+            {navItems.map(item => {
+              let badgeCount = 0;
+              if (item.path === '/admin/applications') {
+                badgeCount = notificationCounts.applications;
+              } else if (item.path === '/admin/mentorship') {
+                badgeCount = notificationCounts.mentors;
+              } else if (item.path === '/admin/prayer-requests') {
+                badgeCount = notificationCounts.prayerRequests;
+              }
+
+              return (
+                <Link 
+                  key={item.path} 
+                  to={item.path} 
+                  className="flex items-center justify-between p-3 rounded-card hover:bg-white/10 transition-colors relative" 
+                  onClick={() => setIsSidebarOpen(false)}
+                >
+                  <div className="flex items-center space-x-3">
+                    <item.icon size={20} />
+                    <span>{item.label}</span>
+                  </div>
+                  {badgeCount > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                      {badgeCount > 99 ? '99+' : badgeCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
           </nav>
           <div className="flex-shrink-0 p-6 pt-4 border-t border-white/10">
             <button onClick={handleLogout} className="flex items-center space-x-3 p-3 rounded-card hover:bg-white/10 transition-colors w-full text-white">

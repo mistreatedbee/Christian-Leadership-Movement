@@ -127,7 +127,7 @@ export function MentorshipPage() {
     if (!user) return;
 
     try {
-      await insforge.database
+      const { data: mentor, error: mentorError } = await insforge.database
         .from('mentors')
         .insert({
           user_id: user.id,
@@ -136,7 +136,15 @@ export function MentorshipPage() {
           bio: mentorFormData.bio,
           max_mentees: mentorFormData.max_mentees,
           status: 'pending' // New mentors need admin approval
-        });
+        })
+        .select()
+        .single();
+
+      if (mentorError) throw mentorError;
+
+      // Create notification for admin (we'll notify all admins)
+      // Note: In a real system, you might want to create notifications for specific admin users
+      // For now, the notification count in the sidebar will pick this up via the pending count
 
       setShowMentorForm(false);
       setMentorFormData({

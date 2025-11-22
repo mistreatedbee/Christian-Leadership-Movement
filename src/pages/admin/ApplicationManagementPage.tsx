@@ -9,6 +9,7 @@ import autoTable from 'jspdf-autotable';
 export function ApplicationManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'bible_school' | 'membership'>('all');
   const [applications, setApplications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
@@ -17,12 +18,45 @@ export function ApplicationManagementPage() {
     pending: 0,
     approved: 0,
     rejected: 0,
-    total: 0
+    total: 0,
+    bibleSchool: 0,
+    membership: 0,
+    totalUsers: 0,
+    approvedMembers: 0,
+    bibleSchoolStudents: 0
   });
 
   useEffect(() => {
     fetchApplications();
-  }, [filterStatus]);
+    fetchStatistics();
+  }, [filterStatus, activeTab]);
+
+  const fetchStatistics = async () => {
+    try {
+      const [usersRes, approvedMembersRes, bibleSchoolStudentsRes] = await Promise.all([
+        insforge.database.from('user_profiles').select('id', { count: 'exact', head: true }),
+        insforge.database
+          .from('applications')
+          .select('id', { count: 'exact', head: true })
+          .eq('program_type', 'membership')
+          .eq('status', 'approved'),
+        insforge.database
+          .from('applications')
+          .select('id', { count: 'exact', head: true })
+          .eq('program_type', 'bible_school')
+          .eq('status', 'approved')
+      ]);
+
+      setStats(prev => ({
+        ...prev,
+        totalUsers: usersRes.count || 0,
+        approvedMembers: approvedMembersRes.count || 0,
+        bibleSchoolStudents: bibleSchoolStudentsRes.count || 0
+      }));
+    } catch (err) {
+      console.error('Error fetching statistics:', err);
+    }
+  };
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -39,19 +73,40 @@ export function ApplicationManagementPage() {
       const { data, error } = await query;
       if (error) throw error;
 
-      setApplications(data || []);
+      let filteredData = data || [];
 
-      // Calculate stats
-      const pending = data?.filter((a: any) => a.status === 'pending').length || 0;
-      const approved = data?.filter((a: any) => a.status === 'approved').length || 0;
-      const rejected = data?.filter((a: any) => a.status === 'rejected').length || 0;
+      // Apply tab filter
+      if (activeTab === 'pending') {
+        filteredData = filteredData.filter((a: any) => a.status === 'pending');
+      } else if (activeTab === 'approved') {
+        filteredData = filteredData.filter((a: any) => a.status === 'approved');
+      } else if (activeTab === 'rejected') {
+        filteredData = filteredData.filter((a: any) => a.status === 'rejected');
+      } else if (activeTab === 'bible_school') {
+        filteredData = filteredData.filter((a: any) => a.program_type === 'bible_school');
+      } else if (activeTab === 'membership') {
+        filteredData = filteredData.filter((a: any) => a.program_type === 'membership');
+      }
 
-      setStats({
+      setApplications(filteredData);
+
+      // Calculate stats from all data
+      const allData = data || [];
+      const pending = allData.filter((a: any) => a.status === 'pending').length || 0;
+      const approved = allData.filter((a: any) => a.status === 'approved').length || 0;
+      const rejected = allData.filter((a: any) => a.status === 'rejected').length || 0;
+      const bibleSchool = allData.filter((a: any) => a.program_type === 'bible_school').length || 0;
+      const membership = allData.filter((a: any) => a.program_type === 'membership').length || 0;
+
+      setStats(prev => ({
+        ...prev,
         pending,
         approved,
         rejected,
-        total: data?.length || 0
-      });
+        total: allData.length,
+        bibleSchool,
+        membership
+      }));
     } catch (err) {
       console.error('Error fetching applications:', err);
     } finally {
@@ -349,43 +404,101 @@ export function ApplicationManagementPage() {
         </h1>
         <p className="text-gray-600">Review and process program applications</p>
       </div>
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-card shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Pending</p>
-              <p className="text-2xl font-bold text-navy-ink">{stats.pending}</p>
-            </div>
-            <Clock className="text-amber-500" size={32} />
+      {/* Statistics Overview */}
+      <div className="bg-white p-6 rounded-card shadow-soft">
+        <h2 className="text-xl font-bold text-navy-ink mb-4">Statistics Overview</h2>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
+          <div className="bg-muted-gray p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Total Users</p>
+            <p className="text-2xl font-bold text-navy-ink">{stats.totalUsers}</p>
+          </div>
+          <div className="bg-amber-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Pending Apps</p>
+            <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
+          </div>
+          <div className="bg-green-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Approved</p>
+            <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
+          </div>
+          <div className="bg-red-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Rejected</p>
+            <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Bible School</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.bibleSchool}</p>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Membership</p>
+            <p className="text-2xl font-bold text-purple-600">{stats.membership}</p>
+          </div>
+          <div className="bg-green-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Approved Members</p>
+            <p className="text-2xl font-bold text-green-600">{stats.approvedMembers}</p>
+          </div>
+          <div className="bg-blue-50 p-4 rounded-card">
+            <p className="text-gray-600 text-xs mb-1">Bible School Students</p>
+            <p className="text-2xl font-bold text-blue-600">{stats.bibleSchoolStudents}</p>
           </div>
         </div>
-        <div className="bg-white p-4 rounded-card shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Approved</p>
-              <p className="text-2xl font-bold text-navy-ink">{stats.approved}</p>
-            </div>
-            <CheckCircle className="text-green-500" size={32} />
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-card shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Rejected</p>
-              <p className="text-2xl font-bold text-navy-ink">{stats.rejected}</p>
-            </div>
-            <XCircle className="text-red-500" size={32} />
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-card shadow-soft">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-600 text-sm">Total</p>
-              <p className="text-2xl font-bold text-navy-ink">{stats.total}</p>
-            </div>
-            <Eye className="text-blue-500" size={32} />
-          </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="bg-white p-6 rounded-card shadow-soft">
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              activeTab === 'all' ? 'bg-gold text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            All Applications ({stats.total})
+          </button>
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`px-4 py-2 rounded-lg font-medium relative ${
+              activeTab === 'pending' ? 'bg-amber-500 text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            Pending ({stats.pending})
+            {stats.pending > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {stats.pending}
+              </span>
+            )}
+          </button>
+          <button
+            onClick={() => setActiveTab('approved')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              activeTab === 'approved' ? 'bg-green-500 text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            Approved ({stats.approved})
+          </button>
+          <button
+            onClick={() => setActiveTab('rejected')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              activeTab === 'rejected' ? 'bg-red-500 text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            Rejected ({stats.rejected})
+          </button>
+          <button
+            onClick={() => setActiveTab('bible_school')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              activeTab === 'bible_school' ? 'bg-blue-500 text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            Bible School ({stats.bibleSchool})
+          </button>
+          <button
+            onClick={() => setActiveTab('membership')}
+            className={`px-4 py-2 rounded-lg font-medium ${
+              activeTab === 'membership' ? 'bg-purple-500 text-white' : 'bg-muted-gray text-navy-ink hover:bg-gray-200'
+            }`}
+          >
+            Membership ({stats.membership})
+          </button>
         </div>
       </div>
       {/* Filters */}
@@ -777,4 +890,5 @@ export function ApplicationManagementPage() {
         </div>
       )}
     </div>;
+}
 }
