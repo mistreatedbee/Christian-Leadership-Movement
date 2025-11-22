@@ -128,37 +128,57 @@ export function UserManagementPage() {
         // Get the most recent application for primary data
         const mostRecentApp = applications[0];
         console.log('Most recent application data:', mostRecentApp);
+        console.log('Application keys:', Object.keys(mostRecentApp));
+        
+        // Merge ALL applications data - combine data from all applications
+        let combinedAppData: any = {};
+        applications.forEach((app: any) => {
+          // Merge all fields, keeping the most recent non-null value
+          Object.keys(app).forEach((key: string) => {
+            if (app[key] !== null && app[key] !== undefined && app[key] !== '') {
+              if (!combinedAppData[key] || app.created_at > combinedAppData._latest_date) {
+                combinedAppData[key] = app[key];
+              }
+            }
+          });
+          combinedAppData._latest_date = app.created_at;
+        });
+        
+        console.log('Combined application data:', combinedAppData);
         
         // Merge application data with user profile data, prioritizing application data
         const enriched = {
           ...user,
           // Personal Information from applications - prioritize application data
-          email: mostRecentApp.email || user.email || null,
-          phone: mostRecentApp.phone || mostRecentApp.contact_number || user.phone || null,
-          address: mostRecentApp.physical_address || mostRecentApp.address || user.address || null,
-          city: mostRecentApp.city || user.city || null,
-          province: mostRecentApp.province || user.province || null,
-          postal_code: mostRecentApp.postal_code || user.postal_code || null,
-          date_of_birth: mostRecentApp.date_of_birth || user.date_of_birth || null,
+          email: combinedAppData.email || user.email || null,
+          phone: combinedAppData.phone || combinedAppData.contact_number || user.phone || null,
+          address: combinedAppData.physical_address || combinedAppData.address || user.address || null,
+          city: combinedAppData.city || user.city || null,
+          province: combinedAppData.province || user.province || null,
+          postal_code: combinedAppData.postal_code || user.postal_code || null,
+          date_of_birth: combinedAppData.date_of_birth || user.date_of_birth || null,
           // Additional fields from applications
-          id_number: mostRecentApp.id_number || null,
-          nationality: mostRecentApp.nationality || null,
-          gender: mostRecentApp.gender || null,
-          marital_status: mostRecentApp.marital_status || null,
-          country: mostRecentApp.country || null,
-          home_language: mostRecentApp.home_language || null,
-          population_group: mostRecentApp.population_group || null,
-          residential_status: mostRecentApp.residential_status || null,
+          id_number: combinedAppData.id_number || null,
+          nationality: combinedAppData.nationality || null,
+          gender: combinedAppData.gender || null,
+          marital_status: combinedAppData.marital_status || null,
+          country: combinedAppData.country || null,
+          home_language: combinedAppData.home_language || null,
+          population_group: combinedAppData.population_group || null,
+          residential_status: combinedAppData.residential_status || null,
           // Name fields - prioritize application data
-          full_name: mostRecentApp.full_name || user.nickname || null,
-          first_name: mostRecentApp.first_name || null,
-          middle_name: mostRecentApp.middle_name || null,
-          last_name: mostRecentApp.last_name || null,
-          preferred_name: mostRecentApp.preferred_name || null,
-          title: mostRecentApp.title || null,
+          full_name: combinedAppData.full_name || user.nickname || null,
+          first_name: combinedAppData.first_name || null,
+          middle_name: combinedAppData.middle_name || null,
+          last_name: combinedAppData.last_name || null,
+          preferred_name: combinedAppData.preferred_name || null,
+          title: combinedAppData.title || null,
         };
         
         console.log('Enriched user data:', enriched);
+        console.log('Email from enriched:', enriched.email);
+        console.log('Phone from enriched:', enriched.phone);
+        console.log('Address from enriched:', enriched.address);
         setEnrichedUserData(enriched);
       } else {
         console.log('No applications found, using user data only');
@@ -731,11 +751,17 @@ export function UserManagementPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
-                    <p className="font-medium break-all">{(enrichedUserData || selectedUser)?.email || selectedUser.email || 'N/A'}</p>
+                    <p className="font-medium break-all">
+                      {enrichedUserData?.email || selectedUser.email || 'N/A'}
+                      {enrichedUserData?.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone Number</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.phone || selectedUser.phone || 'N/A'}</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.phone || selectedUser.phone || 'N/A'}
+                      {enrichedUserData?.phone && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   {enrichedUserData?.id_number && (
                     <div>
@@ -771,19 +797,31 @@ export function UserManagementPage() {
                   )}
                   <div className="col-span-2">
                     <p className="text-sm text-gray-600">Physical Address</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.address || selectedUser.address || 'N/A'}</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.address || selectedUser.address || 'N/A'}
+                      {enrichedUserData?.address && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">City</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.city || selectedUser.city || 'N/A'}</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.city || selectedUser.city || 'N/A'}
+                      {enrichedUserData?.city && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.province || selectedUser.province || 'N/A'}</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.province || selectedUser.province || 'N/A'}
+                      {enrichedUserData?.province && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Postal Code</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.postal_code || selectedUser.postal_code || 'N/A'}</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.postal_code || selectedUser.postal_code || 'N/A'}
+                      {enrichedUserData?.postal_code && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                    </p>
                   </div>
                   {enrichedUserData?.country && (
                     <div>
