@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, CheckCircle, XCircle, Eye, Clock, Download, FileText, X } from 'lucide-react';
+import { Search, Filter, CheckCircle, XCircle, Eye, Clock, Download, FileText, X, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { insforge } from '../../lib/insforge';
 import { sendEmailNotification } from '../../lib/email';
+import { getStorageUrl } from '../../lib/connection';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -372,6 +373,66 @@ export function ApplicationManagementPage() {
       ['Signature:', application.signature],
       ['Declaration Date:', application.declaration_date]
     ]);
+
+    // Documents Section
+    yPos += 5;
+    doc.setFontSize(14);
+    doc.setFont(undefined, 'bold');
+    doc.text('Uploaded Documents', margin, yPos);
+    yPos += 8;
+    doc.setFont(undefined, 'normal');
+    doc.setFontSize(10);
+
+    if (application.id_passport_url) {
+      if (yPos > pageHeight - 20) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFont(undefined, 'bold');
+      doc.text('ID Copy / Passport:', margin, yPos);
+      doc.setFont(undefined, 'normal');
+      const idUrl = application.id_passport_key 
+        ? getStorageUrl('applications', application.id_passport_key)
+        : application.id_passport_url;
+      const idUrlLines = doc.splitTextToSize(idUrl, maxWidth - 60);
+      doc.text(idUrlLines, margin + 60, yPos);
+      yPos += idUrlLines.length * 7 + 3;
+    }
+
+    if (application.payment_proof_url) {
+      if (yPos > pageHeight - 20) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFont(undefined, 'bold');
+      doc.text('Payment Proof:', margin, yPos);
+      doc.setFont(undefined, 'normal');
+      const paymentUrl = application.payment_proof_key 
+        ? getStorageUrl('applications', application.payment_proof_key)
+        : application.payment_proof_url;
+      const paymentUrlLines = doc.splitTextToSize(paymentUrl, maxWidth - 60);
+      doc.text(paymentUrlLines, margin + 60, yPos);
+      yPos += paymentUrlLines.length * 7 + 3;
+    }
+
+    if (application.additional_documents_url && Array.isArray(application.additional_documents_url) && application.additional_documents_url.length > 0) {
+      if (yPos > pageHeight - 30) {
+        doc.addPage();
+        yPos = 20;
+      }
+      doc.setFont(undefined, 'bold');
+      doc.text('Additional Documents:', margin, yPos);
+      yPos += 7;
+      doc.setFont(undefined, 'normal');
+      application.additional_documents_url.forEach((docUrl: string, idx: number) => {
+        if (yPos > pageHeight - 20) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(`${idx + 1}. ${docUrl}`, margin + 10, yPos);
+        yPos += 7;
+      });
+    }
 
     // Program Information
     addSection('Application Status', [
@@ -1029,6 +1090,27 @@ export function ApplicationManagementPage() {
                 </div>
               )}
 
+              {/* Declaration & Signature */}
+              {(selectedApplication.signature || selectedApplication.declaration_date) && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Declaration & Signature</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {selectedApplication.signature && (
+                      <div className="col-span-2">
+                        <p className="text-sm text-gray-600">Signature</p>
+                        <p className="font-medium break-all">{selectedApplication.signature}</p>
+                      </div>
+                    )}
+                    {selectedApplication.declaration_date && (
+                      <div>
+                        <p className="text-sm text-gray-600">Declaration Date</p>
+                        <p className="font-medium">{new Date(selectedApplication.declaration_date).toLocaleDateString()}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Program Information */}
               <div>
                 <h3 className="text-lg font-bold text-navy-ink mb-4">Application Status</h3>
@@ -1058,24 +1140,218 @@ export function ApplicationManagementPage() {
                 </div>
               </div>
 
-              {/* Documents */}
-              {selectedApplication.documents && (
+              {/* Documents Section - Complete with all uploaded files */}
+              {(selectedApplication.id_passport_url || selectedApplication.payment_proof_url || selectedApplication.additional_documents_url || selectedApplication.documents) && (
                 <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Documents</h3>
-                  <div className="space-y-2">
-                    {Array.isArray(selectedApplication.documents) ? (
-                      selectedApplication.documents.map((doc: any, idx: number) => (
-                        <div key={idx} className="flex items-center justify-between p-2 bg-gray-50 rounded">
-                          <span className="text-sm">{doc.name || doc.filename || `Document ${idx + 1}`}</span>
-                          {doc.url && (
-                            <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline text-sm">
-                              View
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Uploaded Documents</h3>
+                  <div className="space-y-3">
+                    {/* ID Copy / Passport */}
+                    {selectedApplication.id_passport_url && (
+                      <div className="p-4 bg-gray-50 rounded-card border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <FileText className="text-blue-600" size={24} />
+                            <div>
+                              <p className="font-medium text-navy-ink">ID Copy / Passport</p>
+                              <p className="text-sm text-gray-600">
+                                {selectedApplication.id_passport_key || 'Uploaded document'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            {selectedApplication.id_passport_key ? (
+                              <a
+                                href={getStorageUrl('applications', selectedApplication.id_passport_key)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-blue-600 text-white rounded-card hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                              >
+                                <Eye size={16} />
+                                <span>View</span>
+                              </a>
+                            ) : (
+                              <a
+                                href={selectedApplication.id_passport_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-blue-600 text-white rounded-card hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                              >
+                                <ExternalLink size={16} />
+                                <span>Open URL</span>
+                              </a>
+                            )}
+                            <a
+                              href={selectedApplication.id_passport_key ? getStorageUrl('applications', selectedApplication.id_passport_key) : selectedApplication.id_passport_url}
+                              download
+                              className="px-3 py-2 bg-green-600 text-white rounded-card hover:bg-green-700 transition-colors flex items-center space-x-2"
+                            >
+                              <Download size={16} />
+                              <span>Download</span>
                             </a>
-                          )}
+                          </div>
                         </div>
-                      ))
-                    ) : (
-                      <p className="text-sm text-gray-600">Documents available in PDF export</p>
+                        {/* Preview for images */}
+                        {(selectedApplication.id_passport_url.includes('.jpg') || 
+                          selectedApplication.id_passport_url.includes('.jpeg') || 
+                          selectedApplication.id_passport_url.includes('.png') ||
+                          selectedApplication.id_passport_key) && (
+                          <div className="mt-3">
+                            <img
+                              src={selectedApplication.id_passport_key ? getStorageUrl('applications', selectedApplication.id_passport_key) : selectedApplication.id_passport_url}
+                              alt="ID Copy"
+                              className="max-w-full h-auto max-h-64 rounded border border-gray-300"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (selectedApplication.id_passport_key && target.src !== selectedApplication.id_passport_url) {
+                                  target.src = selectedApplication.id_passport_url;
+                                } else {
+                                  target.style.display = 'none';
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Payment Proof (Bible School) */}
+                    {selectedApplication.payment_proof_url && (
+                      <div className="p-4 bg-gray-50 rounded-card border border-gray-200">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-3">
+                            <FileText className="text-green-600" size={24} />
+                            <div>
+                              <p className="font-medium text-navy-ink">Payment Proof</p>
+                              <p className="text-sm text-gray-600">
+                                {selectedApplication.payment_proof_key || 'Uploaded document'}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex space-x-2">
+                            {selectedApplication.payment_proof_key ? (
+                              <a
+                                href={getStorageUrl('applications', selectedApplication.payment_proof_key)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-blue-600 text-white rounded-card hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                              >
+                                <Eye size={16} />
+                                <span>View</span>
+                              </a>
+                            ) : (
+                              <a
+                                href={selectedApplication.payment_proof_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-3 py-2 bg-blue-600 text-white rounded-card hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                              >
+                                <ExternalLink size={16} />
+                                <span>Open URL</span>
+                              </a>
+                            )}
+                            <a
+                              href={selectedApplication.payment_proof_key ? getStorageUrl('applications', selectedApplication.payment_proof_key) : selectedApplication.payment_proof_url}
+                              download
+                              className="px-3 py-2 bg-green-600 text-white rounded-card hover:bg-green-700 transition-colors flex items-center space-x-2"
+                            >
+                              <Download size={16} />
+                              <span>Download</span>
+                            </a>
+                          </div>
+                        </div>
+                        {/* Preview for images */}
+                        {(selectedApplication.payment_proof_url.includes('.jpg') || 
+                          selectedApplication.payment_proof_url.includes('.jpeg') || 
+                          selectedApplication.payment_proof_url.includes('.png') ||
+                          selectedApplication.payment_proof_key) && (
+                          <div className="mt-3">
+                            <img
+                              src={selectedApplication.payment_proof_key ? getStorageUrl('applications', selectedApplication.payment_proof_key) : selectedApplication.payment_proof_url}
+                              alt="Payment Proof"
+                              className="max-w-full h-auto max-h-64 rounded border border-gray-300"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                if (selectedApplication.payment_proof_key && target.src !== selectedApplication.payment_proof_url) {
+                                  target.src = selectedApplication.payment_proof_url;
+                                } else {
+                                  target.style.display = 'none';
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Additional Documents (Membership) */}
+                    {selectedApplication.additional_documents_url && Array.isArray(selectedApplication.additional_documents_url) && selectedApplication.additional_documents_url.length > 0 && (
+                      <div className="p-4 bg-gray-50 rounded-card border border-gray-200">
+                        <p className="font-medium text-navy-ink mb-3">Additional Documents</p>
+                        <div className="space-y-2">
+                          {selectedApplication.additional_documents_url.map((docUrl: string, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                              <div className="flex items-center space-x-2">
+                                <FileText size={18} className="text-gray-600" />
+                                <span className="text-sm">Additional Document {idx + 1}</span>
+                              </div>
+                              <div className="flex space-x-2">
+                                <a
+                                  href={docUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="px-2 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center space-x-1"
+                                >
+                                  <Eye size={14} />
+                                  <span>View</span>
+                                </a>
+                                <a
+                                  href={docUrl}
+                                  download
+                                  className="px-2 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center space-x-1"
+                                >
+                                  <Download size={14} />
+                                  <span>Download</span>
+                                </a>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Legacy documents field */}
+                    {selectedApplication.documents && Array.isArray(selectedApplication.documents) && selectedApplication.documents.length > 0 && (
+                      <div className="p-4 bg-gray-50 rounded-card border border-gray-200">
+                        <p className="font-medium text-navy-ink mb-3">Other Documents</p>
+                        <div className="space-y-2">
+                          {selectedApplication.documents.map((doc: any, idx: number) => (
+                            <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
+                              <span className="text-sm">{doc.name || doc.filename || `Document ${idx + 1}`}</span>
+                              {doc.url && (
+                                <div className="flex space-x-2">
+                                  <a
+                                    href={doc.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="px-2 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700 flex items-center space-x-1"
+                                  >
+                                    <Eye size={14} />
+                                    <span>View</span>
+                                  </a>
+                                  <a
+                                    href={doc.url}
+                                    download
+                                    className="px-2 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 flex items-center space-x-1"
+                                  >
+                                    <Download size={14} />
+                                    <span>Download</span>
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
