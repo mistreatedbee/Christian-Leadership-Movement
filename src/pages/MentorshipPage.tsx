@@ -214,12 +214,25 @@ export function MentorshipPage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-8">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-navy-ink mb-2">Mentorship Programs</h1>
-          <p className="text-gray-600">Connect with mentors and grow in your leadership journey</p>
-        </div>
+    <div className="min-h-screen flex flex-col">
+      <TopNav />
+      <main className="flex-grow">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="flex justify-between items-center mb-8">
+            <div className="flex items-center space-x-4">
+              <Button
+                variant="outline"
+                onClick={() => navigate(-1)}
+                className="flex items-center"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-3xl font-bold text-navy-ink mb-2">Mentorship Programs</h1>
+                <p className="text-gray-600">Connect with mentors and grow in your leadership journey</p>
+              </div>
+            </div>
         <div className="flex gap-2">
           {user && (
             <Button
@@ -545,7 +558,7 @@ export function MentorshipPage() {
         </div>
       )}
         </div>
-      </main>
+        </main>
       <Footer />
     </div>
   );
