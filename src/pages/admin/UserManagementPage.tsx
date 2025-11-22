@@ -876,6 +876,20 @@ export function UserManagementPage() {
                 </div>
               )}
 
+              {/* Debug: Show Raw Application Data */}
+              {userApplications.length > 0 && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-card p-4 mb-4">
+                  <details className="text-sm">
+                    <summary className="cursor-pointer font-medium text-yellow-800 mb-2">
+                      🔍 Debug: View Raw Application Data ({userApplications.length} application{userApplications.length !== 1 ? 's' : ''})
+                    </summary>
+                    <pre className="mt-2 text-xs overflow-auto max-h-64 bg-white p-2 rounded border">
+                      {JSON.stringify(userApplications, null, 2)}
+                    </pre>
+                  </details>
+                </div>
+              )}
+
               {/* Applications */}
               <div>
                 <h3 className="text-lg font-semibold text-navy-ink mb-4">Applications</h3>
