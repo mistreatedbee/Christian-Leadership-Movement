@@ -875,6 +875,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Phone Number</p>
                     <p className="font-medium">
                       {enrichedUserData?.phone || selectedUser.phone || 'N/A'}
+                      {!enrichedUserData?.phone && !selectedUser.phone && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Phone not found in registration</span>
+                      )}
                       {enrichedUserData?.phone && enrichedUserData?.phone !== selectedUser.phone && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
@@ -896,6 +899,9 @@ export function UserManagementPage() {
                       {enrichedUserData?.date_of_birth || selectedUser.date_of_birth
                         ? new Date(enrichedUserData?.date_of_birth || selectedUser.date_of_birth).toLocaleDateString() 
                         : 'N/A'}
+                      {!enrichedUserData?.date_of_birth && !selectedUser.date_of_birth && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Date of birth not found</span>
+                      )}
                     </p>
                   </div>
                   {enrichedUserData?.gender && (
@@ -914,6 +920,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Physical Address</p>
                     <p className="font-medium">
                       {enrichedUserData?.address || selectedUser.address || 'N/A'}
+                      {!enrichedUserData?.address && !selectedUser.address && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Address not found in registration</span>
+                      )}
                       {enrichedUserData?.address && enrichedUserData?.address !== selectedUser.address && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
@@ -921,6 +930,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">City</p>
                     <p className="font-medium">
                       {enrichedUserData?.city || selectedUser.city || 'N/A'}
+                      {!enrichedUserData?.city && !selectedUser.city && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ City not found</span>
+                      )}
                       {enrichedUserData?.city && enrichedUserData?.city !== selectedUser.city && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
@@ -928,6 +940,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Province</p>
                     <p className="font-medium">
                       {enrichedUserData?.province || selectedUser.province || 'N/A'}
+                      {!enrichedUserData?.province && !selectedUser.province && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Province not found</span>
+                      )}
                       {enrichedUserData?.province && enrichedUserData?.province !== selectedUser.province && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
@@ -935,6 +950,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Postal Code</p>
                     <p className="font-medium">
                       {enrichedUserData?.postal_code || selectedUser.postal_code || 'N/A'}
+                      {!enrichedUserData?.postal_code && !selectedUser.postal_code && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Postal code not found</span>
+                      )}
                       {enrichedUserData?.postal_code && enrichedUserData?.postal_code !== selectedUser.postal_code && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
