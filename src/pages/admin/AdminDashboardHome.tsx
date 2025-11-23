@@ -3,8 +3,10 @@ import { Users, FileText, BookOpen, Calendar, TrendingUp, Award, DollarSign, Bel
 import { Link } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
+import { useUser } from '@insforge/react';
 
 export function AdminDashboardHome() {
+  const { user } = useUser();
   const [stats, setStats] = useState({
     totalUsers: 0,
     pendingApplications: 0,
@@ -23,6 +25,8 @@ export function AdminDashboardHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!user) return; // Don't fetch if user is not loaded
+    
     const fetchData = async () => {
       try {
         // Fetch all stats with proper counts - handle errors individually
@@ -296,12 +300,12 @@ export function AdminDashboardHome() {
         setLoading(false);
       }
     };
-
+    
     fetchData();
     // Refresh every 30 seconds
     const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [user]);
 
   const statsData = [{
     icon: Users,

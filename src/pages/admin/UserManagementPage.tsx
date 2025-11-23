@@ -241,252 +241,49 @@ export function UserManagementPage() {
     setSelectedUser(user);
     setShowDetailsModal(true);
     setLoadingApplications(true);
-    setEnrichedUserData(null); // Will be set after fetching
-    
+    setEnrichedUserData(null);
+    setUserApplications([]);
+    setMessage(null);
+
     try {
-      // PRIORITY 0: Try to sync email from auth.users first (if function exists)
-      try {
-        await insforge.database.rpc('sync_user_email');
-        console.log('✅ Email sync function called for user:', user.user_id);
-      } catch (syncError: any) {
-        // Function might not exist yet, that's okay
-        if (!syncError.message?.includes('function') && !syncError.message?.includes('does not exist')) {
-          console.warn('Email sync warning:', syncError);
-        }
-      }
-      
-      // PRIORITY 1: Fetch from users table (registration data)
-      // Handle case where email column might not exist
-      let userData: any = null;
-      let userError: any = null;
-      
-      try {
-        // Select all fields - this will work even if email column doesn't exist
-        const result = await insforge.database
-          .from('users')
-          .select('*')
-          .eq('id', user.user_id)
-          .maybeSingle();
-        
-        userData = result.data;
-        userError = result.error;
-        
-        console.log('🔍 User data from users table (individual query, RAW):', JSON.stringify(userData, null, 2));
-        console.log('🔍 Available keys:', userData ? Object.keys(userData) : 'null');
-        console.log('🔍 Email field exists?', userData ? ('email' in userData) : false);
-        console.log('🔍 Email value:', userData?.email);
-        console.log('🔍 Email value type:', typeof userData?.email);
-        console.log('🔍 Email === null?', userData?.email === null);
-        console.log('🔍 Email === undefined?', userData?.email === undefined);
-        console.log('🔍 User data ALL VALUES:', userData ? Object.entries(userData) : 'null');
-        
-        // Check if email column is being filtered by RLS
-        if (userData && !('email' in userData)) {
-          console.error('❌ EMAIL COLUMN NOT IN INDIVIDUAL QUERY RESULT - RLS MAY BE BLOCKING IT!');
-        } else if (userData && (userData.email === null || userData.email === undefined)) {
-          console.warn('⚠️ EMAIL COLUMN EXISTS IN INDIVIDUAL QUERY BUT VALUE IS NULL/UNDEFINED');
-        }
-        
-        // Also check the user object from the list
-        console.log('🔍 User object from list (RAW):', JSON.stringify(user, null, 2));
-        console.log('🔍 User.email from list:', user.email);
-        console.log('🔍 User object keys:', Object.keys(user));
-        console.log('🔍 User object ALL VALUES:', Object.entries(user));
-        
-        // If email column doesn't exist, userData.email will be undefined
-        // In that case, we'll need to get email from another source
-        if (userData && !('email' in userData)) {
-          console.warn('⚠️ Email column does not exist in users table!');
-          console.warn('Available columns:', Object.keys(userData));
-        }
-      } catch (err: any) {
-        console.error('Error fetching userData:', err);
-        userError = err;
-        
-        // If error is about email column not existing, try without email
-        if (err.message?.includes('email') && err.message?.includes('does not exist')) {
-          console.log('🔍 Email column error detected, trying without email field...');
-          try {
-            const resultWithoutEmail = await insforge.database
-              .from('users')
-              .select('id, nickname, name, avatar_url, bio, created_at, updated_at')
-              .eq('id', user.user_id)
-              .maybeSingle();
-            
-            userData = resultWithoutEmail.data;
-            console.log('✅ Fetched user data without email column');
-          } catch (err2: any) {
-            console.error('Error fetching without email:', err2);
-          }
-        }
-      }
-      
-      // If email is still missing, use email from the user object (from the list)
-      if (!userData?.email && user.email) {
-        console.log('✅ Using email from user list object:', user.email);
-        userData = { ...userData, email: user.email };
-      }
-      
-      console.log('🔍 Final userData:', userData);
-      console.log('🔍 Final email:', userData?.email);
-      
-      // CRITICAL: If email is null/undefined, try to get it from InsForge auth
-      // The email might be stored in the auth system but not synced to users table
-      if (!userData?.email) {
-        console.log('⚠️ Email is null in users table, checking if we can get it from auth context...');
-        // Note: InsForge auth email is not directly accessible, but we can check
-        // if the user object from useUser() has email
-        console.log('🔍 Current user from auth context:', currentUser);
-        console.log('🔍 Current user email:', currentUser?.email);
-      }
-      
-      // PRIORITY 2: Fetch from user_profiles table (registration data)
-      const { data: profileData, error: profileError } = await insforge.database
+      // SIMPLIFIED LOGIC: Same as fetchUsers - fetch all columns including email
+      // Fetch from users table (registration data)
+      const { data: userData } = await insforge.database
+        .from('users')
+        .select('*')
+        .eq('id', user.user_id)
+        .maybeSingle();
+
+      // Fetch from user_profiles table (registration data)
+      const { data: profileData } = await insforge.database
         .from('user_profiles')
         .select('*')
         .eq('user_id', user.user_id)
         .maybeSingle();
-      
-      if (profileError) {
-        console.error('Error fetching profileData:', profileError);
-      }
-      
-      console.log('🔍 Profile data (RAW):', JSON.stringify(profileData, null, 2));
-      console.log('🔍 Profile email:', profileData?.email);
-      console.log('🔍 Profile email type:', typeof profileData?.email);
-      console.log('🔍 Profile email === null?', profileData?.email === null);
-      console.log('🔍 Profile email === undefined?', profileData?.email === undefined);
-      console.log('🔍 Profile has email key?', profileData ? ('email' in profileData) : false);
-      console.log('🔍 Profile all keys:', profileData ? Object.keys(profileData) : 'null');
-      
-      // If email is missing from profileData, it means:
-      // 1. The email column doesn't exist in user_profiles (SQL script not run)
-      // 2. The email value is null for this user (needs to be synced)
-      if (profileData && !('email' in profileData)) {
-        console.error('❌ EMAIL COLUMN DOES NOT EXIST IN USER_PROFILES!');
-        console.error('❌ Please run ADD_EMAIL_TO_USER_PROFILES.sql in InsForge SQL Editor');
-      } else if (profileData && profileData.email === null) {
-        console.warn('⚠️ Email column exists but value is NULL for this user');
-        console.warn('⚠️ This user needs their email synced to user_profiles');
-      }
-      
-      // If email is still missing, the values in the database are likely actually null
-      // This means emails were never saved during registration
-      if (!userData?.email && !user.email && !profileData?.email) {
-        console.error('❌ EMAIL IS NULL IN ALL SOURCES - Emails may not have been saved during registration!');
-        console.error('❌ This means the registration process is not saving emails to the users table.');
-        console.error('❌ Check the registration code to ensure emails are saved to public.users.email');
-      }
-      
-      // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email
-      // Applications should NOT be used - email should be in users table from registration
-      // Only check applications as absolute last resort if email is still missing from all registration sources
-      let emailFromApps = null;
-      if (!userData?.email && !user.email && !profileData?.email) {
-        console.log('⚠️ Email missing from all registration sources (users, user_profiles), checking applications as last resort...');
-        
-        try {
-          // Try to extract from form_data (email column doesn't exist in applications - causes 400 error)
-          const { data: appWithFormData, error: formDataError } = await insforge.database
-            .from('applications')
-            .select('form_data')
-            .eq('user_id', user.user_id)
-            .not('form_data', 'is', null)
-            .limit(1)
-            .maybeSingle();
-          
-          if (!formDataError && appWithFormData?.form_data) {
-            // Try to extract email from form_data (could be 'email' or 'Email')
-            emailFromApps = appWithFormData.form_data?.email || 
-                           appWithFormData.form_data?.Email || 
-                           appWithFormData.form_data?.EMAIL || 
-                           null;
-            console.log('🔍 EMAIL FROM APPLICATIONS (form_data, last resort):', emailFromApps);
-            
-            // If we found email in applications, update users table (wait for it to complete)
-            if (emailFromApps) {
-              try {
-                const { error: updateError } = await insforge.database
-                  .from('users')
-                  .update({ email: emailFromApps } as any)
-                  .eq('id', user.user_id);
-                
-                if (updateError) {
-                  if (!updateError.message?.includes('does not exist') && !updateError.message?.includes('column')) {
-                    console.error('❌ Failed to update email in users table:', updateError);
-                  }
-                } else {
-                  console.log('✅ Updated email in users table from applications (last resort)');
-                  if (userData) {
-                    userData.email = emailFromApps;
-                  } else {
-                    userData = { email: emailFromApps };
-                  }
-                }
-              } catch (updateErr: any) {
-                if (!updateErr.message?.includes('does not exist') && !updateErr.message?.includes('column')) {
-                  console.error('❌ Exception updating email:', updateErr);
-                }
-              }
-            }
-          } else {
-            console.log('⚠️ No email found in applications form_data either');
-          }
-        } catch (err: any) {
-          console.error('Error fetching email from applications (last resort):', err);
-        }
-      }
 
-      // profileData already fetched above
-      console.log('Profile data from user_profiles (registration):', profileData);
-
-      // Fetch user's applications - skip join to avoid errors
-      const result = await insforge.database
+      // Fetch user's applications
+      const { data: applications } = await insforge.database
         .from('applications')
         .select('*')
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false });
 
-      if (result.error) {
-        console.warn('Error fetching applications:', result.error);
-      }
+      setUserApplications(applications || []);
 
-      const applications = result.data || [];
-      console.log('Fetched applications:', applications);
-      console.log('User ID used for query:', user.user_id);
-      setUserApplications(applications);
-
-      // PRIORITY ORDER: user_profiles (registration) > users table (registration) > applications > original user
-      // Start with registration data from user_profiles and users table
-      let enriched: any = {
-        // Start with profile data (registration) - this has phone, address, city, province, etc.
+      // Combine data - EMAIL PRIORITY: users.email > user_profiles.email > user.email (from list)
+      // This matches the same logic used in fetchUsers
+      const enriched: any = {
         ...(profileData || {}),
-        // Override with users table data (registration) - this has email, nickname, name
-        // EMAIL PRIORITY: profileData.email (from user_profiles/registration) > userData.email > user.email > emailFromApps (last resort)
-        // Email is now saved in user_profiles during registration, so use same RLS logic that works for other fields
-        // CRITICAL: profileData.email should work because it uses the same RLS policy as phone, address, etc.
-        email: (profileData?.email || userData?.email || user.email || emailFromApps || null),
-        
-        // Debug: Log email sources to help diagnose
-        _debug_profileEmail: profileData?.email,
-        _debug_userDataEmail: userData?.email,
-        _debug_userEmail: user.email,
-        // Store debug info
-        _debug_userDataEmail: userData?.email,
-        _debug_emailFromApps: emailFromApps,
-        _debug_userEmail: user.email,
-        _debug_finalEmail: (userData?.email || emailFromApps || user.email || null),
+        // EMAIL: Use users.email first (from registration), then user_profiles.email, then user.email from list
+        email: userData?.email || profileData?.email || user.email || null,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
-        name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
         bio: userData?.bio || profileData?.bio || user.bio || null,
-        // Ensure user_id is set
         user_id: user.user_id,
         id: user.id,
         role: profileData?.role || user.role || 'user',
         created_at: user.created_at,
         updated_at: profileData?.updated_at || user.updated_at,
-        // Include all profile fields explicitly
         phone: profileData?.phone || null,
         address: profileData?.address || null,
         city: profileData?.city || null,
@@ -494,116 +291,29 @@ export function UserManagementPage() {
         postal_code: profileData?.postal_code || null,
         date_of_birth: profileData?.date_of_birth || null,
       };
-      
-      console.log('🔍 EMAIL DEBUG:', {
-        'userData?.email': userData?.email,
-        'user.email': user.email,
-        'profileData?.email': profileData?.email,
-        'enriched.email': enriched.email,
-        'userData object': userData,
-        'user object': user
-      });
 
-      console.log('=== USER DATA DEBUG ===');
-      console.log('UserData from users table:', userData);
-      console.log('ProfileData from user_profiles:', profileData);
-      console.log('UserData email:', userData?.email);
-      console.log('ProfileData phone:', profileData?.phone);
-      console.log('ProfileData address:', profileData?.address);
-      console.log('ProfileData city:', profileData?.city);
-      console.log('ProfileData province:', profileData?.province);
-      console.log('ProfileData postal_code:', profileData?.postal_code);
-      console.log('ProfileData date_of_birth:', profileData?.date_of_birth);
-      console.log('Initial enriched data (from registration):', enriched);
-      console.log('Final enriched email:', enriched.email);
-      console.log('Final enriched phone:', enriched.phone);
-      console.log('Final enriched address:', enriched.address);
-      console.log('Final enriched city:', enriched.city);
-      console.log('Final enriched province:', enriched.province);
-      console.log('Final enriched postal_code:', enriched.postal_code);
-      console.log('Final enriched date_of_birth:', enriched.date_of_birth);
-      console.log('======================');
-
-      // If applications exist, merge their data (prioritize application data)
-      if (applications.length > 0) {
-        // Get the most recent application for primary data
+      // If applications exist, merge additional fields (only if registration data is missing)
+      if (applications && applications.length > 0) {
         const mostRecentApp = applications[0];
-        console.log('Most recent application data:', mostRecentApp);
-        console.log('Application keys:', Object.keys(mostRecentApp));
-        
-        // Merge ALL applications data - combine data from all applications
-        let combinedAppData: any = {};
-        let latestDate = '';
-        applications.forEach((app: any) => {
-          // Merge all fields, keeping the most recent non-null value
-          Object.keys(app).forEach((key: string) => {
-            // Skip internal fields
-            if (key.startsWith('_')) return;
-            
-            const value = app[key];
-            // Include the value if it's not null/undefined/empty, and either:
-            // 1. We don't have this field yet, OR
-            // 2. This application is more recent than the one we stored
-            if (value !== null && value !== undefined && value !== '') {
-              if (!combinedAppData[key] || (app.created_at && app.created_at > latestDate)) {
-                combinedAppData[key] = value;
-              }
-            }
-          });
-          // Track the latest application date
-          if (app.created_at && app.created_at > latestDate) {
-            latestDate = app.created_at;
-          }
-        });
-        
-        console.log('Combined application data:', combinedAppData);
-        
-        // Merge application data - ONLY use if registration data is missing
-        // Priority: Registration data (user_profiles/users) > Application data
-        enriched = {
-          ...enriched,
-          // Personal Information - only use application data if registration data is missing
-          // EMAIL: Keep enriched.email if it exists, otherwise use application email
-          email: enriched.email || combinedAppData.email || null,
-          phone: enriched.phone || combinedAppData.phone || combinedAppData.contact_number || null,
-          address: enriched.address || combinedAppData.physical_address || combinedAppData.address || null,
-          city: enriched.city || combinedAppData.city || null,
-          province: enriched.province || combinedAppData.province || null,
-          postal_code: enriched.postal_code || combinedAppData.postal_code || null,
-          date_of_birth: enriched.date_of_birth || combinedAppData.date_of_birth || null,
-          // Additional fields from applications
-          id_number: combinedAppData.id_number || null,
-          nationality: combinedAppData.nationality || null,
-          gender: combinedAppData.gender || null,
-          marital_status: combinedAppData.marital_status || null,
-          country: combinedAppData.country || null,
-          home_language: combinedAppData.home_language || null,
-          population_group: combinedAppData.population_group || null,
-          residential_status: combinedAppData.residential_status || null,
-          // Name fields - prioritize application data
-          full_name: combinedAppData.full_name || enriched.nickname || null,
-          first_name: combinedAppData.first_name || null,
-          middle_name: combinedAppData.middle_name || null,
-          last_name: combinedAppData.last_name || null,
-          preferred_name: combinedAppData.preferred_name || null,
-          title: combinedAppData.title || null,
-        };
+        // Only use application data if registration data is missing
+        enriched.id_number = enriched.id_number || mostRecentApp.id_number || null;
+        enriched.nationality = enriched.nationality || mostRecentApp.nationality || null;
+        enriched.gender = enriched.gender || mostRecentApp.gender || null;
+        enriched.marital_status = enriched.marital_status || mostRecentApp.marital_status || null;
+        enriched.country = enriched.country || mostRecentApp.country || null;
+        enriched.full_name = enriched.full_name || mostRecentApp.full_name || enriched.nickname || null;
+        enriched.first_name = enriched.first_name || mostRecentApp.first_name || null;
+        enriched.middle_name = enriched.middle_name || mostRecentApp.middle_name || null;
+        enriched.last_name = enriched.last_name || mostRecentApp.last_name || null;
       }
-      
-      console.log('Final enriched user data:', enriched);
-      console.log('Email from enriched:', enriched.email);
-      console.log('Phone from enriched:', enriched.phone);
-      console.log('Address from enriched:', enriched.address);
-      console.log('City from enriched:', enriched.city);
-      console.log('Province from enriched:', enriched.province);
-      setEnrichedUserData(enriched);
 
-      setMessage(null); // Clear any previous errors
+      setEnrichedUserData(enriched);
+      setMessage(null);
     } catch (err: any) {
       console.error('Error fetching user details:', err);
       setMessage({ type: 'error', text: `Failed to fetch user details: ${err.message || 'Unknown error'}` });
-      setUserApplications([]); // Set empty array on error
-      // Fallback: try to use what we have from the user object
+      setUserApplications([]);
+      // Fallback: use data from user object
       setEnrichedUserData({
         ...user,
         email: user.email || null,
