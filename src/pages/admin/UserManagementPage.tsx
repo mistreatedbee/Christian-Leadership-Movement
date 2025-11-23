@@ -177,31 +177,88 @@ export function UserManagementPage() {
     setSyncingEmails(true);
     setMessage(null);
     try {
-      // Try to call the sync function
-      const { data, error } = await insforge.database.rpc('admin_sync_all_emails');
+      // First, try to get emails from applications and update users table directly
+      // This works without needing SQL functions
+      const { data: applications, error: appsError } = await insforge.database
+        .from('applications')
+        .select('user_id, email')
+        .not('email', 'is', null)
+        .not('user_id', 'is', null);
       
-      if (error) {
-        // If function doesn't exist, try the simpler sync function
-        if (error.message?.includes('function') || error.message?.includes('does not exist')) {
-          console.log('admin_sync_all_emails not found, trying sync_user_email...');
-          const { error: syncError } = await insforge.database.rpc('sync_user_email');
+      if (appsError) {
+        throw new Error(`Failed to fetch applications: ${appsError.message}`);
+      }
+      
+      if (!applications || applications.length === 0) {
+        setMessage({ type: 'info', text: 'No applications found with email addresses.' });
+        setSyncingEmails(false);
+        return;
+      }
+      
+      // Create a map of user_id to email (most recent email per user)
+      const emailMap = new Map<string, string>();
+      applications.forEach((app: any) => {
+        if (app.user_id && app.email && !emailMap.has(app.user_id)) {
+          emailMap.set(app.user_id, app.email);
+        }
+      });
+      
+      // Update users table with emails
+      let updatedCount = 0;
+      let errorCount = 0;
+      
+      for (const [userId, email] of emailMap.entries()) {
+        try {
+          // Check if user already has email
+          const { data: existingUser } = await insforge.database
+            .from('users')
+            .select('email')
+            .eq('id', userId)
+            .maybeSingle();
           
-          if (syncError) {
-            throw new Error('Email sync functions not available. Please run SYNC_EMAILS_FROM_AUTH.sql in your SQL editor first.');
+          // Only update if email is missing
+          if (!existingUser?.email) {
+            const { error: updateError } = await insforge.database
+              .from('users')
+              .update({ email })
+              .eq('id', userId);
+            
+            if (updateError) {
+              console.error(`Failed to update email for user ${userId}:`, updateError);
+              errorCount++;
+            } else {
+              updatedCount++;
+            }
           }
-        } else {
-          throw error;
+        } catch (userErr: any) {
+          console.error(`Error updating user ${userId}:`, userErr);
+          errorCount++;
         }
       }
       
-      setMessage({ type: 'success', text: 'Emails synced successfully! Refreshing user list...' });
-      // Refresh the user list
-      await fetchUsers();
+      if (updatedCount > 0) {
+        setMessage({ 
+          type: 'success', 
+          text: `Successfully synced ${updatedCount} email${updatedCount > 1 ? 's' : ''}! ${errorCount > 0 ? `${errorCount} errors occurred.` : ''}` 
+        });
+        // Refresh the user list
+        await fetchUsers();
+      } else if (errorCount > 0) {
+        setMessage({ 
+          type: 'error', 
+          text: `Failed to sync emails. ${errorCount} error${errorCount > 1 ? 's' : ''} occurred.` 
+        });
+      } else {
+        setMessage({ 
+          type: 'info', 
+          text: 'All users already have emails or no emails found in applications.' 
+        });
+      }
     } catch (err: any) {
       console.error('Error syncing emails:', err);
       setMessage({ 
         type: 'error', 
-        text: err.message || 'Failed to sync emails. Please run SYNC_EMAILS_FROM_AUTH.sql in your SQL editor.' 
+        text: err.message || 'Failed to sync emails. Please check the console for details.' 
       });
     } finally {
       setSyncingEmails(false);
