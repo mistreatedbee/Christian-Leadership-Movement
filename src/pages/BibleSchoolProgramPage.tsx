@@ -5,7 +5,8 @@ import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
-import { GraduationCap, BookOpen, Users, Award, CheckCircle, ArrowRight, ArrowLeft, FileText } from 'lucide-react';
+import { GraduationCap, BookOpen, Users, Award, CheckCircle, ArrowRight, ArrowLeft, FileText, Shield } from 'lucide-react';
+import { getUserRole } from '../lib/auth';
 
 interface Program {
   id: string;
@@ -19,10 +20,23 @@ export function BibleSchoolProgramPage() {
   const { user, isLoaded } = useUser();
   const [program, setProgram] = useState<Program | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchProgram();
-  }, []);
+    checkAdminStatus();
+  }, [user, isLoaded]);
+
+  const checkAdminStatus = async () => {
+    if (user) {
+      try {
+        const role = await getUserRole(user.id);
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+      }
+    }
+  };
 
   const fetchProgram = async () => {
     try {
@@ -47,6 +61,10 @@ export function BibleSchoolProgramPage() {
       return;
     }
     navigate('/apply?type=bible_school');
+  };
+
+  const handleAccessResources = () => {
+    navigate('/bible-school');
   };
 
   if (loading) {
@@ -316,41 +334,68 @@ export function BibleSchoolProgramPage() {
             </div>
           </div>
 
-          {/* Application Requirement */}
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-card p-6 mb-8">
-            <div className="flex items-start gap-4">
-              <FileText className="w-8 h-8 text-amber-600 flex-shrink-0" />
-              <div>
-                <h3 className="text-xl font-bold text-amber-900 mb-2">Application Required</h3>
-                <p className="text-amber-800 mb-4">
-                  To enroll in the Bible School program, you need to complete the application form. 
-                  The application process includes providing personal information, spiritual background, 
-                  leadership interests, vision & calling, and references.
-                </p>
-                <p className="text-amber-800 font-medium">
-                  Click the "Apply Now" button below to start your application.
-                </p>
+          {/* Admin Access Notice */}
+          {isAdmin && (
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-card p-6 mb-8">
+              <div className="flex items-start gap-4">
+                <Shield className="w-8 h-8 text-blue-600 flex-shrink-0" />
+                <div>
+                  <h3 className="text-xl font-bold text-blue-900 mb-2">Admin Access</h3>
+                  <p className="text-blue-800 mb-4">
+                    As an administrator, you have full access to all Bible School resources, studies, classes, meetings, and materials without needing to apply.
+                  </p>
+                  <Button
+                    variant="primary"
+                    onClick={handleAccessResources}
+                    className="mt-2"
+                  >
+                    Access Bible School Resources
+                    <ArrowRight className="w-5 h-5 ml-2" />
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Apply Button */}
-          <div className="text-center">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={handleApply}
-              className="px-8 py-4 text-lg"
-            >
-              Apply Now
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-            {!user && (
-              <p className="text-gray-600 mt-4 text-sm">
-                You'll need to log in to complete the application
-              </p>
-            )}
-          </div>
+          {/* Application Requirement */}
+          {!isAdmin && (
+            <>
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-card p-6 mb-8">
+                <div className="flex items-start gap-4">
+                  <FileText className="w-8 h-8 text-amber-600 flex-shrink-0" />
+                  <div>
+                    <h3 className="text-xl font-bold text-amber-900 mb-2">Application Required</h3>
+                    <p className="text-amber-800 mb-4">
+                      To enroll in the Bible School program, you need to complete the application form. 
+                      The application process includes providing personal information, spiritual background, 
+                      leadership interests, vision & calling, and references.
+                    </p>
+                    <p className="text-amber-800 font-medium">
+                      Click the "Apply Now" button below to start your application.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Apply Button */}
+              <div className="text-center">
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={handleApply}
+                  className="px-8 py-4 text-lg"
+                >
+                  Apply Now
+                  <ArrowRight className="w-5 h-5 ml-2" />
+                </Button>
+                {!user && (
+                  <p className="text-gray-600 mt-4 text-sm">
+                    You'll need to log in to complete the application
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </div>
       </main>
       <Footer />

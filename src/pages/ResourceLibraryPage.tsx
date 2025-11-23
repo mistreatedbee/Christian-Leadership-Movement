@@ -42,7 +42,23 @@ export function ResourceLibraryPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [categoriesRes, resourcesRes] = await Promise.all([
+      
+      // Check if user is admin
+      let isAdmin = false;
+      if (user) {
+        try {
+          const { data: profile } = await insforge.database
+            .from('user_profiles')
+            .select('role')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          isAdmin = profile?.role === 'admin' || profile?.role === 'super_admin';
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+        }
+      }
+
+      const [categoriesRes, generalResourcesRes, bibleSchoolResourcesRes, courseResourcesRes] = await Promise.all([
         insforge.database
           .from('resource_categories')
           .select('*')
@@ -51,10 +67,12 @@ export function ResourceLibraryPage() {
           let query = insforge.database
             .from('resources')
             .select('*, resource_categories(*)')
-            .eq('is_public', true)
             .order('is_featured', { ascending: false })
             .order('created_at', { ascending: false });
 
+          if (!isAdmin) {
+            query = query.eq('is_public', true);
+          }
           if (selectedCategory) {
             query = query.eq('category_id', selectedCategory);
           }
@@ -62,11 +80,66 @@ export function ResourceLibraryPage() {
             query = query.eq('resource_type', selectedType);
           }
           return query;
-        })()
+        })(),
+        (() => {
+          let query = insforge.database
+            .from('bible_school_resources')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+          if (!isAdmin) {
+            query = query.eq('is_public', true);
+          }
+          return query;
+        })(),
+        // Course resources from course_lessons
+        insforge.database
+          .from('course_lessons')
+          .select('id, title, description, resources_url, video_url, course_id, courses(title)')
+          .not('resources_url', 'is', null)
+          .order('created_at', { ascending: false })
       ]);
 
+      // Combine all resources
+      const allResources: any[] = [];
+      
+      // Add general resources
+      (generalResourcesRes.data || []).forEach((r: any) => {
+        allResources.push({
+          ...r,
+          source: 'general',
+          source_label: 'General Resources'
+        });
+      });
+
+      // Add Bible School resources
+      (bibleSchoolResourcesRes.data || []).forEach((r: any) => {
+        allResources.push({
+          ...r,
+          source: 'bible_school',
+          source_label: 'Bible School',
+          resource_type: r.resource_type || 'document'
+        });
+      });
+
+      // Add course resources
+      (courseResourcesRes.data || []).forEach((r: any) => {
+        if (r.resources_url || r.video_url) {
+          allResources.push({
+            id: r.id,
+            title: r.title,
+            description: r.description,
+            resource_type: r.video_url ? 'video' : 'document',
+            file_url: r.resources_url || r.video_url,
+            external_link: r.video_url ? r.video_url : null,
+            source: 'course',
+            source_label: `Course: ${(r.courses as any)?.title || 'Course'}`
+          });
+        }
+      });
+
       setCategories(categoriesRes.data || []);
-      setResources(resourcesRes.data || []);
+      setResources(allResources);
     } catch (error) {
       console.error('Error fetching resources:', error);
     } finally {
@@ -74,20 +147,32 @@ export function ResourceLibraryPage() {
     }
   };
 
-  const handleDownload = async (resource: Resource) => {
-    if (resource.file_url) {
-      // Track download
-      try {
-        await insforge.database
-          .from('resources')
-          .update({ download_count: (resource.download_count || 0) + 1 })
-          .eq('id', resource.id);
-      } catch (error) {
-        console.error('Error tracking download:', error);
+  const handleDownload = async (resource: Resource & { source?: string }) => {
+    const url = (resource as any).external_link || resource.file_url;
+    if (url) {
+      // Track download for general and bible school resources
+      if (resource.source === 'general') {
+        try {
+          await insforge.database
+            .from('resources')
+            .update({ download_count: (resource.download_count || 0) + 1 })
+            .eq('id', resource.id);
+        } catch (error) {
+          console.error('Error tracking download:', error);
+        }
+      } else if (resource.source === 'bible_school') {
+        try {
+          await insforge.database
+            .from('bible_school_resources')
+            .update({ download_count: ((resource as any).download_count || 0) + 1 })
+            .eq('id', resource.id);
+        } catch (error) {
+          console.error('Error tracking download:', error);
+        }
       }
 
       // Open download link
-      window.open(resource.file_url, '_blank');
+      window.open(url, '_blank');
     }
   };
 
@@ -231,6 +316,11 @@ export function ResourceLibraryPage() {
                 )}
               </div>
               <h3 className="text-lg font-semibold text-navy-ink mb-2">{resource.title}</h3>
+              {resource.source_label && (
+                <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded mb-2 inline-block">
+                  {resource.source_label}
+                </span>
+              )}
               {resource.description && (
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">{resource.description}</p>
               )}
@@ -251,7 +341,7 @@ export function ResourceLibraryPage() {
                   size="sm"
                 >
                   <Download className="w-4 h-4 mr-2" />
-                  Download
+                  {resource.external_link ? 'Open Link' : 'Download'}
                 </Button>
               </div>
             </div>

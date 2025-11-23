@@ -730,47 +730,76 @@ export function BibleSchoolManagementPage() {
                         {...register('resource_type', { required: 'Resource type is required' })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       >
-                        <option value="book">Book</option>
-                        <option value="notes">Notes</option>
-                        <option value="test">Test</option>
-                        <option value="video">Video</option>
-                        <option value="audio">Audio</option>
-                        <option value="document">Document</option>
-                        <option value="other">Other</option>
+                        <option value="textbook">📚 Textbook</option>
+                        <option value="book">📕 Book</option>
+                        <option value="notes">📝 Notes</option>
+                        <option value="test">📋 Test</option>
+                        <option value="video">🎥 Video</option>
+                        <option value="audio">🎧 Audio</option>
+                        <option value="document">📄 Document</option>
+                        <option value="pdf">📕 PDF</option>
+                        <option value="image">🖼️ Image</option>
+                        <option value="link">🔗 Link</option>
+                        <option value="other">📦 Other</option>
                       </select>
                       {errors.resource_type && <p className="text-red-500 text-sm mt-1">{errors.resource_type.message}</p>}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-navy-ink mb-2">Category</label>
-                      <input
-                        type="text"
+                      <select
                         {...register('category')}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                        placeholder="e.g., Old Testament, New Testament"
-                      />
+                      >
+                        <option value="">Select Category</option>
+                        <option value="Old Testament">Old Testament</option>
+                        <option value="New Testament">New Testament</option>
+                        <option value="Theology">Theology</option>
+                        <option value="Church History">Church History</option>
+                        <option value="Hermeneutics">Hermeneutics</option>
+                        <option value="Pastoral Care">Pastoral Care</option>
+                        <option value="Preaching">Preaching</option>
+                        <option value="Teaching">Teaching</option>
+                        <option value="Counseling">Counseling</option>
+                        <option value="Worship Leadership">Worship Leadership</option>
+                        <option value="Community Outreach">Community Outreach</option>
+                        <option value="Leadership">Leadership</option>
+                        <option value="Bible Study Materials">Bible Study Materials</option>
+                        <option value="Class Materials">Class Materials</option>
+                        <option value="Meeting Resources">Meeting Resources</option>
+                        <option value="Other">Other</option>
+                      </select>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-navy-ink mb-2">Upload File</label>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Upload File (PDF, Images, Videos, Audio, Documents)</label>
                     <input
                       type="file"
                       onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      accept=".pdf,.doc,.docx,.txt,.mp4,.mp3,.avi,.mov,.wav,.zip,.jpg,.jpeg,.png,.gif"
                     />
                     {editingItem?.file_url && (
-                      <p className="text-sm text-gray-600 mt-1">Current file: {editingItem.file_url}</p>
+                      <p className="text-sm text-gray-600 mt-1">
+                        Current file: <a href={editingItem.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{editingItem.file_url}</a>
+                      </p>
                     )}
+                    <p className="text-xs text-gray-500 mt-1">
+                      Supported formats: PDF, DOC, DOCX, TXT, MP4, MP3, AVI, MOV, WAV, ZIP, JPG, PNG, GIF
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-navy-ink mb-2">External Link (if file is hosted elsewhere)</label>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">External Link (YouTube, Vimeo, Google Drive, Dropbox, etc.)</label>
                     <input
                       type="url"
                       {...register('external_link')}
                       className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                      placeholder="https://example.com/resource"
+                      placeholder="https://youtube.com/watch?v=... or https://drive.google.com/..."
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Use this for videos, links to external resources, or cloud storage links
+                    </p>
                   </div>
 
                   <div>

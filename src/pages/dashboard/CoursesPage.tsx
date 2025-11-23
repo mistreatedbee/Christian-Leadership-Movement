@@ -3,7 +3,8 @@ import { useUser } from '@insforge/react';
 import { useNavigate } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
-import { BookOpen, Lock, CheckCircle, Play } from 'lucide-react';
+import { BookOpen, Lock, CheckCircle, Play, Shield } from 'lucide-react';
+import { getUserRole } from '../../lib/auth';
 
 interface Course {
   id: string;
@@ -27,11 +28,67 @@ export function CoursesPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState<Record<string, boolean>>({});
   const [lessons, setLessons] = useState<Record<string, any[]>>({});
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
+    checkAdminStatus();
     fetchCourses();
   }, [user, isLoaded]);
+
+  const checkAdminStatus = async () => {
+    if (user) {
+      try {
+        const role = await getUserRole(user.id);
+        const admin = role === 'admin' || role === 'super_admin';
+        setIsAdmin(admin);
+        
+        // Auto-enroll admin in all courses
+        if (admin) {
+          await autoEnrollAdminInCourses();
+        }
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+      }
+    }
+  };
+
+  const autoEnrollAdminInCourses = async () => {
+    if (!user) return;
+    
+    try {
+      // Get all courses
+      const { data: allCourses } = await insforge.database
+        .from('courses')
+        .select('id');
+
+      if (!allCourses) return;
+
+      // Check existing enrollments
+      const { data: existingEnrollments } = await insforge.database
+        .from('course_enrollments')
+        .select('course_id')
+        .eq('user_id', user.id);
+
+      const enrolledCourseIds = new Set(existingEnrollments?.map((e: any) => e.course_id) || []);
+
+      // Enroll in courses not already enrolled
+      const enrollmentsToCreate = allCourses
+        .filter((course: any) => !enrolledCourseIds.has(course.id))
+        .map((course: any) => ({
+          user_id: user.id,
+          course_id: course.id
+        }));
+
+      if (enrollmentsToCreate.length > 0) {
+        await insforge.database
+          .from('course_enrollments')
+          .insert(enrollmentsToCreate);
+      }
+    } catch (err) {
+      console.error('Error auto-enrolling admin:', err);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
@@ -44,22 +101,31 @@ export function CoursesPage() {
       if (coursesError) throw coursesError;
       setCourses(coursesData || []);
 
-      // Check user access (must have paid application)
+      // Check user access
       if (user) {
-        const { data: paidApps } = await insforge.database
-          .from('applications')
-          .select('program_id')
-          .eq('user_id', user.id)
-          .eq('payment_status', 'confirmed')
-          .eq('status', 'approved');
+        // Admins have access to all courses
+        if (isAdmin) {
+          const accessMap: Record<string, boolean> = {};
+          coursesData?.forEach((course: Course) => {
+            accessMap[course.id] = true;
+          });
+          setHasAccess(accessMap);
+        } else {
+          // Regular users need paid application
+          const { data: paidApps } = await insforge.database
+            .from('applications')
+            .select('program_id')
+            .eq('user_id', user.id)
+            .eq('payment_status', 'confirmed')
+            .eq('status', 'approved');
 
-        const accessMap: Record<string, boolean> = {};
-        coursesData?.forEach((course: Course) => {
-          // Check if user has access through approved paid application
-          const hasPaidAccess = paidApps?.some((app: any) => app.program_id === course.id) || false;
-          accessMap[course.id] = hasPaidAccess;
-        });
-        setHasAccess(accessMap);
+          const accessMap: Record<string, boolean> = {};
+          coursesData?.forEach((course: Course) => {
+            const hasPaidAccess = paidApps?.some((app: any) => app.program_id === course.id) || false;
+            accessMap[course.id] = hasPaidAccess;
+          });
+          setHasAccess(accessMap);
+        }
 
         // Fetch lessons for each course
         const lessonsMap: Record<string, any[]> = {};
@@ -115,8 +181,21 @@ export function CoursesPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-navy-ink mb-2">My Courses</h1>
-        <p className="text-gray-600">Access your enrolled courses and track your progress</p>
+        <div className="flex items-center justify-between mb-2">
+          <h1 className="text-3xl font-bold text-navy-ink">My Courses</h1>
+          {isAdmin && (
+            <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-lg">
+              <Shield className="w-4 h-4" />
+              <span className="text-sm font-medium">Admin Access</span>
+            </div>
+          )}
+        </div>
+        <p className="text-gray-600">
+          {isAdmin 
+            ? 'As an administrator, you have full access to all courses and materials'
+            : 'Access your enrolled courses and track your progress'
+          }
+        </p>
       </div>
 
       {loading ? (
@@ -193,7 +272,7 @@ export function CoursesPage() {
                       ) : (
                         <>
                           <Play className="mr-2" size={16} />
-                          Continue Learning
+                          {isAdmin ? 'Access Course' : 'Continue Learning'}
                         </>
                       )}
                     </Button>

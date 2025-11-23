@@ -19,12 +19,25 @@ export function BibleSchoolPage() {
   const [resources, setResources] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState<Record<string, boolean>>({});
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (isLoaded) {
+      checkAdminStatus();
       fetchData();
     }
   }, [activeTab, isLoaded, user]);
+
+  const checkAdminStatus = async () => {
+    if (user) {
+      try {
+        const role = await getUserRole(user.id);
+        setIsAdmin(role === 'admin' || role === 'super_admin');
+      } catch (err) {
+        console.error('Error checking admin status:', err);
+      }
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -187,13 +200,23 @@ export function BibleSchoolPage() {
         <div className="container mx-auto px-4 py-8">
           {/* Header Section */}
           <div className="bg-gradient-to-r from-navy-ink to-brand-dark-blue text-white rounded-card shadow-soft p-8 mb-8">
-            <h1 className="text-4xl font-bold mb-2">Bible School</h1>
-            <p className="text-lg text-blue-100 mb-4">
-              Comprehensive theological education and leadership training
-            </p>
-            <p className="text-blue-50">
-              Transform your calling into effective ministry through comprehensive theological education and practical leadership training.
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-4xl font-bold mb-2">Bible School</h1>
+                <p className="text-lg text-blue-100 mb-4">
+                  Comprehensive theological education and leadership training
+                </p>
+                <p className="text-blue-50">
+                  Transform your calling into effective ministry through comprehensive theological education and practical leadership training.
+                </p>
+              </div>
+              {isAdmin && (
+                <div className="bg-white/10 rounded-lg p-4 border border-white/20">
+                  <p className="text-sm text-blue-100 mb-2">Admin Access</p>
+                  <p className="text-xs text-blue-200">Full access to all resources</p>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* What You'll Gain Section */}
