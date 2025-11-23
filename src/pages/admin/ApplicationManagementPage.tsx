@@ -394,9 +394,17 @@ export function ApplicationManagementPage() {
       const idUrl = application.id_passport_key 
         ? getStorageUrl('applications', application.id_passport_key)
         : application.id_passport_url;
+      // Make URL clickable in PDF
+      doc.setTextColor(0, 0, 255); // Blue color for links
+      doc.textWithLink('Click to view/download', margin + 60, yPos, { url: idUrl });
+      doc.setTextColor(0, 0, 0); // Reset to black
+      yPos += 7;
+      // Also show the URL text
       const idUrlLines = doc.splitTextToSize(idUrl, maxWidth - 60);
+      doc.setFontSize(8);
       doc.text(idUrlLines, margin + 60, yPos);
-      yPos += idUrlLines.length * 7 + 3;
+      doc.setFontSize(10);
+      yPos += idUrlLines.length * 5 + 3;
     }
 
     if (application.payment_proof_url) {
@@ -410,9 +418,17 @@ export function ApplicationManagementPage() {
       const paymentUrl = application.payment_proof_key 
         ? getStorageUrl('applications', application.payment_proof_key)
         : application.payment_proof_url;
+      // Make URL clickable in PDF
+      doc.setTextColor(0, 0, 255); // Blue color for links
+      doc.textWithLink('Click to view/download', margin + 60, yPos, { url: paymentUrl });
+      doc.setTextColor(0, 0, 0); // Reset to black
+      yPos += 7;
+      // Also show the URL text
       const paymentUrlLines = doc.splitTextToSize(paymentUrl, maxWidth - 60);
+      doc.setFontSize(8);
       doc.text(paymentUrlLines, margin + 60, yPos);
-      yPos += paymentUrlLines.length * 7 + 3;
+      doc.setFontSize(10);
+      yPos += paymentUrlLines.length * 5 + 3;
     }
 
     if (application.additional_documents_url && Array.isArray(application.additional_documents_url) && application.additional_documents_url.length > 0) {
@@ -429,8 +445,21 @@ export function ApplicationManagementPage() {
           doc.addPage();
           yPos = 20;
         }
-        doc.text(`${idx + 1}. ${docUrl}`, margin + 10, yPos);
+        doc.setFont(undefined, 'bold');
+        doc.text(`Additional Document ${idx + 1}:`, margin, yPos);
+        doc.setFont(undefined, 'normal');
         yPos += 7;
+        // Make URL clickable in PDF
+        doc.setTextColor(0, 0, 255); // Blue color for links
+        doc.textWithLink('Click to view/download', margin + 10, yPos, { url: docUrl });
+        doc.setTextColor(0, 0, 0); // Reset to black
+        yPos += 7;
+        // Also show the URL text
+        const urlLines = doc.splitTextToSize(docUrl, maxWidth - 20);
+        doc.setFontSize(8);
+        doc.text(urlLines, margin + 10, yPos);
+        doc.setFontSize(10);
+        yPos += urlLines.length * 5 + 3;
       });
     }
 

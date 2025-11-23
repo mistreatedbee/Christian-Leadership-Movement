@@ -313,6 +313,7 @@ export function ApplyBibleSchoolPage() {
         gender: data.gender,
         marital_status: data.maritalStatus,
         address: data.physicalAddress,
+        physical_address: data.physicalAddress, // Save to both fields for compatibility
         country: data.country,
         date_accepted_christ: data.dateAcceptedChrist,
         is_baptized: data.isBaptized,
@@ -386,7 +387,7 @@ export function ApplyBibleSchoolPage() {
           .eq('id', application.id);
       }
 
-      // Create notification
+      // Create notification for user
       await insforge.database
         .from('notifications')
         .insert([{
@@ -396,6 +397,32 @@ export function ApplyBibleSchoolPage() {
           message: 'Your Bible School application has been submitted successfully and is pending review.',
           related_id: application.id
         }]);
+
+      // Create notifications for all admins
+      try {
+        const { data: admins } = await insforge.database
+          .from('user_profiles')
+          .select('user_id')
+          .in('role', ['admin', 'super_admin']);
+
+        if (admins && admins.length > 0) {
+          const adminNotifications = admins.map((admin: any) => ({
+            user_id: admin.user_id,
+            type: 'application',
+            title: 'New Bible School Application',
+            message: `A new Bible School application has been submitted by ${data.fullName || user.email || 'a user'}. Please review it.`,
+            related_id: application.id,
+            read: false
+          }));
+
+          await insforge.database
+            .from('notifications')
+            .insert(adminNotifications);
+        }
+      } catch (adminNotifError) {
+        console.error('Error creating admin notifications:', adminNotifError);
+        // Don't fail the application submission if admin notification fails
+      }
 
       await sendEmailNotification(user.id, {
         type: 'application_submitted',
