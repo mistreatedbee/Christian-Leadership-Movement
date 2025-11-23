@@ -20,10 +20,14 @@ interface Resource {
   description?: string;
   resource_type: string;
   file_url?: string;
+  file_key?: string;
+  external_link?: string;
   thumbnail_url?: string;
   download_count: number;
   is_featured: boolean;
   resource_categories?: ResourceCategory;
+  source?: string;
+  source_label?: string;
 }
 
 export function ResourceLibraryPage() {
@@ -109,7 +113,9 @@ export function ResourceLibraryPage() {
         allResources.push({
           ...r,
           source: 'general',
-          source_label: 'General Resources'
+          source_label: 'General Resources',
+          file_key: r.file_key || r.file_url,
+          external_link: r.external_link
         });
       });
 
