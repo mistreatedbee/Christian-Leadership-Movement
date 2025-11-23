@@ -86,13 +86,8 @@ export function ForumTopicPage() {
           try {
             // Only increment if user is not the creator (or if no user, still increment)
             if (!user || user.id !== data.user_id) {
-              // Use the SECURITY DEFINER function to bypass RLS
-              const { error: functionError } = await insforge.database
-                .rpc('increment_forum_topic_view_count', { p_topic_id: id });
-
-              if (functionError) {
-                // Fallback to direct update if function doesn't exist
-                console.warn('Function not available, trying direct update:', functionError);
+              // Direct update (RLS should allow this for view_count updates)
+              try {
                 const { error: updateError } = await insforge.database
                   .from('forum_topics')
                   .update({ 
@@ -103,18 +98,20 @@ export function ForumTopicPage() {
 
                 if (updateError) {
                   console.error('Error updating view count:', updateError);
+                } else {
+                  // Refresh topic data to show updated view count
+                  const { data: updatedTopic } = await insforge.database
+                    .from('forum_topics')
+                    .select('*, forum_categories(*), users(*)')
+                    .eq('id', id)
+                    .single();
+                  
+                  if (updatedTopic) {
+                    setTopic(updatedTopic);
+                  }
                 }
-              }
-
-              // Refresh topic data to show updated view count
-              const { data: updatedTopic } = await insforge.database
-                .from('forum_topics')
-                .select('*, forum_categories(*), users(*)')
-                .eq('id', id)
-                .single();
-              
-              if (updatedTopic) {
-                setTopic(updatedTopic);
+              } catch (updateErr) {
+                console.error('Error in view count update:', updateErr);
               }
             }
           } catch (err) {
@@ -133,23 +130,93 @@ export function ForumTopicPage() {
     if (!id) return;
 
     try {
-      const { data } = await insforge.database
+      // Fetch replies
+      const { data: repliesData } = await insforge.database
         .from('forum_replies')
         .select('*, users(*)')
         .eq('topic_id', id)
         .order('created_at', { ascending: true });
 
-      setReplies(data || []);
+      // Fetch user's likes for these replies if user is logged in
+      if (user && repliesData && repliesData.length > 0) {
+        const replyIds = repliesData.map(r => r.id);
+        const { data: userLikes } = await insforge.database
+          .from('forum_reply_likes')
+          .select('reply_id')
+          .eq('user_id', user.id)
+          .in('reply_id', replyIds);
+
+        const likedReplyIds = new Set(userLikes?.map(l => l.reply_id) || []);
+
+        // Fetch like counts for each reply
+        const repliesWithLikes = await Promise.all(
+          repliesData.map(async (reply: any) => {
+            const { count } = await insforge.database
+              .from('forum_reply_likes')
+              .select('*', { count: 'exact', head: true })
+              .eq('reply_id', reply.id);
+
+            return {
+              ...reply,
+              like_count: count || 0,
+              is_liked: likedReplyIds.has(reply.id)
+            };
+          })
+        );
+
+        setReplies(repliesWithLikes);
+      } else {
+        // If no user or no replies, just set basic replies
+        if (repliesData && repliesData.length > 0) {
+          const repliesWithLikes = await Promise.all(
+            repliesData.map(async (reply: any) => {
+              const { count } = await insforge.database
+                .from('forum_reply_likes')
+                .select('*', { count: 'exact', head: true })
+                .eq('reply_id', reply.id);
+
+              return {
+                ...reply,
+                like_count: count || 0,
+                is_liked: false
+              };
+            })
+          );
+          setReplies(repliesWithLikes);
+        } else {
+          setReplies([]);
+        }
+      }
 
       // Update reply count
       if (topic) {
         await insforge.database
           .from('forum_topics')
-          .update({ reply_count: (data?.length || 0), last_reply_at: new Date().toISOString() })
+          .update({ reply_count: (repliesData?.length || 0), last_reply_at: new Date().toISOString() })
           .eq('id', id);
       }
     } catch (error) {
       console.error('Error fetching replies:', error);
+    }
+  };
+
+  const checkFollowing = async () => {
+    if (!id || !user) {
+      setIsFollowing(false);
+      return;
+    }
+
+    try {
+      const { data } = await insforge.database
+        .from('forum_topic_follows')
+        .select('id')
+        .eq('topic_id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      setIsFollowing(!!data);
+    } catch (error) {
+      setIsFollowing(false);
     }
   };
 
