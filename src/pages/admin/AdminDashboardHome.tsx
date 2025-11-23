@@ -140,11 +140,13 @@ export function AdminDashboardHome() {
           recentGroups,
           recentPrayerRequests
         ] = await Promise.allSettled([
-          fetchWithFallback('applications', '*, programs(title), users(nickname, email)', '*'),
-          fetchWithFallback('mentors', '*, users(nickname, email), mentorship_programs(name)', '*'),
+          // Don't join with users.email - email column doesn't exist in users table
+          // Email is in user_profiles table instead
+          fetchWithFallback('applications', '*, programs(title), users(nickname)', '*'),
+          fetchWithFallback('mentors', '*, users(nickname), mentorship_programs(name)', '*'),
           fetchRecentUsers(),
-          fetchWithFallback('groups', '*, users(nickname, email)', '*'),
-          fetchWithFallback('prayer_requests', '*, users(nickname, email)', '*')
+          fetchWithFallback('groups', '*, users(nickname)', '*'),
+          fetchWithFallback('prayer_requests', '*, users(nickname)', '*')
         ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [], error: null }));
 
         // Combine and sort all recent activity
