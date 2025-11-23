@@ -85,6 +85,8 @@ import { EventsPage } from './pages/EventsPage';
 import { EventRegistrationPage } from './pages/EventRegistrationPage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { BibleSchoolManagementPage } from './pages/admin/BibleSchoolManagementPage';
+import { BibleSchoolPage } from './pages/BibleSchoolPage';
+import { CalendarPage } from './pages/dashboard/CalendarPage';
 import { BibleSchoolProgramPage } from './pages/BibleSchoolProgramPage';
 import { MembershipProgramPage } from './pages/MembershipProgramPage';
 import { PartnersPage } from './pages/PartnersPage';
@@ -119,6 +121,7 @@ export function App() {
           <Route path="/events" element={<EventsPage />} />
           <Route path="/events/:id" element={<EventDetailPage />} />
           <Route path="/events/:id/registration" element={<EventRegistrationPage />} />
+          <Route path="/bible-school" element={<BibleSchoolPage />} />
           <Route path="/partners" element={<PartnersPage />} />
           <Route path="/prayer-requests" element={<PrayerRequestsPage />} />
           <Route path="/testimonials" element={<TestimonialsPage />} />
@@ -138,6 +141,7 @@ export function App() {
           <Route path="profile" element={<ProfilePage />} />
           <Route path="applications" element={<ApplicationsPage />} />
             <Route path="notifications" element={<NotificationsPage />} />
+            <Route path="calendar" element={<CalendarPage />} />
             <Route path="events" element={<DashboardEventsPage />} />
             <Route path="courses" element={<CoursesPage />} />
             <Route path="courses/:courseId/lessons/:lessonId" element={<CourseLessonPage />} />

@@ -3,7 +3,7 @@ import { useUser } from '@insforge/react';
 import { Link } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
-import { Calendar, MapPin, Users, Clock, Image as ImageIcon } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { getStorageUrl } from '../../lib/connection';
 
 interface Event {
@@ -17,6 +17,9 @@ interface Event {
   has_registration_fee?: boolean;
   registration_fee?: number;
   images?: Array<{ url: string; key: string }>;
+  is_online?: boolean;
+  online_link?: string | null;
+  address?: string | null;
 }
 
 export function EventsPage() {
@@ -187,12 +190,30 @@ export function EventsPage() {
                     <div className="flex items-center text-gray-600">
                       <MapPin className="mr-2" size={16} />
                       <span>{event.location || 'TBA'}</span>
-                      {isOnline && (
+                      {event.is_online && (
                         <span className="ml-2 px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
                           Online
                         </span>
                       )}
                     </div>
+                    {event.is_online && event.online_link && (
+                      <div className="flex items-center text-blue-600">
+                        <LinkIcon className="mr-2" size={16} />
+                        <a
+                          href={event.online_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline"
+                        >
+                          Join Online Event
+                        </a>
+                      </div>
+                    )}
+                    {!event.is_online && event.address && (
+                      <div className="text-sm text-gray-600">
+                        <strong>Address:</strong> {event.address}
+                      </div>
+                    )}
                     {event.capacity && (
                       <div className="flex items-center text-gray-600">
                         <Users className="mr-2" size={16} />

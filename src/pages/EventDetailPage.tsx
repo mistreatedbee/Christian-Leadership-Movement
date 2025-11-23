@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Calendar, MapPin, Users, Clock, DollarSign, X, ChevronLeft, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Users, Clock, DollarSign, X, ChevronLeft, ChevronRight, Image as ImageIcon, Link as LinkIcon } from 'lucide-react';
 import { getStorageUrl } from '../lib/connection';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
@@ -20,6 +20,10 @@ interface Event {
   has_registration_fee?: boolean;
   registration_fee?: number;
   images?: Array<{ url: string; key: string }>;
+  is_online?: boolean;
+  online_link?: string | null;
+  online_password?: string | null;
+  address?: string | null;
 }
 
 export function EventDetailPage() {
@@ -218,10 +222,24 @@ export function EventDetailPage() {
                     <div>
                       <p className="font-medium text-navy-ink">Location</p>
                       <p>{event.location || 'TBA'}</p>
-                      {isOnline && (
+                      {event.is_online && (
                         <span className="mt-1 inline-block px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">
                           Online Event
                         </span>
+                      )}
+                      {event.is_online && event.online_link && (
+                        <a
+                          href={event.online_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-2 inline-block text-blue-600 hover:underline flex items-center text-sm"
+                        >
+                          <LinkIcon className="mr-1" size={14} />
+                          Join Online Event
+                        </a>
+                      )}
+                      {!event.is_online && event.address && (
+                        <p className="mt-1 text-sm">{event.address}</p>
                       )}
                     </div>
                   </div>
