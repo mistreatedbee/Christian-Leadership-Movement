@@ -1,4 +1,3 @@
-import React from 'react';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
 
