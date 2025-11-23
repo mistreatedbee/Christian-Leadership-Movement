@@ -198,6 +198,16 @@ export function BibleSchoolManagementPage() {
       let tableName = '';
       let itemData: any = { ...data };
 
+      // Convert is_online to boolean if it's a string
+      if (typeof itemData.is_online === 'string') {
+        itemData.is_online = itemData.is_online === 'true' || itemData.is_online === true;
+      }
+      
+      // Convert is_public to boolean if it's a string
+      if (typeof itemData.is_public === 'string') {
+        itemData.is_public = itemData.is_public === 'true' || itemData.is_public === true;
+      }
+
       // Handle file upload for resources
       if (formType === 'resources' && resourceFile) {
         const { data: uploadData, error: uploadError } = await insforge.storage
@@ -210,12 +220,14 @@ export function BibleSchoolManagementPage() {
       }
 
       // Set created_by
-      itemData.created_by = user?.id;
+      if (!editingItem) {
+        itemData.created_by = user?.id;
+      }
       itemData.updated_at = new Date().toISOString();
 
-      // Remove undefined/null values
+      // Remove undefined/null/empty string values (but keep 0 and false)
       Object.keys(itemData).forEach(key => {
-        if (itemData[key] === '' || itemData[key] === null) {
+        if (itemData[key] === '' || (itemData[key] === null && key !== 'scheduled_date' && key !== 'meeting_link' && key !== 'location')) {
           delete itemData[key];
         }
       });
@@ -225,34 +237,66 @@ export function BibleSchoolManagementPage() {
         if (data.scheduled_date && data.scheduled_time) {
           itemData.scheduled_date = new Date(`${data.scheduled_date}T${data.scheduled_time}`).toISOString();
         }
+        // Remove scheduled_time from itemData as it's not a column
+        delete itemData.scheduled_time;
       } else if (formType === 'classes') {
         tableName = 'bible_school_classes';
         if (data.scheduled_date && data.scheduled_time) {
           itemData.scheduled_date = new Date(`${data.scheduled_date}T${data.scheduled_time}`).toISOString();
         }
+        delete itemData.scheduled_time;
       } else if (formType === 'meetings') {
         tableName = 'bible_school_meetings';
         if (data.scheduled_date && data.scheduled_time) {
           itemData.scheduled_date = new Date(`${data.scheduled_date}T${data.scheduled_time}`).toISOString();
         }
+        delete itemData.scheduled_time;
       } else if (formType === 'resources') {
         tableName = 'bible_school_resources';
+        // Set default values for resources
+        if (!itemData.download_count) itemData.download_count = 0;
+        if (itemData.is_public === undefined) itemData.is_public = true;
       }
 
+      console.log('Saving to table:', tableName);
+      console.log('Item data:', itemData);
+
       if (editingItem) {
-        await insforge.database.from(tableName).update(itemData).eq('id', editingItem.id);
+        const { data: updated, error: updateError } = await insforge.database
+          .from(tableName)
+          .update(itemData)
+          .eq('id', editingItem.id)
+          .select()
+          .single();
+        
+        if (updateError) {
+          console.error('Update error:', updateError);
+          throw updateError;
+        }
+        console.log('Updated item:', updated);
       } else {
-        await insforge.database.from(tableName).insert([itemData]);
+        const { data: inserted, error: insertError } = await insforge.database
+          .from(tableName)
+          .insert([itemData])
+          .select()
+          .single();
+        
+        if (insertError) {
+          console.error('Insert error:', insertError);
+          throw insertError;
+        }
+        console.log('Inserted item:', inserted);
       }
 
       reset();
       setShowForm(false);
       setEditingItem(null);
+      setResourceFile(null);
       fetchData();
       alert(`${formType === 'studies' ? 'Study' : formType === 'classes' ? 'Class' : formType === 'meetings' ? 'Meeting' : 'Resource'} ${editingItem ? 'updated' : 'created'} successfully!`);
     } catch (err: any) {
       console.error('Error saving:', err);
-      alert(err.message || 'Failed to save item');
+      alert(`Failed to save: ${err.message || 'Unknown error'}. Check console for details.`);
     }
   };
 
@@ -569,9 +613,8 @@ export function BibleSchoolManagementPage() {
                       <label className="flex items-center">
                         <input
                           type="radio"
-                          {...register('is_online')}
                           value="true"
-                          checked={isOnline}
+                          checked={isOnline === true}
                           onChange={() => setValue('is_online', true)}
                           className="mr-2"
                         />
@@ -580,9 +623,8 @@ export function BibleSchoolManagementPage() {
                       <label className="flex items-center">
                         <input
                           type="radio"
-                          {...register('is_online')}
                           value="false"
-                          checked={!isOnline}
+                          checked={isOnline === false}
                           onChange={() => setValue('is_online', false)}
                           className="mr-2"
                         />
