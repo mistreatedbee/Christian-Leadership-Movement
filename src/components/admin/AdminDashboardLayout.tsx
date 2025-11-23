@@ -4,6 +4,7 @@ import { LayoutDashboard, Users, FileText, BookOpen, Calendar, Award, BarChart3,
 import { useUser } from '@insforge/react';
 import { getUserRole } from '../../lib/auth';
 import { insforge } from '../../lib/insforge';
+import { getStorageUrl } from '../../lib/connection';
 
 export function AdminDashboardLayout() {
   const navigate = useNavigate();
@@ -15,7 +16,8 @@ export function AdminDashboardLayout() {
   const [notificationCounts, setNotificationCounts] = useState({
     applications: 0,
     mentors: 0,
-    prayerRequests: 0
+    prayerRequests: 0,
+    groups: 0
   });
 
   useEffect(() => {
@@ -38,7 +40,11 @@ export function AdminDashboardLayout() {
           if (userData) {
             setAdminName(userData.nickname || user.name || user.email || 'Admin User');
             if (userData.avatar_url) {
-              setAdminAvatar(userData.avatar_url);
+              // Convert avatar URL to full public URL if needed
+              const avatarUrl = userData.avatar_url.startsWith('http') 
+                ? userData.avatar_url 
+                : getStorageUrl('avatars', userData.avatar_url);
+              setAdminAvatar(avatarUrl);
             }
           } else {
             setAdminName(user.name || user.email || 'Admin User');
@@ -59,7 +65,7 @@ export function AdminDashboardLayout() {
       if (!user) return;
       
       try {
-        const [pendingApps, pendingMentors, pendingPrayers] = await Promise.all([
+        const [pendingApps, pendingMentors, pendingPrayers, pendingGroups] = await Promise.all([
           insforge.database
             .from('applications')
             .select('id', { count: 'exact', head: true })
@@ -71,13 +77,18 @@ export function AdminDashboardLayout() {
           insforge.database
             .from('prayer_requests')
             .select('id', { count: 'exact', head: true })
+            .eq('status', 'pending'),
+          insforge.database
+            .from('groups')
+            .select('id', { count: 'exact', head: true })
             .eq('status', 'pending')
         ]);
 
         setNotificationCounts({
           applications: pendingApps.count || 0,
           mentors: pendingMentors.count || 0,
-          prayerRequests: pendingPrayers.count || 0
+          prayerRequests: pendingPrayers.count || 0,
+          groups: pendingGroups.count || 0
         });
       } catch (error) {
         console.error('Error fetching notification counts:', error);
@@ -239,6 +250,8 @@ export function AdminDashboardLayout() {
                 badgeCount = notificationCounts.mentors;
               } else if (item.path === '/admin/prayer-requests') {
                 badgeCount = notificationCounts.prayerRequests;
+              } else if (item.path === '/admin/groups') {
+                badgeCount = notificationCounts.groups;
               }
 
               return (
@@ -290,6 +303,10 @@ export function AdminDashboardLayout() {
                 src={adminAvatar} 
                 alt={adminName}
                 className="w-10 h-10 rounded-full object-cover border-2 border-gold"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold">

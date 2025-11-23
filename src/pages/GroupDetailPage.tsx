@@ -4,6 +4,21 @@ import { ArrowLeft, Users, Calendar, MessageSquare, Settings, UserPlus, Mail, He
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
+import { getStorageUrl } from '../lib/connection';
+
+// Helper function to ensure avatar/image URL is a full public URL
+function getPublicImageUrl(imageUrl: string | null | undefined, bucket: 'avatars' | 'gallery' = 'avatars'): string | null {
+  if (!imageUrl) return null;
+  
+  // If already a full URL, return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Use connection utility for consistent URL handling
+  const key = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+  return getStorageUrl(bucket, key);
+}
 
 interface Group {
   id: string;
@@ -402,9 +417,12 @@ export function GroupDetailPage() {
           <div className="flex-1">
             {group.image_url && (
               <img
-                src={group.image_url}
+                src={getPublicImageUrl(group.image_url, 'gallery') || group.image_url}
                 alt={group.name}
                 className="w-full h-48 object-cover rounded-lg mb-4"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
               />
             )}
             <h1 className="text-3xl font-bold text-navy-ink mb-2">{group.name}</h1>
@@ -507,9 +525,12 @@ export function GroupDetailPage() {
                 <div className="flex items-center gap-4">
                   {member.users?.avatar_url ? (
                     <img
-                      src={member.users.avatar_url}
+                      src={getPublicImageUrl(member.users.avatar_url, 'avatars') || member.users.avatar_url}
                       alt={member.users.nickname || member.users.email}
-                      className="w-12 h-12 rounded-full"
+                      className="w-12 h-12 rounded-full object-cover"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   ) : (
                     <div className="w-12 h-12 rounded-full bg-gold flex items-center justify-center text-white font-bold">
@@ -600,9 +621,12 @@ export function GroupDetailPage() {
                   <div className="flex items-start gap-4">
                     {message.users?.avatar_url ? (
                       <img
-                        src={message.users.avatar_url}
+                        src={getPublicImageUrl(message.users.avatar_url, 'avatars') || message.users.avatar_url}
                         alt={message.users.nickname || message.users.email}
-                        className="w-10 h-10 rounded-full"
+                        className="w-10 h-10 rounded-full object-cover"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
                       />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">
@@ -721,9 +745,12 @@ export function GroupDetailPage() {
                             <div key={reply.id} className="flex items-start gap-3">
                               {reply.users?.avatar_url ? (
                                 <img
-                                  src={reply.users.avatar_url}
+                                  src={getPublicImageUrl(reply.users.avatar_url, 'avatars') || reply.users.avatar_url}
                                   alt={reply.users.nickname || reply.users.email}
-                                  className="w-8 h-8 rounded-full"
+                                  className="w-8 h-8 rounded-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).style.display = 'none';
+                                  }}
                                 />
                               ) : (
                                 <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">

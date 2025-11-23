@@ -5,6 +5,21 @@ import { Link } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
+import { getStorageUrl } from '../lib/connection';
+
+// Helper function to ensure image URL is a full public URL
+function getPublicImageUrl(imageUrl: string | null | undefined, bucket: 'avatars' | 'gallery' = 'gallery'): string | null {
+  if (!imageUrl) return null;
+  
+  // If already a full URL, return as is
+  if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
+    return imageUrl;
+  }
+  
+  // Use connection utility for consistent URL handling
+  const key = imageUrl.startsWith('/') ? imageUrl.slice(1) : imageUrl;
+  return getStorageUrl(bucket, key);
+}
 
 interface Group {
   id: string;
@@ -353,9 +368,12 @@ export function GroupsPage() {
                 >
                   {group.image_url && (
                     <img
-                      src={group.image_url}
+                      src={getPublicImageUrl(group.image_url, 'gallery') || group.image_url}
                       alt={group.name}
                       className="w-full h-32 object-cover rounded-lg mb-4"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
                     />
                   )}
                   <div className="flex items-start justify-between mb-2">
@@ -448,9 +466,12 @@ export function GroupsPage() {
               <div key={group.id} className="bg-white p-6 rounded-card shadow-soft">
                 {group.image_url && (
                   <img
-                    src={group.image_url}
+                    src={getPublicImageUrl(group.image_url, 'gallery') || group.image_url}
                     alt={group.name}
                     className="w-full h-32 object-cover rounded-lg mb-4"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                    }}
                   />
                 )}
                 <h3 className="text-xl font-bold text-navy-ink mb-2">{group.name}</h3>

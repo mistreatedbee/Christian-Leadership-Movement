@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, Trash2, Search, Eye, Lock, Unlock, X, Check, AlertCircle, Pause, Play } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
+import { getStorageUrl } from '../../lib/connection';
 
 interface Group {
   id: string;
@@ -44,9 +45,24 @@ export function GroupsManagementPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
+      // Fetch all groups with proper joins
       let query = insforge.database
         .from('groups')
-        .select('*, users(*), group_members(*)')
+        .select(`
+          *,
+          users!groups_created_by_fkey(
+            id,
+            nickname,
+            email,
+            avatar_url
+          ),
+          group_members(
+            id,
+            user_id,
+            role,
+            joined_at
+          )
+        `)
         .order('created_at', { ascending: false });
 
       if (filterType !== 'all') {
@@ -57,10 +73,66 @@ export function GroupsManagementPage() {
         query = query.eq('status', filterStatus);
       }
 
-      const { data } = await query;
-      setGroups(data || []);
+      const { data, error } = await query;
+      
+      if (error) {
+        console.error('Error fetching groups:', error);
+        // Try fallback query if foreign key join fails
+        const fallbackQuery = insforge.database
+          .from('groups')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        if (filterType !== 'all') {
+          fallbackQuery.eq('group_type', filterType);
+        }
+        if (filterStatus !== 'all') {
+          fallbackQuery.eq('status', filterStatus);
+        }
+        
+        const { data: fallbackData } = await fallbackQuery;
+        
+        // Manually fetch creator info for each group
+        if (fallbackData) {
+          const groupsWithCreators = await Promise.all(
+            fallbackData.map(async (group: any) => {
+              try {
+                const { data: creatorData } = await insforge.database
+                  .from('users')
+                  .select('id, nickname, email, avatar_url')
+                  .eq('id', group.created_by)
+                  .single();
+                
+                const { data: membersData } = await insforge.database
+                  .from('group_members')
+                  .select('id, user_id, role, joined_at')
+                  .eq('group_id', group.id);
+                
+                return {
+                  ...group,
+                  users: creatorData || null,
+                  group_members: membersData || []
+                };
+              } catch (err) {
+                console.error('Error fetching creator for group:', group.id, err);
+                return {
+                  ...group,
+                  users: null,
+                  group_members: []
+                };
+              }
+            })
+          );
+          setGroups(groupsWithCreators);
+        } else {
+          setGroups([]);
+        }
+      } else {
+        setGroups(data || []);
+      }
     } catch (error) {
       console.error('Error fetching groups:', error);
+      setGroups([]);
     } finally {
       setLoading(false);
     }
@@ -319,13 +391,39 @@ export function GroupsManagementPage() {
               {filteredGroups.map((group) => (
                 <tr key={group.id} className="border-b">
                   <td className="py-4 px-6">
-                    <div className="font-medium">{group.name}</div>
-                    {group.description && (
-                      <div className="text-sm text-gray-500 line-clamp-1">{group.description}</div>
-                    )}
+                    <div className="flex items-center gap-3">
+                      {group.image_url && (
+                        <img
+                          src={group.image_url.startsWith('http') ? group.image_url : getStorageUrl('gallery', group.image_url)}
+                          alt={group.name}
+                          className="w-10 h-10 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div>
+                        <div className="font-medium">{group.name}</div>
+                        {group.description && (
+                          <div className="text-sm text-gray-500 line-clamp-1">{group.description}</div>
+                        )}
+                      </div>
+                    </div>
                   </td>
                   <td className="py-4 px-6 text-sm">
-                    {group.users?.nickname || group.users?.email || 'Unknown'}
+                    <div className="flex items-center gap-2">
+                      {group.users?.avatar_url && (
+                        <img
+                          src={group.users.avatar_url.startsWith('http') ? group.users.avatar_url : getStorageUrl('avatars', group.users.avatar_url)}
+                          alt={group.users.nickname || group.users.email}
+                          className="w-6 h-6 rounded-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>{group.users?.nickname || group.users?.email || 'Unknown'}</span>
+                    </div>
                   </td>
                   <td className="py-4 px-6 text-sm">
                     {group.group_type || 'N/A'}
@@ -522,13 +620,29 @@ export function GroupsManagementPage() {
                 <div className="divide-y">
                   {groupMembers.map((member) => (
                     <div key={member.id} className="py-3 flex items-center justify-between">
-                      <div>
-                        <span className="font-medium">
-                          {member.users?.nickname || member.users?.email || 'Unknown'}
-                        </span>
-                        <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                          {member.role}
-                        </span>
+                      <div className="flex items-center gap-3">
+                        {member.users?.avatar_url ? (
+                          <img
+                            src={member.users.avatar_url.startsWith('http') ? member.users.avatar_url : getStorageUrl('avatars', member.users.avatar_url)}
+                            alt={member.users.nickname || member.users.email}
+                            className="w-10 h-10 rounded-full object-cover"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold">
+                            {(member.users?.nickname || member.users?.email || 'U')[0].toUpperCase()}
+                          </div>
+                        )}
+                        <div>
+                          <span className="font-medium">
+                            {member.users?.nickname || member.users?.email || 'Unknown'}
+                          </span>
+                          <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                            {member.role}
+                          </span>
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <span className="text-sm text-gray-500">
