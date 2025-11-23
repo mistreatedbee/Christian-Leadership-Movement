@@ -80,20 +80,21 @@ export function UserManagementPage() {
         throw profilesError;
       }
 
-      // Combine users with their profiles - EMAIL PRIORITY: users.email > user_profiles.email
-      // This matches the same logic used in Application Management
+      // Combine users with their profiles
+      // CRITICAL: Email is stored in users table, NOT in user_profiles table
+      // Always fetch email from users.email (where it's actually saved during registration)
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
         
-        // EMAIL: Use users.email first (from registration), then user_profiles.email as fallback
-        // This ensures we get the email that was saved during registration
-        const userEmail = user.email || profile?.email || null;
+        // EMAIL: Get ONLY from users table (where emails are actually saved)
+        // Do NOT use user_profiles.email as it's not being saved there
+        const userEmail = user.email || null;
         
         return {
           id: profile?.id || user.id,
           user_id: user.id,
           nickname: user.nickname || null,
-          email: userEmail, // CRITICAL: Email from users table (registration) or user_profiles
+          email: userEmail, // CRITICAL: Email from users table ONLY (where emails are saved)
           phone: profile?.phone || null,
           city: profile?.city || null,
           province: profile?.province || null,
