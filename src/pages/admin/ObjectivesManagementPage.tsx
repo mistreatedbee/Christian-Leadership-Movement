@@ -370,12 +370,28 @@ export function ObjectivesManagementPage() {
     if (!confirm('Are you sure you want to delete this objective?')) return;
 
     try {
+      // Get objective details before deleting for audit log
+      const { data: objective } = await insforge.database
+        .from('strategic_objectives')
+        .select('title')
+        .eq('id', id)
+        .maybeSingle();
+
       const { error } = await insforge.database
         .from('strategic_objectives')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      
+      // Log audit event
+      if (user) {
+        auditActions.objectiveDeleted(id, {
+          title: objective?.title || 'Unknown',
+          deleted_by: user.id,
+        });
+      }
+      
       setMessage({ type: 'success', text: 'Objective deleted successfully!' });
       fetchObjectives();
     } catch (err: any) {
