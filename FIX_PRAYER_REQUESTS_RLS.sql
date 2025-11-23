@@ -1,5 +1,7 @@
 -- Fix RLS policies for prayer_requests to allow admins to see all requests
 -- This ensures the admin policy uses the same function as other tables
+-- NOTE: This script assumes the prayer_requests table already exists
+-- If you get "relation does not exist" error, run CREATE_PRAYER_REQUESTS_TABLE.sql first
 
 -- Drop existing policies
 DROP POLICY IF EXISTS "Public can read public prayer requests" ON public.prayer_requests;
