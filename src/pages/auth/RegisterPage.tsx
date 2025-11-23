@@ -114,12 +114,14 @@ export function RegisterPage() {
           // Continue - user might already exist
         }
         
-        // Create user profile with ALL registration information
+        // Create user profile with ALL registration information (including email)
+        // Email is saved to user_profiles so admins can access it with same RLS logic as other fields
         try {
           const { error: profileError } = await insforge.database
             .from('user_profiles')
             .insert([{
               user_id: result.user.id,
+              email: data.email, // Save email to user_profiles - admins can access it with same RLS logic
               phone: data.phone,
               address: data.address || null,
               city: data.city || null,
@@ -136,6 +138,7 @@ export function RegisterPage() {
               await insforge.database
                 .from('user_profiles')
                 .update({
+                  email: data.email, // Update email in user_profiles as well
                   phone: data.phone,
                   address: data.address || null,
                   city: data.city || null,
