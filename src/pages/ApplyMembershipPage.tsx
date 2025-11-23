@@ -338,10 +338,71 @@ export function ApplyMembershipPage() {
       if (data.disabilityPhysical) disabilities.push('Physical');
       if (data.disabilityOther) disabilities.push(`Other: ${data.disabilityOther}`);
 
-      // Create application
+      // Save ALL form data to form_data JSONB column for complete data preservation
+      // This ensures admins can see every single field that was submitted, including all checkboxes
+      const completeFormData = {
+        // Step 1: Personal Information
+        idNumber: data.idNumber,
+        nationality: data.nationality,
+        title: data.title,
+        firstName: data.firstName,
+        middleName: data.middleName,
+        lastName: data.lastName,
+        initials: data.initials,
+        preferredName: data.preferredName,
+        dateOfBirth: data.dateOfBirth,
+        gender: data.gender,
+        province: data.province,
+        residentialStatus: data.residentialStatus,
+        phone: data.phone,
+        email: data.email,
+        homeLanguage: data.homeLanguage,
+        populationGroup: data.populationGroup,
+        city: data.city,
+        postalCode: data.postalCode,
+        // Disability Information - ALL checkboxes
+        disabilityNone: data.disabilityNone,
+        disabilitySight: data.disabilitySight,
+        disabilityHearing: data.disabilityHearing,
+        disabilitySpeech: data.disabilitySpeech,
+        disabilityPhysical: data.disabilityPhysical,
+        disabilityOther: data.disabilityOther,
+        // Step 2: Ministry Involvement
+        currentMinistryName: data.currentMinistryName,
+        denomination: data.denomination,
+        // Ministry Type checkboxes - ALL of them
+        ministryTypeLocalChurch: data.ministryTypeLocalChurch,
+        ministryTypeTeaching: data.ministryTypeTeaching,
+        ministryTypeCounselling: data.ministryTypeCounselling,
+        ministryTypeYouth: data.ministryTypeYouth,
+        ministryTypeOther: data.ministryTypeOther,
+        ministryTypeNotApplicable: data.ministryTypeNotApplicable,
+        ministryTypeOtherText: data.ministryTypeOtherText,
+        ministryPosition: data.ministryPosition,
+        ministryWebsite: data.ministryWebsite,
+        yearsPartTime: data.yearsPartTime,
+        yearsFullTime: data.yearsFullTime,
+        primaryIncomeSource: data.primaryIncomeSource,
+        primaryIncomeOther: data.primaryIncomeOther,
+        // Step 3: Qualifications & References
+        highSchool: data.highSchool,
+        highestMinistryQualification: data.highestMinistryQualification,
+        highestOtherQualification: data.highestOtherQualification,
+        otherTraining: data.otherTraining,
+        referenceFirstName: data.referenceFirstName,
+        referenceLastName: data.referenceLastName,
+        referenceContact: data.referenceContact,
+        referenceEmail: data.referenceEmail,
+        referenceTitle: data.referenceTitle,
+        signature: data.signature,
+        declarationDate: data.declarationDate
+      };
+
+      // Create application - Save to both individual columns AND form_data JSONB
       const applicationData: any = {
         user_id: user.id,
         program_type: 'membership',
+        // Individual columns (for compatibility and easy querying)
         full_name: `${data.firstName} ${data.lastName}`,
         email: data.email,
         phone: data.phone,
@@ -385,6 +446,8 @@ export function ApplyMembershipPage() {
         id_passport_url: idUpload.url,
         id_passport_key: idUpload.key,
         additional_documents_url: additionalUrls,
+        // CRITICAL: Save ALL form data to form_data JSONB column
+        form_data: completeFormData,
         status: 'pending',
         payment_status: 'pending'
       };

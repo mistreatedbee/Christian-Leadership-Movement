@@ -344,18 +344,58 @@ export function ApplyBibleSchoolPage() {
         if (!paymentUpload) return;
       }
 
-      // Create application
+      // Save ALL form data to form_data JSONB column for complete data preservation
+      // This ensures admins can see every single field that was submitted
+      const completeFormData = {
+        // Step 1: Personal Information
+        fullName: data.fullName,
+        idNumber: data.idNumber,
+        gender: data.gender,
+        maritalStatus: data.maritalStatus,
+        contactNumber: data.contactNumber,
+        email: data.email,
+        physicalAddress: data.physicalAddress,
+        country: data.country,
+        // Step 2: Spiritual Background
+        dateAcceptedChrist: data.dateAcceptedChrist,
+        isBaptized: data.isBaptized,
+        baptismDate: data.baptismDate,
+        attendsLocalChurch: data.attendsLocalChurch,
+        churchName: data.churchName,
+        denomination: data.denomination,
+        pastorName: data.pastorName,
+        servesInMinistry: data.servesInMinistry,
+        ministryServiceDescription: data.ministryServiceDescription,
+        // Step 3: Leadership Interests
+        whyJoinBibleSchool: data.whyJoinBibleSchool,
+        leadershipRoles: data.leadershipRoles,
+        previousLeadershipExperience: data.previousLeadershipExperience,
+        // Step 4: Vision & Calling
+        callingStatement: data.callingStatement,
+        leadershipAmbitions: data.leadershipAmbitions,
+        // Step 5: References & Fees
+        refereeName: data.refereeName,
+        refereeContact: data.refereeContact,
+        relationshipToReferee: data.relationshipToReferee,
+        registrationOption: data.registrationOption,
+        signature: data.signature,
+        declarationDate: data.declarationDate
+      };
+
+      // Create application - Save to both individual columns AND form_data JSONB
       const applicationData: any = {
         user_id: user.id,
         program_type: 'bible_school',
+        // Individual columns (for compatibility and easy querying)
         full_name: data.fullName,
         email: data.email,
         phone: data.contactNumber,
+        contact_number: data.contactNumber, // Also save as contact_number
         id_number: data.idNumber,
         gender: data.gender,
         marital_status: data.maritalStatus,
         address: data.physicalAddress,
-        physical_address: data.physicalAddress, // Save to both fields for compatibility
+        physical_address: data.physicalAddress,
         country: data.country,
         date_accepted_christ: data.dateAcceptedChrist,
         is_baptized: data.isBaptized,
@@ -381,6 +421,8 @@ export function ApplyBibleSchoolPage() {
         id_passport_key: idUpload.key,
         payment_proof_url: paymentUpload?.url || null,
         payment_proof_key: paymentUpload?.key || null,
+        // CRITICAL: Save ALL form data to form_data JSONB column
+        form_data: completeFormData,
         status: 'pending',
         payment_status: 'pending'
       };
