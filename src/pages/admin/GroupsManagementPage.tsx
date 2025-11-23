@@ -283,11 +283,18 @@ export function GroupsManagementPage() {
           </select>
         </div>
         {groups.filter(g => g.status === 'pending').length > 0 && (
-          <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg">
-            <AlertCircle className="w-5 h-5" />
-            <span className="font-medium">
-              {groups.filter(g => g.status === 'pending').length} group(s) pending review
-            </span>
+          <div className="mt-4 bg-amber-50 border-l-4 border-amber-500 p-4 rounded-card">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <AlertCircle className="text-amber-600" size={24} />
+                <div>
+                  <p className="font-medium text-amber-900">
+                    ⚠️ {groups.filter(g => g.status === 'pending').length} new group(s) waiting for your approval
+                  </p>
+                  <p className="text-sm text-amber-700">Someone created a group and it's pending your review. Please approve or reject it.</p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
