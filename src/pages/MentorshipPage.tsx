@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard, ArrowLeft } from 'lucide-react';
+import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard, ArrowLeft, BookOpen, Clock, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
@@ -580,6 +581,49 @@ export function MentorshipPage() {
       )}
         </div>
         </main>
+
+      {/* Quizzes Section */}
+      {quizzes.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-card shadow-soft p-8 mb-8">
+            <h2 className="text-3xl font-bold text-navy-ink mb-6 flex items-center gap-2">
+              <BookOpen className="w-8 h-8 text-gold" />
+              Mentorship Program Quizzes
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Test your knowledge and track your progress with these quizzes designed for mentorship participants.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {quizzes.map(quiz => (
+                <div key={quiz.id} className="bg-white border border-gray-200 rounded-card p-6 hover:border-gold transition-all shadow-sm">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="font-semibold text-navy-ink text-lg">{quiz.title}</h3>
+                    <BookOpen className="text-blue-500 flex-shrink-0" size={20} />
+                  </div>
+                  {quiz.description && (
+                    <p className="text-sm text-gray-600 mb-4 line-clamp-3">{quiz.description}</p>
+                  )}
+                  <div className="flex items-center gap-4 text-xs text-gray-500 mb-4">
+                    {quiz.time_limit && (
+                      <div className="flex items-center gap-1">
+                        <Clock size={14} />
+                        <span>{quiz.time_limit} min</span>
+                      </div>
+                    )}
+                    <span>Pass: {quiz.passing_score}%</span>
+                  </div>
+                  <Link to={`/dashboard/quizzes/${quiz.id}/take`}>
+                    <Button variant="primary" className="w-full">
+                      Take Quiz <ArrowRight className="ml-2" size={16} />
+                    </Button>
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       <Footer />
     </div>
   );
