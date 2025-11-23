@@ -177,25 +177,46 @@ export function UserManagementPage() {
     setSyncingEmails(true);
     setMessage(null);
     try {
-      // First, try to get emails from applications and update users table directly
-      // This works without needing SQL functions
-      const { data: applications, error: appsError } = await insforge.database
+      // First, try to get emails from applications
+      // Try to select email column first, if it doesn't exist, try form_data JSONB
+      let applications: any[] = [];
+      let emailField = 'email';
+      
+      const { data: appsWithEmail, error: emailColumnError } = await insforge.database
         .from('applications')
         .select('user_id, email')
-        .not('email', 'is', null)
         .not('user_id', 'is', null);
       
-      if (appsError) {
-        // Check if error is because email column doesn't exist
-        if (appsError.message?.includes('column') && appsError.message?.includes('email') && appsError.message?.includes('does not exist')) {
-          setMessage({ 
-            type: 'error', 
-            text: 'Email column does not exist in applications table. Please run ADD_EMAIL_TO_APPLICATIONS.sql first, or add the email column manually in InsForge Dashboard: Database > Tables > applications > Add Column (name: email, type: TEXT, nullable: YES)' 
-          });
-          setSyncingEmails(false);
-          return;
+      if (emailColumnError) {
+        // If email column doesn't exist, try to get it from form_data JSONB
+        if (emailColumnError.message?.includes('column') && emailColumnError.message?.includes('email')) {
+          console.log('Email column not found, trying form_data JSONB...');
+          const { data: appsWithFormData, error: formDataError } = await insforge.database
+            .from('applications')
+            .select('user_id, form_data')
+            .not('user_id', 'is', null)
+            .not('form_data', 'is', null);
+          
+          if (formDataError) {
+            setMessage({ 
+              type: 'error', 
+              text: 'Cannot sync emails: Email column does not exist and form_data is not available. Please add the email column manually in InsForge Dashboard: Database > Tables > applications > Add Column (name: email, type: TEXT, nullable: YES)' 
+            });
+            setSyncingEmails(false);
+            return;
+          }
+          
+          // Extract email from form_data JSONB
+          applications = (appsWithFormData || []).map((app: any) => ({
+            user_id: app.user_id,
+            email: app.form_data?.email || app.form_data?.Email || null
+          })).filter((app: any) => app.email);
+          emailField = 'form_data.email';
+        } else {
+          throw new Error(`Failed to fetch applications: ${emailColumnError.message}`);
         }
-        throw new Error(`Failed to fetch applications: ${appsError.message}`);
+      } else {
+        applications = (appsWithEmail || []).filter((app: any) => app.email);
       }
       
       if (!applications || applications.length === 0) {
