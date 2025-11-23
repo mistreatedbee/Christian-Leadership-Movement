@@ -74,6 +74,16 @@ export function UserManagementPage() {
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
+      
+      // DEBUG: Log what we actually got from the database
+      if (allUsers && allUsers.length > 0) {
+        console.log('🔍 FIRST USER FROM DATABASE:', allUsers[0]);
+        console.log('🔍 FIRST USER KEYS:', Object.keys(allUsers[0]));
+        console.log('🔍 FIRST USER EMAIL:', allUsers[0].email);
+        console.log('🔍 FIRST USER EMAIL TYPE:', typeof allUsers[0].email);
+        console.log('🔍 FIRST USER EMAIL === null?', allUsers[0].email === null);
+        console.log('🔍 FIRST USER EMAIL === undefined?', allUsers[0].email === undefined);
+      }
 
       if (usersError) {
         console.error('❌ Error fetching users:', usersError);
