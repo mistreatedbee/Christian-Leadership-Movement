@@ -6,6 +6,7 @@ import { useUser } from '@insforge/react';
 import { getStorageUrl } from '../../lib/connection';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { auditActions } from '../../lib/auditLogger';
 
 interface User {
   id: string;

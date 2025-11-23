@@ -153,6 +153,16 @@ export function FeeManagementPage() {
 
       // Check if amounts match (with small tolerance for floating point)
       if (verifyData && Math.abs(actualAmount - newAmount) < 0.01) {
+        // Log audit event
+        if (user) {
+          auditActions.feeUpdated(feeId, currentFee?.fee_type || 'unknown', {
+            old_amount: currentFee?.amount,
+            new_amount: newAmount,
+            description: updateData.description,
+            updated_by: user.id,
+          });
+        }
+        
         setMessage({ 
           type: 'success', 
           text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 

@@ -6,6 +6,7 @@ import { uploadFileWithUserCheck } from '../../lib/uploadHelpers';
 import { getStorageUrl } from '../../lib/connection';
 import { Button } from '../../components/ui/Button';
 import { Plus, Edit, Trash2, Save, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { auditActions } from '../../lib/auditLogger';
 
 interface StrategicObjective {
   id: string;
@@ -205,13 +206,33 @@ export function ObjectivesManagementPage() {
           .eq('id', editingObjective.id);
 
         if (error) throw error;
+        
+        // Log audit event
+        if (user) {
+          auditActions.objectiveUpdated(editingObjective.id, {
+            title: data.title,
+            updated_by: user.id,
+          });
+        }
+        
         setMessage({ type: 'success', text: 'Objective updated successfully!' });
       } else {
-        const { error } = await insforge.database
+        const { data: inserted, error } = await insforge.database
           .from('strategic_objectives')
-          .insert([objectiveData]);
+          .insert([objectiveData])
+          .select()
+          .single();
 
         if (error) throw error;
+        
+        // Log audit event
+        if (user && inserted) {
+          auditActions.objectiveCreated(inserted.id, {
+            title: data.title,
+            created_by: user.id,
+          });
+        }
+        
         setMessage({ type: 'success', text: 'Objective created successfully!' });
       }
 
