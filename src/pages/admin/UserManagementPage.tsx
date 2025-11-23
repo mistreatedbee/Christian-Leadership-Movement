@@ -409,85 +409,62 @@ export function UserManagementPage() {
       console.log('🔍 Final userData:', userData);
       console.log('🔍 Final email:', userData?.email);
       
-      // If email is still missing, try to get it from applications
+      // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email
+      // Applications should NOT be used - email should be in users table from registration
+      // Only check applications as absolute last resort if email is still missing from all registration sources
       let emailFromApps = null;
-      if (!userData?.email) {
-        console.log('🔍 Email missing from users table, checking applications...');
+      if (!userData?.email && !user.email && !profileData?.email) {
+        console.log('⚠️ Email missing from all registration sources (users, user_profiles), checking applications as last resort...');
         
         try {
-          // First try to select email column directly
-          const { data: appWithEmail, error: appError } = await insforge.database
+          // Try to extract from form_data (email column doesn't exist in applications - causes 400 error)
+          const { data: appWithFormData, error: formDataError } = await insforge.database
             .from('applications')
-            .select('email')
+            .select('form_data')
             .eq('user_id', user.user_id)
-            .not('email', 'is', null)
+            .not('form_data', 'is', null)
             .limit(1)
             .maybeSingle();
           
-          if (!appError && appWithEmail?.email) {
-            emailFromApps = appWithEmail.email;
-            console.log('🔍 EMAIL FROM APPLICATIONS (email column):', emailFromApps);
-          } else {
-            // Email column doesn't exist, try to extract from form_data
-            console.log('⚠️ Email column not found, trying form_data...');
-            const { data: appWithFormData, error: formDataError } = await insforge.database
-              .from('applications')
-              .select('form_data')
-              .eq('user_id', user.user_id)
-              .not('form_data', 'is', null)
-              .limit(1)
-              .maybeSingle();
+          if (!formDataError && appWithFormData?.form_data) {
+            // Try to extract email from form_data (could be 'email' or 'Email')
+            emailFromApps = appWithFormData.form_data?.email || 
+                           appWithFormData.form_data?.Email || 
+                           appWithFormData.form_data?.EMAIL || 
+                           null;
+            console.log('🔍 EMAIL FROM APPLICATIONS (form_data, last resort):', emailFromApps);
             
-            if (!formDataError && appWithFormData?.form_data) {
-              // Try to extract email from form_data (could be 'email' or 'Email')
-              emailFromApps = appWithFormData.form_data?.email || 
-                             appWithFormData.form_data?.Email || 
-                             appWithFormData.form_data?.EMAIL || 
-                             null;
-              console.log('🔍 EMAIL FROM APPLICATIONS (form_data):', emailFromApps);
-            } else {
-              console.warn('⚠️ Could not fetch email from applications:', formDataError);
-            }
-          }
-        } catch (err: any) {
-          console.error('Error fetching email from applications:', err);
-        }
-        
-        // If we found email in applications, update users table (wait for it to complete)
-        if (emailFromApps) {
-          try {
-            const { error: updateError } = await insforge.database
-              .from('users')
-              .update({ email: emailFromApps })
-              .eq('id', user.user_id);
-            
-            if (updateError) {
-              console.error('❌ Failed to update email in users table:', updateError);
-            } else {
-              console.log('✅ Updated email in users table from applications');
-              // Update userData object so it's available immediately
-              if (userData) {
-                userData.email = emailFromApps;
-              } else {
-                userData = { email: emailFromApps };
+            // If we found email in applications, update users table (wait for it to complete)
+            if (emailFromApps) {
+              try {
+                const { error: updateError } = await insforge.database
+                  .from('users')
+                  .update({ email: emailFromApps } as any)
+                  .eq('id', user.user_id);
+                
+                if (updateError) {
+                  if (!updateError.message?.includes('does not exist') && !updateError.message?.includes('column')) {
+                    console.error('❌ Failed to update email in users table:', updateError);
+                  }
+                } else {
+                  console.log('✅ Updated email in users table from applications (last resort)');
+                  if (userData) {
+                    userData.email = emailFromApps;
+                  } else {
+                    userData = { email: emailFromApps };
+                  }
+                }
+              } catch (updateErr: any) {
+                if (!updateErr.message?.includes('does not exist') && !updateErr.message?.includes('column')) {
+                  console.error('❌ Exception updating email:', updateErr);
+                }
               }
             }
-          } catch (updateErr) {
-            console.error('❌ Exception updating email:', updateErr);
+          } else {
+            console.log('⚠️ No email found in applications form_data either');
           }
-        } else {
-          // If no email in applications either, try to sync from auth one more time
-          console.log('🔍 No email in applications, trying manual sync...');
-          // Don't try to re-fetch with email column - it might not exist
-          // Instead, use email from the user object (from the list) which was fetched with select('*')
-          if (user.email) {
-            console.log('✅ Using email from user list object:', user.email);
-            if (userData) {
-              userData.email = user.email;
-            } else {
-              userData = { email: user.email };
-            }
-          }
+        } catch (err: any) {
+          console.error('Error fetching email from applications (last resort):', err);
         }
       }
 
@@ -522,9 +499,8 @@ export function UserManagementPage() {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
-        // EMAIL PRIORITY: userData.email > user.email (from list) > emailFromApps
-        // Use user.email from the list first since it was fetched with select('*') and should have email
-        email: (userData?.email || user.email || emailFromApps || null),
+        // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email > emailFromApps (last resort)
+        email: (userData?.email || user.email || profileData?.email || emailFromApps || null),
         // Store debug info
         _debug_userDataEmail: userData?.email,
         _debug_emailFromApps: emailFromApps,
