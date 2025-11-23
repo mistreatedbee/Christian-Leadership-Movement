@@ -340,12 +340,12 @@ export function UserManagementPage() {
       }
       
       // PRIORITY 1: Fetch from users table (registration data)
-      // Try multiple approaches to get email
+      // Handle case where email column might not exist
       let userData: any = null;
       let userError: any = null;
       
-      // First try: Select all fields including email
       try {
+        // Select all fields - this will work even if email column doesn't exist
         const result = await insforge.database
           .from('users')
           .select('*')
@@ -355,56 +355,47 @@ export function UserManagementPage() {
         userData = result.data;
         userError = result.error;
         
-        console.log('🔍 First attempt - Full userData:', userData);
-        console.log('🔍 First attempt - Email:', userData?.email);
+        console.log('🔍 User data from users table:', userData);
+        console.log('🔍 Available keys:', userData ? Object.keys(userData) : 'null');
+        console.log('🔍 Email field exists?', userData ? ('email' in userData) : false);
+        console.log('🔍 Email value:', userData?.email);
+        
+        // If email column doesn't exist, userData.email will be undefined
+        // In that case, we'll need to get email from another source
+        if (userData && !('email' in userData)) {
+          console.warn('⚠️ Email column does not exist in users table!');
+          console.warn('Available columns:', Object.keys(userData));
+        }
       } catch (err: any) {
-        console.error('First attempt failed:', err);
+        console.error('Error fetching userData:', err);
         userError = err;
-      }
-      
-      // If email is still missing, try explicit email-only query
-      if (!userData?.email) {
-        console.log('🔍 Email missing, trying email-only query...');
-        try {
-          const emailResult = await insforge.database
-            .from('users')
-            .select('email')
-            .eq('id', user.user_id)
-            .maybeSingle();
-          
-          console.log('🔍 Email-only query result:', emailResult);
-          if (emailResult.data?.email) {
-            userData = { ...userData, email: emailResult.data.email };
-            console.log('✅ Found email via email-only query:', emailResult.data.email);
+        
+        // If error is about email column not existing, try without email
+        if (err.message?.includes('email') && err.message?.includes('does not exist')) {
+          console.log('🔍 Email column error detected, trying without email field...');
+          try {
+            const resultWithoutEmail = await insforge.database
+              .from('users')
+              .select('id, nickname, name, avatar_url, bio, created_at, updated_at')
+              .eq('id', user.user_id)
+              .maybeSingle();
+            
+            userData = resultWithoutEmail.data;
+            console.log('✅ Fetched user data without email column');
+          } catch (err2: any) {
+            console.error('Error fetching without email:', err2);
           }
-        } catch (emailErr: any) {
-          console.error('Email-only query failed:', emailErr);
         }
       }
       
-      // Final check - if still no email, try without RLS restrictions (if possible)
-      if (!userData?.email) {
-        console.log('🔍 Email still missing, checking if RLS is blocking...');
-        // Try to get email from the user object passed in (from the list)
-        if (user.email) {
-          console.log('✅ Using email from user list:', user.email);
-          userData = { ...userData, email: user.email };
-        }
+      // If email is still missing, use email from the user object (from the list)
+      if (!userData?.email && user.email) {
+        console.log('✅ Using email from user list object:', user.email);
+        userData = { ...userData, email: user.email };
       }
       
       console.log('🔍 Final userData:', userData);
       console.log('🔍 Final email:', userData?.email);
-      console.log('🔍 Full userData object keys:', userData ? Object.keys(userData) : 'null');
-      
-      if (userError && !userData) {
-        console.error('Error fetching userData:', userError);
-        console.error('RLS Error details:', {
-          message: userError.message,
-          code: userError.code,
-          details: userError.details,
-          hint: userError.hint
-        });
-      }
       
       // If email is still missing, try to get it from applications
       let emailFromApps = null;
