@@ -218,6 +218,63 @@ export function EventManagementPage() {
 
       // Verify the event was saved
       if (savedEvent) {
+        // Notify registered users about the event (new or updated)
+        try {
+          const { data: registeredUsers } = await insforge.database
+            .from('event_registrations')
+            .select('user_id')
+            .eq('event_id', savedEvent.id);
+
+          if (registeredUsers && registeredUsers.length > 0) {
+            const notifications = registeredUsers.map((reg: any) => ({
+              user_id: reg.user_id,
+              type: 'event',
+              title: editingEvent ? 'Event Updated' : 'New Event Available',
+              message: editingEvent 
+                ? `The event "${savedEvent.title}" has been updated. Check the new details.`
+                : `A new event "${savedEvent.title}" is now available. Event date: ${new Date(savedEvent.event_date).toLocaleDateString()}`,
+              related_id: savedEvent.id,
+              link_url: '/dashboard/events',
+              read: false
+            }));
+
+            await insforge.database
+              .from('notifications')
+              .insert(notifications);
+          }
+
+          // If it's a new event, notify all users
+          if (!editingEvent) {
+            const { data: allUsers } = await insforge.database
+              .from('users')
+              .select('id');
+
+            if (allUsers && allUsers.length > 0) {
+              const notifications = allUsers.map((u: any) => ({
+                user_id: u.id,
+                type: 'event',
+                title: 'New Event Available',
+                message: `A new event "${savedEvent.title}" is now available. Event date: ${new Date(savedEvent.event_date).toLocaleDateString()}`,
+                related_id: savedEvent.id,
+                link_url: '/dashboard/events',
+                read: false
+              }));
+
+              // Insert in batches
+              const batchSize = 100;
+              for (let i = 0; i < notifications.length; i += batchSize) {
+                const batch = notifications.slice(i, i + batchSize);
+                await insforge.database
+                  .from('notifications')
+                  .insert(batch);
+              }
+            }
+          }
+        } catch (notifError) {
+          console.error('Error creating event notifications:', notifError);
+          // Don't fail the event creation if notifications fail
+        }
+
         setShowForm(false);
         reset();
         setImageFile(null);

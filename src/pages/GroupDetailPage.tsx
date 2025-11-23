@@ -214,13 +214,46 @@ export function GroupDetailPage() {
     if (!user || !id || !messageContent.trim()) return;
 
     try {
-      await insforge.database
+      const { data: newMessage, error } = await insforge.database
         .from('group_messages')
         .insert({
           group_id: id,
           user_id: user.id,
           content: messageContent.trim()
-        });
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Notify all group members (except the sender) about the new message
+      try {
+        const { data: groupMembers } = await insforge.database
+          .from('group_members')
+          .select('user_id')
+          .eq('group_id', id)
+          .neq('user_id', user.id);
+
+        if (groupMembers && groupMembers.length > 0 && group) {
+          const notifications = groupMembers.map((member: any) => ({
+            user_id: member.user_id,
+            type: 'group',
+            title: `New Message in ${group.name}`,
+            message: `${user.nickname || user.email || 'Someone'} posted a new message in the group "${group.name}": "${messageContent.trim().substring(0, 100)}${messageContent.trim().length > 100 ? '...' : ''}"`,
+            related_id: id,
+            link_url: `/groups/${id}`,
+            read: false
+          }));
+
+          await insforge.database
+            .from('notifications')
+            .insert(notifications);
+        }
+      } catch (notifError) {
+        console.error('Error creating group message notifications:', notifError);
+        // Don't fail the message sending if notifications fail
+      }
+
       setMessageContent('');
       fetchData(); // Refresh messages
     } catch (error: any) {

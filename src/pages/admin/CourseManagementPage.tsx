@@ -235,6 +235,64 @@ export function CourseManagementPage() {
 
       // Verify the course was saved
       if (savedCourse) {
+        // Notify enrolled users about the course (new or updated)
+        try {
+          const { data: enrolledUsers } = await insforge.database
+            .from('user_course_progress')
+            .select('user_id')
+            .eq('course_id', savedCourse.id);
+
+          if (enrolledUsers && enrolledUsers.length > 0) {
+            const uniqueUserIds = Array.from(new Set(enrolledUsers.map((e: any) => e.user_id)));
+            const notifications = uniqueUserIds.map((userId: string) => ({
+              user_id: userId,
+              type: 'course',
+              title: editingCourse ? 'Course Updated' : 'New Course Available',
+              message: editingCourse
+                ? `The course "${savedCourse.title}" has been updated. Check for new content.`
+                : `A new course "${savedCourse.title}" is now available for enrollment.`,
+              related_id: savedCourse.id,
+              link_url: '/dashboard/courses',
+              read: false
+            }));
+
+            await insforge.database
+              .from('notifications')
+              .insert(notifications);
+          }
+
+          // If it's a new course, notify all users
+          if (!editingCourse) {
+            const { data: allUsers } = await insforge.database
+              .from('users')
+              .select('id');
+
+            if (allUsers && allUsers.length > 0) {
+              const notifications = allUsers.map((u: any) => ({
+                user_id: u.id,
+                type: 'course',
+                title: 'New Course Available',
+                message: `A new course "${savedCourse.title}" is now available for enrollment.`,
+                related_id: savedCourse.id,
+                link_url: '/dashboard/courses',
+                read: false
+              }));
+
+              // Insert in batches
+              const batchSize = 100;
+              for (let i = 0; i < notifications.length; i += batchSize) {
+                const batch = notifications.slice(i, i + batchSize);
+                await insforge.database
+                  .from('notifications')
+                  .insert(batch);
+              }
+            }
+          }
+        } catch (notifError) {
+          console.error('Error creating course notifications:', notifError);
+          // Don't fail the course creation if notifications fail
+        }
+
         setShowCourseForm(false);
         resetCourse();
         setImageFile(null);
