@@ -69,10 +69,10 @@ export function UserManagementPage() {
       }
       
       // Fetch ALL users from users table (including those who just registered)
-      // Explicitly select email to ensure it's included
+      // Use select('*') to get all columns - handles case where email column might not exist
       const { data: allUsers, error: usersError } = await insforge.database
         .from('users')
-        .select('id, email, nickname, name, avatar_url, bio, created_at, updated_at')
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (usersError) {
