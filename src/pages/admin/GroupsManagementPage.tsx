@@ -714,7 +714,7 @@ export function GroupsManagementPage() {
                         {member.users?.avatar_url ? (
                           <img
                             src={member.users.avatar_url.startsWith('http') ? member.users.avatar_url : getStorageUrl('avatars', member.users.avatar_url)}
-                            alt={member.users.nickname || member.users.email}
+                            alt={member.users?.displayName || member.users?.nickname || member.users?.email || 'Unknown'}
                             className="w-10 h-10 rounded-full object-cover"
                             onError={(e) => {
                               (e.target as HTMLImageElement).style.display = 'none';
@@ -722,7 +722,7 @@ export function GroupsManagementPage() {
                           />
                         ) : (
                           <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold">
-                            {(member.users?.nickname || member.users?.email || 'U')[0].toUpperCase()}
+                            {(member.users?.displayName || member.users?.nickname || member.users?.email || 'U')[0].toUpperCase()}
                           </div>
                         )}
                         <div>
