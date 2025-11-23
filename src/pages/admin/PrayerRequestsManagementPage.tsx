@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Heart, Check, X, Archive, Search, Trash2 } from 'lucide-react';
+import { Heart, Check, X, Archive, Search, Trash2, AlertCircle } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 
@@ -48,15 +48,62 @@ export function PrayerRequestsManagementPage() {
 
   const updateStatus = async (id: string, status: string) => {
     try {
-      await insforge.database
+      const { data: updatedRequest, error } = await insforge.database
         .from('prayer_requests')
         .update({ status })
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating status:', error);
+        alert(`Failed to update status: ${error.message}`);
+        return;
+      }
+
+      // If approving a pending request, notify the user
+      if (status === 'active' && updatedRequest?.user_id) {
+        try {
+          await insforge.database
+            .from('notifications')
+            .insert([{
+              user_id: updatedRequest.user_id,
+              type: 'prayer_request',
+              title: 'Prayer Request Approved',
+              message: `Your prayer request "${updatedRequest.title}" has been approved and is now visible on the prayer wall.`,
+              related_id: id,
+              link_url: '/prayer-requests',
+              read: false
+            }]);
+        } catch (notifError) {
+          console.error('Error sending approval notification:', notifError);
+        }
+      }
+
+      // If rejecting, notify the user
+      if (status === 'archived' && updatedRequest?.user_id) {
+        try {
+          await insforge.database
+            .from('notifications')
+            .insert([{
+              user_id: updatedRequest.user_id,
+              type: 'prayer_request',
+              title: 'Prayer Request Archived',
+              message: `Your prayer request "${updatedRequest.title}" has been archived.`,
+              related_id: id,
+              link_url: '/prayer-requests',
+              read: false
+            }]);
+        } catch (notifError) {
+          console.error('Error sending archive notification:', notifError);
+        }
+      }
 
       fetchRequests();
-    } catch (error) {
+      alert(`Prayer request status updated to ${status}`);
+    } catch (error: any) {
       console.error('Error updating status:', error);
-      alert('Failed to update status');
+      alert(`Failed to update status: ${error.message || 'Unknown error'}`);
     }
   };
 
@@ -173,16 +220,37 @@ export function PrayerRequestsManagementPage() {
                   <td className="py-4 px-6">
                     <div className="flex gap-2">
                       {request.status === 'pending' && (
-                        <Button
-                          onClick={() => updateStatus(request.id, 'active')}
-                          variant="primary"
-                          size="sm"
-                          title="Approve & Activate"
-                        >
-                          <Check className="w-4 h-4" />
-                        </Button>
+                        <>
+                          <Button
+                            onClick={() => {
+                              if (confirm('Approve this prayer request and make it visible to all users?')) {
+                                updateStatus(request.id, 'active');
+                              }
+                            }}
+                            variant="primary"
+                            size="sm"
+                            title="Approve & Activate"
+                          >
+                            <Check className="w-4 h-4" />
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (confirm('Reject and archive this prayer request?')) {
+                                updateStatus(request.id, 'archived');
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Reject"
+                          >
+                            <X className="w-4 h-4" />
+                            Reject
+                          </Button>
+                        </>
                       )}
-                      {request.status !== 'answered' && request.status !== 'pending' && (
+                      {request.status === 'active' && (
                         <Button
                           onClick={() => updateStatus(request.id, 'answered')}
                           variant="outline"
@@ -190,9 +258,10 @@ export function PrayerRequestsManagementPage() {
                           title="Mark as Answered"
                         >
                           <Check className="w-4 h-4" />
+                          Answered
                         </Button>
                       )}
-                      {request.status !== 'archived' && (
+                      {request.status !== 'archived' && request.status !== 'pending' && (
                         <Button
                           onClick={() => updateStatus(request.id, 'archived')}
                           variant="outline"

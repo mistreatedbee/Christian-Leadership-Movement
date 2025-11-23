@@ -39,14 +39,43 @@ export function PrayerRequestsPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const { data } = await insforge.database
+      
+      // Fetch public active requests for everyone to see
+      const { data: publicRequests } = await insforge.database
         .from('prayer_requests')
         .select('*')
         .eq('status', 'active')
         .eq('is_public', true)
         .order('created_at', { ascending: false });
 
-      setRequests(data || []);
+      // If user is logged in, also fetch their own requests (including pending)
+      let myRequests: PrayerRequest[] = [];
+      if (user) {
+        const { data: userRequests } = await insforge.database
+          .from('prayer_requests')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        
+        myRequests = userRequests || [];
+      }
+
+      // Combine: show public active requests + user's own requests (to see pending status)
+      const allRequests = [...(publicRequests || [])];
+      
+      // Add user's own requests that aren't already in the list
+      myRequests.forEach(myReq => {
+        if (!allRequests.find(r => r.id === myReq.id)) {
+          allRequests.push(myReq);
+        }
+      });
+
+      // Sort by created_at
+      allRequests.sort((a, b) => 
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      setRequests(allRequests);
     } catch (error) {
       console.error('Error fetching prayer requests:', error);
     } finally {
@@ -254,40 +283,60 @@ export function PrayerRequestsPage() {
             <p className="text-gray-600">No prayer requests yet. Be the first to share!</p>
           </div>
         ) : (
-          requests.map((request) => (
-            <div key={request.id} className="bg-white p-6 rounded-card shadow-soft">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="text-xl font-bold text-navy-ink">{request.title}</h3>
-                    {request.is_public ? (
-                      <Globe className="w-4 h-4 text-blue-500" title="Public" />
-                    ) : (
-                      <Lock className="w-4 h-4 text-gray-500" title="Private" />
+          requests.map((request) => {
+            const isMyRequest = user && request.user_id === user.id;
+            const isPending = request.status === 'pending';
+            const isActive = request.status === 'active';
+            
+            return (
+              <div key={request.id} className="bg-white p-6 rounded-card shadow-soft">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <h3 className="text-xl font-bold text-navy-ink">{request.title}</h3>
+                      {isPending && isMyRequest && (
+                        <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded-full">
+                          Pending Approval
+                        </span>
+                      )}
+                      {request.is_public ? (
+                        <Globe className="w-4 h-4 text-blue-500" title="Public" />
+                      ) : (
+                        <Lock className="w-4 h-4 text-gray-500" title="Private" />
+                      )}
+                    </div>
+                    <p className="text-gray-700 mb-2">{request.request}</p>
+                    {isPending && isMyRequest && (
+                      <div className="mb-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                        <p className="text-sm text-amber-800">
+                          ⏳ Your prayer request is pending review by administrators. It will be visible to others once approved.
+                        </p>
+                      </div>
                     )}
-                  </div>
-                  <p className="text-gray-700 mb-2">{request.request}</p>
-                  <div className="flex items-center gap-4 text-sm text-gray-600">
-                    <span>{new Date(request.created_at).toLocaleDateString()}</span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" />
-                      {request.prayer_count || 0} prayers
-                    </span>
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span>{new Date(request.created_at).toLocaleDateString()}</span>
+                      {isActive && (
+                        <span className="flex items-center gap-1">
+                          <Users className="w-4 h-4" />
+                          {request.prayer_count || 0} prayers
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
+                {user && isActive && !isMyRequest && (
+                  <Button
+                    onClick={() => handlePray(request.id)}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <Heart className="w-4 h-4 mr-2" />
+                    Pray for This
+                  </Button>
+                )}
               </div>
-              {user && (
-                <Button
-                  onClick={() => handlePray(request.id)}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Heart className="w-4 h-4 mr-2" />
-                  Pray for This
-                </Button>
-              )}
-            </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
