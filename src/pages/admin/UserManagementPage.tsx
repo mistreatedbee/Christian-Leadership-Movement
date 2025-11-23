@@ -340,17 +340,63 @@ export function UserManagementPage() {
       }
       
       // PRIORITY 1: Fetch from users table (registration data)
-      // Explicitly select email to ensure RLS allows it
-      const { data: userData, error: userError } = await insforge.database
-        .from('users')
-        .select('id, email, nickname, name, avatar_url, bio, created_at, updated_at')
-        .eq('id', user.user_id)
-        .maybeSingle(); // Use maybeSingle in case user doesn't exist
-
-      console.log('User data from users table (registration):', userData);
-      console.log('🔍 EMAIL IN USERDATA:', userData?.email);
+      // Try multiple approaches to get email
+      let userData: any = null;
+      let userError: any = null;
+      
+      // First try: Select all fields including email
+      try {
+        const result = await insforge.database
+          .from('users')
+          .select('*')
+          .eq('id', user.user_id)
+          .maybeSingle();
+        
+        userData = result.data;
+        userError = result.error;
+        
+        console.log('🔍 First attempt - Full userData:', userData);
+        console.log('🔍 First attempt - Email:', userData?.email);
+      } catch (err: any) {
+        console.error('First attempt failed:', err);
+        userError = err;
+      }
+      
+      // If email is still missing, try explicit email-only query
+      if (!userData?.email) {
+        console.log('🔍 Email missing, trying email-only query...');
+        try {
+          const emailResult = await insforge.database
+            .from('users')
+            .select('email')
+            .eq('id', user.user_id)
+            .maybeSingle();
+          
+          console.log('🔍 Email-only query result:', emailResult);
+          if (emailResult.data?.email) {
+            userData = { ...userData, email: emailResult.data.email };
+            console.log('✅ Found email via email-only query:', emailResult.data.email);
+          }
+        } catch (emailErr: any) {
+          console.error('Email-only query failed:', emailErr);
+        }
+      }
+      
+      // Final check - if still no email, try without RLS restrictions (if possible)
+      if (!userData?.email) {
+        console.log('🔍 Email still missing, checking if RLS is blocking...');
+        // Try to get email from the user object passed in (from the list)
+        if (user.email) {
+          console.log('✅ Using email from user list:', user.email);
+          userData = { ...userData, email: user.email };
+        }
+      }
+      
+      console.log('🔍 Final userData:', userData);
+      console.log('🔍 Final email:', userData?.email);
       console.log('🔍 Full userData object keys:', userData ? Object.keys(userData) : 'null');
-      if (userError) {
+      
+      if (userError && !userData) {
         console.error('Error fetching userData:', userError);
         console.error('RLS Error details:', {
           message: userError.message,
