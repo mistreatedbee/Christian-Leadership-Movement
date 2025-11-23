@@ -173,9 +173,42 @@ export function UserManagementPage() {
         .from('users')
         .select('*')
         .eq('id', user.user_id)
-        .single();
+        .maybeSingle(); // Use maybeSingle in case user doesn't exist
 
       console.log('User data from users table (registration):', userData);
+      console.log('🔍 EMAIL IN USERDATA:', userData?.email);
+      if (userError) {
+        console.error('Error fetching userData:', userError);
+      }
+      
+      // If email is missing from users table, try to get it from applications
+      let emailFromApps = null;
+      if (!userData?.email) {
+        const { data: appWithEmail } = await insforge.database
+          .from('applications')
+          .select('email')
+          .eq('user_id', user.user_id)
+          .not('email', 'is', null)
+          .limit(1)
+          .maybeSingle();
+        
+        emailFromApps = appWithEmail?.email || null;
+        console.log('🔍 EMAIL FROM APPLICATIONS:', emailFromApps);
+        
+        // If we found email in applications, update users table
+        if (emailFromApps) {
+          insforge.database
+            .from('users')
+            .update({ email: emailFromApps })
+            .eq('id', user.user_id)
+            .then(() => {
+              console.log('✅ Updated email in users table from applications');
+              // Refresh userData
+              userData.email = emailFromApps;
+            })
+            .catch(err => console.error('❌ Failed to update email:', err));
+        }
+      }
 
       // PRIORITY 2: Fetch from user_profiles table (registration data)
       const { data: profileData, error: profileError } = await insforge.database
@@ -209,9 +242,10 @@ export function UserManagementPage() {
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
         // EMAIL PRIORITY: users.email > applications.email > user.email
-        email: userData?.email || user.email || null,
+        email: userData?.email || emailFromApps || user.email || null,
         // Store debug info
         _debug_userDataEmail: userData?.email,
+        _debug_emailFromApps: emailFromApps,
         _debug_userEmail: user.email,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
