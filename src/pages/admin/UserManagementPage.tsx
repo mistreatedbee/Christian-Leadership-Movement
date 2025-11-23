@@ -123,7 +123,8 @@ export function UserManagementPage() {
     setSelectedUser(user);
     setShowDetailsModal(true);
     setLoadingApplications(true);
-    setEnrichedUserData(null); // Reset enriched data
+    // Initialize with user data immediately so modal shows something
+    setEnrichedUserData(user);
     
     try {
       // First, fetch the user's email from the users table (in case it's not in user_profiles)
@@ -170,16 +171,27 @@ export function UserManagementPage() {
         
         // Merge ALL applications data - combine data from all applications
         let combinedAppData: any = {};
+        let latestDate = '';
         applications.forEach((app: any) => {
           // Merge all fields, keeping the most recent non-null value
           Object.keys(app).forEach((key: string) => {
-            if (app[key] !== null && app[key] !== undefined && app[key] !== '') {
-              if (!combinedAppData[key] || app.created_at > combinedAppData._latest_date) {
-                combinedAppData[key] = app[key];
+            // Skip internal fields
+            if (key.startsWith('_')) return;
+            
+            const value = app[key];
+            // Include the value if it's not null/undefined/empty, and either:
+            // 1. We don't have this field yet, OR
+            // 2. This application is more recent than the one we stored
+            if (value !== null && value !== undefined && value !== '') {
+              if (!combinedAppData[key] || (app.created_at && app.created_at > latestDate)) {
+                combinedAppData[key] = value;
               }
             }
           });
-          combinedAppData._latest_date = app.created_at;
+          // Track the latest application date
+          if (app.created_at && app.created_at > latestDate) {
+            latestDate = app.created_at;
+          }
         });
         
         console.log('Combined application data:', combinedAppData);
@@ -188,7 +200,7 @@ export function UserManagementPage() {
         enriched = {
           ...enriched,
           // Personal Information from applications - prioritize application data
-          email: combinedAppData.email || enriched.email || null,
+          email: combinedAppData.email || userData?.email || enriched.email || null,
           phone: combinedAppData.phone || combinedAppData.contact_number || enriched.phone || null,
           address: combinedAppData.physical_address || combinedAppData.address || enriched.address || null,
           city: combinedAppData.city || enriched.city || null,
@@ -218,6 +230,8 @@ export function UserManagementPage() {
       console.log('Email from enriched:', enriched.email);
       console.log('Phone from enriched:', enriched.phone);
       console.log('Address from enriched:', enriched.address);
+      console.log('City from enriched:', enriched.city);
+      console.log('Province from enriched:', enriched.province);
       setEnrichedUserData(enriched);
 
       setMessage(null); // Clear any previous errors
@@ -715,13 +729,18 @@ export function UserManagementPage() {
               </button>
             </div>
 
+            {loadingApplications ? (
+              <div className="text-center py-8">
+                <p className="text-gray-600">Loading user information...</p>
+              </div>
+            ) : (
             <div className="space-y-6">
               {/* User Profile Header */}
               <div className="flex items-start space-x-4 pb-4 border-b">
                 <div className="w-20 h-20 rounded-full bg-gold flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden">
-                  {selectedUser.avatar_url ? (
+                  {(enrichedUserData?.avatar_url || selectedUser.avatar_url) ? (
                     <img 
-                      src={selectedUser.avatar_url} 
+                      src={enrichedUserData?.avatar_url || selectedUser.avatar_url} 
                       alt={enrichedUserData?.full_name || selectedUser.nickname || 'User'} 
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -737,7 +756,7 @@ export function UserManagementPage() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-bold text-navy-ink mb-1">
-                    {enrichedUserData?.full_name || selectedUser.nickname || enrichedUserData?.email || selectedUser.email || 'Unknown User'}
+                    {enrichedUserData?.full_name || enrichedUserData?.nickname || selectedUser.nickname || enrichedUserData?.email || selectedUser.email || 'Unknown User'}
                   </h3>
                   <p className="text-gray-600 mb-2">{enrichedUserData?.email || selectedUser.email || 'No email'}</p>
                   <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getRoleBadgeColor(selectedUser.role)}`}>
@@ -782,20 +801,20 @@ export function UserManagementPage() {
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Full Name / Nickname</p>
-                    <p className="font-medium">{(enrichedUserData || selectedUser)?.full_name || selectedUser.nickname || 'N/A'}</p>
+                    <p className="font-medium">{enrichedUserData?.full_name || enrichedUserData?.nickname || selectedUser.nickname || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
                     <p className="font-medium break-all">
                       {enrichedUserData?.email || selectedUser.email || 'N/A'}
-                      {enrichedUserData?.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.email && enrichedUserData?.email !== selectedUser.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone Number</p>
                     <p className="font-medium">
                       {enrichedUserData?.phone || selectedUser.phone || 'N/A'}
-                      {enrichedUserData?.phone && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.phone && enrichedUserData?.phone !== selectedUser.phone && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   {enrichedUserData?.id_number && (
@@ -813,8 +832,8 @@ export function UserManagementPage() {
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
                     <p className="font-medium">
-                      {(enrichedUserData || selectedUser)?.date_of_birth 
-                        ? new Date((enrichedUserData || selectedUser).date_of_birth).toLocaleDateString() 
+                      {enrichedUserData?.date_of_birth || selectedUser.date_of_birth
+                        ? new Date(enrichedUserData?.date_of_birth || selectedUser.date_of_birth).toLocaleDateString() 
                         : 'N/A'}
                     </p>
                   </div>
@@ -834,28 +853,28 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Physical Address</p>
                     <p className="font-medium">
                       {enrichedUserData?.address || selectedUser.address || 'N/A'}
-                      {enrichedUserData?.address && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.address && enrichedUserData?.address !== selectedUser.address && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">City</p>
                     <p className="font-medium">
                       {enrichedUserData?.city || selectedUser.city || 'N/A'}
-                      {enrichedUserData?.city && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.city && enrichedUserData?.city !== selectedUser.city && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
                     <p className="font-medium">
                       {enrichedUserData?.province || selectedUser.province || 'N/A'}
-                      {enrichedUserData?.province && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.province && enrichedUserData?.province !== selectedUser.province && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Postal Code</p>
                     <p className="font-medium">
                       {enrichedUserData?.postal_code || selectedUser.postal_code || 'N/A'}
-                      {enrichedUserData?.postal_code && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.postal_code && enrichedUserData?.postal_code !== selectedUser.postal_code && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
                   {enrichedUserData?.country && (
@@ -912,18 +931,29 @@ export function UserManagementPage() {
               )}
 
               {/* Debug: Show Raw Application Data */}
-              {userApplications.length > 0 && (
-                <div className="bg-yellow-50 border border-yellow-200 rounded-card p-4 mb-4">
-                  <details className="text-sm">
-                    <summary className="cursor-pointer font-medium text-yellow-800 mb-2">
-                      🔍 Debug: View Raw Application Data ({userApplications.length} application{userApplications.length !== 1 ? 's' : ''})
-                    </summary>
-                    <pre className="mt-2 text-xs overflow-auto max-h-64 bg-white p-2 rounded border">
-                      {JSON.stringify(userApplications, null, 2)}
-                    </pre>
-                  </details>
-                </div>
-              )}
+              <div className="bg-yellow-50 border border-yellow-200 rounded-card p-4 mb-4">
+                <details className="text-sm">
+                  <summary className="cursor-pointer font-medium text-yellow-800 mb-2">
+                    🔍 Debug: View Data ({userApplications.length} application{userApplications.length !== 1 ? 's' : ''})
+                  </summary>
+                  <div className="mt-2 space-y-2">
+                    <div>
+                      <p className="font-medium text-xs text-yellow-800 mb-1">Enriched User Data:</p>
+                      <pre className="text-xs overflow-auto max-h-32 bg-white p-2 rounded border">
+                        {JSON.stringify(enrichedUserData, null, 2)}
+                      </pre>
+                    </div>
+                    {userApplications.length > 0 && (
+                      <div>
+                        <p className="font-medium text-xs text-yellow-800 mb-1">Raw Application Data:</p>
+                        <pre className="text-xs overflow-auto max-h-32 bg-white p-2 rounded border">
+                          {JSON.stringify(userApplications, null, 2)}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                </details>
+              </div>
 
               {/* Applications */}
               <div>
@@ -984,6 +1014,7 @@ export function UserManagementPage() {
                 </Button>
               </div>
             </div>
+            )}
           </div>
         </div>
       )}
