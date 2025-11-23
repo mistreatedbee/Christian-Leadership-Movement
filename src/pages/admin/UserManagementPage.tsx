@@ -48,6 +48,7 @@ export function UserManagementPage() {
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [loadingApplications, setLoadingApplications] = useState(false);
   const [enrichedUserData, setEnrichedUserData] = useState<any>(null);
+  const [syncingEmails, setSyncingEmails] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -169,6 +170,41 @@ export function UserManagementPage() {
       setMessage({ type: 'error', text: err.message || 'Failed to fetch users' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncEmails = async () => {
+    setSyncingEmails(true);
+    setMessage(null);
+    try {
+      // Try to call the sync function
+      const { data, error } = await insforge.database.rpc('admin_sync_all_emails');
+      
+      if (error) {
+        // If function doesn't exist, try the simpler sync function
+        if (error.message?.includes('function') || error.message?.includes('does not exist')) {
+          console.log('admin_sync_all_emails not found, trying sync_user_email...');
+          const { error: syncError } = await insforge.database.rpc('sync_user_email');
+          
+          if (syncError) {
+            throw new Error('Email sync functions not available. Please run SYNC_EMAILS_FROM_AUTH.sql in your SQL editor first.');
+          }
+        } else {
+          throw error;
+        }
+      }
+      
+      setMessage({ type: 'success', text: 'Emails synced successfully! Refreshing user list...' });
+      // Refresh the user list
+      await fetchUsers();
+    } catch (err: any) {
+      console.error('Error syncing emails:', err);
+      setMessage({ 
+        type: 'error', 
+        text: err.message || 'Failed to sync emails. Please run SYNC_EMAILS_FROM_AUTH.sql in your SQL editor.' 
+      });
+    } finally {
+      setSyncingEmails(false);
     }
   };
 
