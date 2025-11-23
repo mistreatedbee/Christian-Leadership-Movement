@@ -56,6 +56,7 @@ export function QuizPage() {
 
     try {
       setLoading(true);
+      // Fetch quizzes for this course (including UP course quizzes that have course_id set)
       const { data } = await insforge.database
         .from('quizzes')
         .select('*')

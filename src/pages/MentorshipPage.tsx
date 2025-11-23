@@ -66,6 +66,7 @@ export function MentorshipPage() {
   const [myMentorStatus, setMyMentorStatus] = useState<Mentor | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'browse' | 'my-mentorship'>('browse');
+  const [quizzes, setQuizzes] = useState<any[]>([]);
   const [showMentorForm, setShowMentorForm] = useState(false);
   const [showMenteeForm, setShowMenteeForm] = useState(false);
   const [mentorFormData, setMentorFormData] = useState({
@@ -117,6 +118,26 @@ export function MentorshipPage() {
       setMentors(mentorsRes.data || []);
       setMyMatches(matchesRes.data || []);
       setMyMentorStatus(myMentorRes.data || null);
+
+      // Fetch quizzes for mentorship programs
+      // First, get mentorship program IDs from programs table
+      const { data: mentorshipPrograms } = await insforge.database
+        .from('programs')
+        .select('id')
+        .eq('type', 'mentorship');
+      
+      if (mentorshipPrograms && mentorshipPrograms.length > 0) {
+        const programIds = mentorshipPrograms.map((p: any) => p.id);
+        const { data: quizzesData } = await insforge.database
+          .from('quizzes')
+          .select('*')
+          .eq('quiz_type', 'program')
+          .in('program_id', programIds)
+          .eq('is_active', true)
+          .order('created_at', { ascending: false });
+        
+        setQuizzes(quizzesData || []);
+      }
     } catch (error) {
       console.error('Error fetching mentorship data:', error);
     } finally {
