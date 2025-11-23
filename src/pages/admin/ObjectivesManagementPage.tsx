@@ -64,6 +64,7 @@ export function ObjectivesManagementPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [objectiveImageFiles, setObjectiveImageFiles] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   const { register: registerObjective, handleSubmit: handleSubmitObjective, reset: resetObjective, formState: { errors: errorsObjective } } = useForm<StrategicObjective & { short_description: string; full_description: string }>();
   const { register: registerPastWork, handleSubmit: handleSubmitPastWork, reset: resetPastWork } = useForm<PastWork>();
@@ -528,7 +529,7 @@ export function ObjectivesManagementPage() {
       {activeTab === 'objectives' && (
         <div className="space-y-6">
           {/* Objective Form - Always show when editing or when no objective is selected for editing */}
-          <div className="bg-white rounded-card shadow-soft p-6">
+          <div ref={formRef} className="bg-white rounded-card shadow-soft p-6">
             <h2 className="text-xl font-bold text-navy-ink mb-4">
               {editingObjective ? 'Edit Objective' : 'Add New Objective'}
             </h2>
@@ -717,12 +718,19 @@ export function ObjectivesManagementPage() {
                     </div>
                     <div className="flex space-x-2 ml-4">
                       <button
-                        onClick={() => {
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
                           setSelectedObjective(obj.id);
                           setEditingObjective(obj);
                           resetObjective(obj);
+                          // Scroll to form after a brief delay to ensure it's rendered
+                          setTimeout(() => {
+                            formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                          }, 100);
                         }}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
+                        type="button"
                       >
                         <Edit size={18} />
                       </button>
