@@ -527,12 +527,11 @@ export function ObjectivesManagementPage() {
       {/* Objectives Tab */}
       {activeTab === 'objectives' && (
         <div className="space-y-6">
-          {/* Objective Form */}
-          {(editingObjective || !editingObjective) && (
-            <div className="bg-white rounded-card shadow-soft p-6">
-              <h2 className="text-xl font-bold text-navy-ink mb-4">
-                {editingObjective ? 'Edit Objective' : 'Add New Objective'}
-              </h2>
+          {/* Objective Form - Always show when editing or when no objective is selected for editing */}
+          <div className="bg-white rounded-card shadow-soft p-6">
+            <h2 className="text-xl font-bold text-navy-ink mb-4">
+              {editingObjective ? 'Edit Objective' : 'Add New Objective'}
+            </h2>
               <form onSubmit={handleSubmitObjective(onObjectiveSubmit)} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-navy-ink mb-2">Title</label>
