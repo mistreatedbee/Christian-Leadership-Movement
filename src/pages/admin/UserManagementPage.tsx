@@ -981,10 +981,14 @@ export function UserManagementPage() {
                           ⚠️ Email not found in database. 
                           <br />
                           Debug: userData.email={enrichedUserData?._debug_userDataEmail || 'N/A'}, 
-                          user.email={selectedUser.email || 'N/A'}
+                          emailFromApps={enrichedUserData?._debug_emailFromApps || 'N/A'},
+                          user.email={selectedUser.email || 'N/A'},
+                          finalEmail={enrichedUserData?._debug_finalEmail || 'N/A'}
                         </span>
                       )}
-                      {enrichedUserData?.email && enrichedUserData?.email !== selectedUser.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
+                      {enrichedUserData?.email && enrichedUserData?._debug_emailFromApps && enrichedUserData?.email === enrichedUserData?._debug_emailFromApps && (
+                        <span className="text-xs text-green-600 ml-2">(from application)</span>
+                      )}
                     </p>
                   </div>
                   <div>
