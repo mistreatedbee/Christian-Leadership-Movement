@@ -132,9 +132,9 @@ export function UserManagementPage() {
       // Combine users with their profiles
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
-        // EMAIL PRIORITY: users.email (from registration) > user_profiles.email (if exists)
-        // Email should be in users table from registration - that's the primary source
-        const userEmail = user.email || profile?.email || null;
+        // EMAIL PRIORITY: user_profiles.email (from registration) > users.email (fallback)
+        // Email is now saved in user_profiles during registration, so admins can access it with same RLS logic
+        const userEmail = profile?.email || user.email || null;
         
         // Email should already be in users table from registration
         // If it's missing, it's a data issue, not something we should fix by syncing from applications
@@ -527,8 +527,9 @@ export function UserManagementPage() {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
-        // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email > emailFromApps (last resort)
-        email: (userData?.email || user.email || profileData?.email || emailFromApps || null),
+        // EMAIL PRIORITY: profileData.email (from user_profiles/registration) > userData.email > user.email > emailFromApps (last resort)
+        // Email is now saved in user_profiles during registration, so use same RLS logic that works for other fields
+        email: (profileData?.email || userData?.email || user.email || emailFromApps || null),
         // Store debug info
         _debug_userDataEmail: userData?.email,
         _debug_emailFromApps: emailFromApps,
