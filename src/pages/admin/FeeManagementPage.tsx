@@ -102,8 +102,10 @@ export function FeeManagementPage() {
         return 'Bible School Registration (With ACRP)';
       case 'bible_school_without_acrp':
         return 'Bible School Registration (Without ACRP)';
+      case 'management_fee':
+        return 'Management Fee';
       default:
-        return feeType;
+        return feeType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
   };
 

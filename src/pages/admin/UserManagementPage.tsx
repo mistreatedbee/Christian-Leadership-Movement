@@ -529,7 +529,13 @@ export function UserManagementPage() {
         // Override with users table data (registration) - this has email, nickname, name
         // EMAIL PRIORITY: profileData.email (from user_profiles/registration) > userData.email > user.email > emailFromApps (last resort)
         // Email is now saved in user_profiles during registration, so use same RLS logic that works for other fields
+        // CRITICAL: profileData.email should work because it uses the same RLS policy as phone, address, etc.
         email: (profileData?.email || userData?.email || user.email || emailFromApps || null),
+        
+        // Debug: Log email sources to help diagnose
+        _debug_profileEmail: profileData?.email,
+        _debug_userDataEmail: userData?.email,
+        _debug_userEmail: user.email,
         // Store debug info
         _debug_userDataEmail: userData?.email,
         _debug_emailFromApps: emailFromApps,
