@@ -69,17 +69,29 @@ export function UserManagementPage() {
       }
       
       // Fetch ALL users from users table (including those who just registered)
+      // Explicitly select email to ensure it's included
       const { data: allUsers, error: usersError } = await insforge.database
         .from('users')
-        .select('*')
+        .select('id, email, nickname, name, avatar_url, bio, created_at, updated_at')
         .order('created_at', { ascending: false });
 
       if (usersError) {
         console.error('❌ Error fetching users:', usersError);
+        console.error('RLS Error details:', {
+          message: usersError.message,
+          code: usersError.code,
+          details: usersError.details,
+          hint: usersError.hint
+        });
         throw usersError;
       }
 
       console.log('✅ Fetched users:', allUsers?.length || 0, 'users');
+      console.log('🔍 Sample user data (first 3):', allUsers?.slice(0, 3).map((u: any) => ({
+        id: u.id,
+        email: u.email,
+        nickname: u.nickname
+      })));
 
       // Fetch all user profiles
       const { data: profiles, error: profilesError } = await insforge.database
@@ -328,16 +340,24 @@ export function UserManagementPage() {
       }
       
       // PRIORITY 1: Fetch from users table (registration data)
+      // Explicitly select email to ensure RLS allows it
       const { data: userData, error: userError } = await insforge.database
         .from('users')
-        .select('*')
+        .select('id, email, nickname, name, avatar_url, bio, created_at, updated_at')
         .eq('id', user.user_id)
         .maybeSingle(); // Use maybeSingle in case user doesn't exist
 
       console.log('User data from users table (registration):', userData);
       console.log('🔍 EMAIL IN USERDATA:', userData?.email);
+      console.log('🔍 Full userData object keys:', userData ? Object.keys(userData) : 'null');
       if (userError) {
         console.error('Error fetching userData:', userError);
+        console.error('RLS Error details:', {
+          message: userError.message,
+          code: userError.code,
+          details: userError.details,
+          hint: userError.hint
+        });
       }
       
       // If email is still missing, try to get it from applications
