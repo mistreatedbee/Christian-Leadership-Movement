@@ -405,6 +405,12 @@ export function PaymentSuccessPage() {
             )}
 
             <div className="flex gap-4 justify-center">
+              {payment?.payment_type === 'event_registration' && payment.event_registrations && payment.event_registrations.length > 0 && (
+                <Button onClick={handleDownloadTicket} variant="primary">
+                  <Download className="mr-2" size={16} />
+                  Download Ticket
+                </Button>
+              )}
               <Button onClick={() => navigate('/dashboard')} variant="primary">
                 Go to Dashboard
               </Button>
