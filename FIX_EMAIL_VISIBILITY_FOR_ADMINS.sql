@@ -19,18 +19,21 @@ DROP POLICY IF EXISTS "Admins can manage all users" ON public.users;
 
 -- Create comprehensive RLS policies for users table
 -- Policy 1: Admins can see ALL columns including email for ALL users
+DROP POLICY IF EXISTS "Admins can view all user data including email" ON public.users;
 CREATE POLICY "Admins can view all user data including email"
   ON public.users
   FOR SELECT
   USING (public.is_current_user_admin());
 
 -- Policy 2: Users can view their own data (including their own email)
+DROP POLICY IF EXISTS "Users can view their own data" ON public.users;
 CREATE POLICY "Users can view their own data"
   ON public.users
   FOR SELECT
   USING (auth.uid() = id);
 
 -- Policy 3: Admins can update any user
+DROP POLICY IF EXISTS "Admins can update any user" ON public.users;
 CREATE POLICY "Admins can update any user"
   ON public.users
   FOR UPDATE
@@ -38,6 +41,7 @@ CREATE POLICY "Admins can update any user"
   WITH CHECK (public.is_current_user_admin());
 
 -- Policy 4: Users can update their own profile (but not email directly - email comes from auth)
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.users;
 CREATE POLICY "Users can update their own profile"
   ON public.users
   FOR UPDATE
@@ -45,12 +49,14 @@ CREATE POLICY "Users can update their own profile"
   WITH CHECK (auth.uid() = id);
 
 -- Policy 5: Admins can insert users
+DROP POLICY IF EXISTS "Admins can insert users" ON public.users;
 CREATE POLICY "Admins can insert users"
   ON public.users
   FOR INSERT
   WITH CHECK (public.is_current_user_admin());
 
 -- Policy 6: Admins can delete users
+DROP POLICY IF EXISTS "Admins can delete users" ON public.users;
 CREATE POLICY "Admins can delete users"
   ON public.users
   FOR DELETE
@@ -72,12 +78,14 @@ DROP POLICY IF EXISTS "Admins can view all profile emails" ON public.user_profil
 DROP POLICY IF EXISTS "Users can view their own profile email" ON public.user_profiles;
 
 -- Policy for admins to see all profile emails
+DROP POLICY IF EXISTS "Admins can view all profile emails" ON public.user_profiles;
 CREATE POLICY "Admins can view all profile emails"
   ON public.user_profiles
   FOR SELECT
   USING (public.is_current_user_admin());
 
 -- Policy for users to see their own profile email
+DROP POLICY IF EXISTS "Users can view their own profile email" ON public.user_profiles;
 CREATE POLICY "Users can view their own profile email"
   ON public.user_profiles
   FOR SELECT
