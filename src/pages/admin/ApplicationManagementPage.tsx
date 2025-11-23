@@ -1340,44 +1340,74 @@ export function ApplicationManagementPage() {
               {/* Complete Form Data Display - Show ALL fields including form_data */}
               {selectedApplication.form_data && typeof selectedApplication.form_data === 'object' && (
                 <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Complete Form Data (All Fields)</h3>
-                  <div className="bg-gray-50 p-4 rounded-card mb-4">
-                    <p className="text-sm text-gray-600 mb-2">This section shows all fields from the form_data JSONB column, including any fields that may not be displayed above.</p>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Complete Form Data (All Fields from form_data)</h3>
+                  <div className="bg-blue-50 border border-blue-200 p-4 rounded-card mb-4">
+                    <p className="text-sm text-blue-800 mb-2">
+                      <strong>Important:</strong> This section shows ALL fields from the form_data JSONB column, ensuring no data is missed. 
+                      This includes all checkboxes, text fields, dates, and any additional data submitted in the form.
+                    </p>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    {Object.entries(selectedApplication.form_data).map(([key, value]: [string, any]) => {
-                      // Skip null, undefined, or empty values
-                      if (value === null || value === undefined || value === '') return null;
-                      
-                      // Format the key for display
-                      const displayKey = key
-                        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
-                        .replace(/_/g, ' ') // Replace underscores with spaces
-                        .replace(/\b\w/g, l => l.toUpperCase()) // Capitalize first letter of each word
-                        .trim();
-                      
-                      // Format the value for display
-                      let displayValue: string;
-                      if (typeof value === 'boolean') {
-                        displayValue = value ? 'Yes' : 'No';
-                      } else if (Array.isArray(value)) {
-                        displayValue = value.length > 0 ? value.join(', ') : 'N/A';
-                      } else if (typeof value === 'object') {
-                        displayValue = JSON.stringify(value, null, 2);
-                      } else {
-                        displayValue = String(value);
-                      }
-                      
-                      return (
-                        <div key={key} className={key.toLowerCase().includes('signature') ? 'col-span-2' : ''}>
-                          <p className="text-sm text-gray-600 font-medium">{displayKey}</p>
-                          <p className={`font-medium ${key.toLowerCase().includes('signature') ? 'break-all text-xs' : ''}`}>
-                            {displayValue}
-                          </p>
-                        </div>
-                      );
-                    })}
+                    {Object.entries(selectedApplication.form_data)
+                      .sort(([a], [b]) => a.localeCompare(b)) // Sort alphabetically for easier reading
+                      .map(([key, value]: [string, any]) => {
+                        // Skip null, undefined, or empty string values (but show false/0)
+                        if (value === null || value === undefined || (typeof value === 'string' && value.trim() === '')) {
+                          return null;
+                        }
+                        
+                        // Format the key for display
+                        const displayKey = key
+                          .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+                          .replace(/_/g, ' ') // Replace underscores with spaces
+                          .replace(/\b\w/g, l => l.toUpperCase()) // Capitalize first letter of each word
+                          .trim();
+                        
+                        // Format the value for display
+                        let displayValue: string;
+                        if (typeof value === 'boolean') {
+                          displayValue = value ? 'Yes' : 'No';
+                        } else if (Array.isArray(value)) {
+                          if (value.length === 0) return null;
+                          // Handle array of objects (like leadershipRoles)
+                          if (value.length > 0 && typeof value[0] === 'object') {
+                            displayValue = value.map((item: any, idx: number) => {
+                              if (item.title || item.description) {
+                                return `${idx + 1}. ${item.title || 'Untitled'}: ${item.description || 'No description'}`;
+                              }
+                              return JSON.stringify(item);
+                            }).join('\n');
+                          } else {
+                            displayValue = value.join(', ');
+                          }
+                        } else if (typeof value === 'object' && value !== null) {
+                          displayValue = JSON.stringify(value, null, 2);
+                        } else {
+                          displayValue = String(value);
+                        }
+                        
+                        // Determine if this field should span full width
+                        const isWideField = key.toLowerCase().includes('signature') || 
+                                          key.toLowerCase().includes('statement') ||
+                                          key.toLowerCase().includes('description') ||
+                                          key.toLowerCase().includes('experience') ||
+                                          key.toLowerCase().includes('ambitions') ||
+                                          key.toLowerCase().includes('why') ||
+                                          displayValue.length > 100;
+                        
+                        return (
+                          <div key={key} className={isWideField ? 'col-span-2' : ''}>
+                            <p className="text-sm text-gray-600 font-medium">{displayKey}</p>
+                            <p className={`font-medium whitespace-pre-wrap ${isWideField ? 'break-words text-sm' : ''}`}>
+                              {displayValue}
+                            </p>
+                          </div>
+                        );
+                      })}
                   </div>
+                  {Object.keys(selectedApplication.form_data).length === 0 && (
+                    <p className="text-gray-500 text-center py-4">No additional form data found.</p>
+                  )}
                 </div>
               )}
               
