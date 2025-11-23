@@ -20,13 +20,15 @@ export function MembershipProgramPage() {
   const [program, setProgram] = useState<Program | null>(null);
   const [hasMembership, setHasMembership] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProgram();
     if (user) {
       checkMembership();
     }
-  }, [user]);
+    fetchQuizzes();
+  }, [user, program]);
 
   const fetchProgram = async () => {
     try {

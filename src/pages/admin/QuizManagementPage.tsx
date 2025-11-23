@@ -375,8 +375,9 @@ export function QuizManagementPage() {
                   <option value="study">Bible Study</option>
                   <option value="class">Class</option>
                   <option value="meeting">Meeting</option>
+                  <option value="resource">Resource</option>
                 </select>
-                <p className="text-xs text-gray-500 mt-1">Optional: Specify the Bible School context for this quiz</p>
+                <p className="text-xs text-gray-500 mt-1">Optional: Specify the Bible School context for this quiz (Study, Class, Meeting, or Resource)</p>
               </div>
             )}
             <div>

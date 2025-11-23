@@ -4,7 +4,8 @@ import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
-import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as LinkIcon, Download, ExternalLink, CheckCircle } from 'lucide-react';
+import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as LinkIcon, Download, ExternalLink, CheckCircle, ArrowRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { getStorageUrl } from '../lib/connection';
 import { getUserRole } from '../lib/auth';
 
@@ -17,6 +18,7 @@ export function BibleSchoolPage() {
   const [classes, setClasses] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState<Record<string, boolean>>({});
   const [isAdmin, setIsAdmin] = useState(false);
@@ -107,6 +109,25 @@ export function BibleSchoolPage() {
         const { data } = await query;
         setResources(data || []);
       }
+
+      // Fetch quizzes for Bible School based on active tab context
+      const contextMap: Record<TabType, string> = {
+        'studies': 'study',
+        'classes': 'class',
+        'meetings': 'meeting',
+        'resources': 'resource'
+      };
+      
+      const currentContext = contextMap[activeTab];
+      const { data: quizzesData } = await insforge.database
+        .from('quizzes')
+        .select('*')
+        .eq('quiz_type', 'bible_school')
+        .eq('bible_school_context', currentContext)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      
+      setQuizzes(quizzesData || []);
 
       // Check user registrations
       if (user) {
@@ -511,6 +532,43 @@ export function BibleSchoolPage() {
                       })}
                     </div>
                   )}
+                  
+                  {/* Quizzes Section for Studies */}
+                  {quizzes.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-2xl font-bold text-navy-ink mb-4 flex items-center">
+                        <BookOpen className="mr-2" size={24} />
+                        Bible Study Quizzes
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quizzes.map(quiz => (
+                          <div key={quiz.id} className="bg-white border border-gray-200 rounded-card p-4 hover:border-gold transition-all">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-navy-ink">{quiz.title}</h4>
+                              <BookOpen className="text-blue-500" size={18} />
+                            </div>
+                            {quiz.description && (
+                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                              {quiz.time_limit && (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  <span>{quiz.time_limit} min</span>
+                                </div>
+                              )}
+                              <span>Pass: {quiz.passing_score}%</span>
+                            </div>
+                            <Link to={`/dashboard/quizzes/${quiz.id}/take`}>
+                              <Button variant="primary" className="w-full text-sm">
+                                Take Quiz <ArrowRight className="ml-2" size={14} />
+                              </Button>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -588,6 +646,43 @@ export function BibleSchoolPage() {
                           </div>
                         );
                       })}
+                    </div>
+                  )}
+                  
+                  {/* Quizzes Section for Classes */}
+                  {quizzes.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-2xl font-bold text-navy-ink mb-4 flex items-center">
+                        <BookOpen className="mr-2" size={24} />
+                        Class Quizzes
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quizzes.map(quiz => (
+                          <div key={quiz.id} className="bg-white border border-gray-200 rounded-card p-4 hover:border-gold transition-all">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-navy-ink">{quiz.title}</h4>
+                              <BookOpen className="text-blue-500" size={18} />
+                            </div>
+                            {quiz.description && (
+                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                              {quiz.time_limit && (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  <span>{quiz.time_limit} min</span>
+                                </div>
+                              )}
+                              <span>Pass: {quiz.passing_score}%</span>
+                            </div>
+                            <Link to={`/dashboard/quizzes/${quiz.id}/take`}>
+                              <Button variant="primary" className="w-full text-sm">
+                                Take Quiz <ArrowRight className="ml-2" size={14} />
+                              </Button>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </>
@@ -669,6 +764,43 @@ export function BibleSchoolPage() {
                       })}
                     </div>
                   )}
+                  
+                  {/* Quizzes Section for Meetings */}
+                  {quizzes.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-2xl font-bold text-navy-ink mb-4 flex items-center">
+                        <BookOpen className="mr-2" size={24} />
+                        Meeting Quizzes
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quizzes.map(quiz => (
+                          <div key={quiz.id} className="bg-white border border-gray-200 rounded-card p-4 hover:border-gold transition-all">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-navy-ink">{quiz.title}</h4>
+                              <BookOpen className="text-blue-500" size={18} />
+                            </div>
+                            {quiz.description && (
+                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                              {quiz.time_limit && (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  <span>{quiz.time_limit} min</span>
+                                </div>
+                              )}
+                              <span>Pass: {quiz.passing_score}%</span>
+                            </div>
+                            <Link to={`/dashboard/quizzes/${quiz.id}/take`}>
+                              <Button variant="primary" className="w-full text-sm">
+                                Take Quiz <ArrowRight className="ml-2" size={14} />
+                              </Button>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
 
@@ -736,6 +868,43 @@ export function BibleSchoolPage() {
                         ))}
                       </div>
                     </>
+                  )}
+                  
+                  {/* Quizzes Section for Resources */}
+                  {quizzes.length > 0 && (
+                    <div className="mt-8">
+                      <h3 className="text-2xl font-bold text-navy-ink mb-4 flex items-center">
+                        <BookOpen className="mr-2" size={24} />
+                        Resource Quizzes
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {quizzes.map(quiz => (
+                          <div key={quiz.id} className="bg-white border border-gray-200 rounded-card p-4 hover:border-gold transition-all">
+                            <div className="flex items-start justify-between mb-2">
+                              <h4 className="font-semibold text-navy-ink">{quiz.title}</h4>
+                              <BookOpen className="text-blue-500" size={18} />
+                            </div>
+                            {quiz.description && (
+                              <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                            )}
+                            <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                              {quiz.time_limit && (
+                                <div className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  <span>{quiz.time_limit} min</span>
+                                </div>
+                              )}
+                              <span>Pass: {quiz.passing_score}%</span>
+                            </div>
+                            <Link to={`/dashboard/quizzes/${quiz.id}/take`}>
+                              <Button variant="primary" className="w-full text-sm">
+                                Take Quiz <ArrowRight className="ml-2" size={14} />
+                              </Button>
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
                   )}
                 </>
               )}
