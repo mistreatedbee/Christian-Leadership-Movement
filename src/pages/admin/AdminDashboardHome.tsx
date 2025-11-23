@@ -266,12 +266,17 @@ export function AdminDashboardHome() {
         allRecentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRecentApplications(allRecentActivity.slice(0, 20));
 
-        // Fetch recent notifications
-        const { data: recentNotifications } = await insforge.database
+        // Fetch recent notifications for admin
+        const { data: recentNotifications, error: notifError } = await insforge.database
           .from('notifications')
           .select('*')
+          .eq('user_id', user.id)
           .order('created_at', { ascending: false })
           .limit(10);
+
+        if (notifError) {
+          console.error('Error fetching notifications:', notifError);
+        }
 
         setNotifications(recentNotifications || []);
       } catch (err) {
