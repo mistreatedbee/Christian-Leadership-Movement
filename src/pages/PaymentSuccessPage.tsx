@@ -7,6 +7,8 @@ import { CheckCircle, AlertCircle, Loader } from 'lucide-react';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
 import { sendEmailNotification } from '../lib/email';
+import { generateEventTicketPDF } from '../lib/ticketGenerator';
+import { Download } from 'lucide-react';
 
 export function PaymentSuccessPage() {
   const navigate = useNavigate();
@@ -37,7 +39,7 @@ export function PaymentSuccessPage() {
       // Fetch payment details
       const { data: paymentData, error: fetchError } = await insforge.database
         .from('payments')
-        .select('*, applications(*), donations(*)')
+        .select('*, applications(*), donations(*), event_registrations(*, events(*))')
         .eq('id', paymentId)
         .single();
 
@@ -157,6 +159,59 @@ export function PaymentSuccessPage() {
                   <p style="margin: 5px 0;"><strong>Status:</strong> Confirmed</p>
                 </div>
                 <p>Your application is now being reviewed by our team. You will be notified once a decision has been made.</p>
+                <p>If you have any questions, please don't hesitate to contact us.</p>
+                <p>Blessings,<br>Christian Leadership Movement Team</p>
+              </div>
+            `
+          });
+        }
+      } else if (paymentData.payment_type === 'event_registration') {
+        // Handle event registration fee payment
+        if (paymentData.event_registrations && paymentData.event_registrations.length > 0) {
+          const registration = paymentData.event_registrations[0];
+          const event = registration.events;
+
+          // Update event registration payment status
+          await insforge.database
+            .from('event_registrations')
+            .update({
+              payment_status: 'paid',
+              updated_at: new Date().toISOString()
+            })
+            .eq('payment_id', paymentId);
+
+          // Create notification
+          await insforge.database
+            .from('notifications')
+            .insert([{
+              user_id: user.id,
+              type: 'event',
+              title: 'Event Registration Confirmed',
+              message: `Your registration for "${event?.title || 'the event'}" has been confirmed. Payment of R${amount} received.`,
+              related_id: registration.event_id,
+              link_url: `/events/${registration.event_id}/registration`,
+              read: false
+            }]);
+
+          // Send email for event registration
+          await sendEmailNotification(user.id, {
+            type: 'event_registration_confirmed',
+            subject: 'Event Registration Confirmed',
+            message: `Your registration for "${event?.title || 'the event'}" has been confirmed. Payment of R${amount} received via ${paymentMethod}.`,
+            html: `
+              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #1B1C5F;">Event Registration Confirmed</h2>
+                <p>Dear ${user.name || 'Attendee'},</p>
+                <p>Thank you for registering! Your event registration has been confirmed.</p>
+                <div style="background-color: #f5f5f5; padding: 20px; border-radius: 8px; margin: 20px 0;">
+                  <p style="margin: 0;"><strong>Event:</strong> ${event?.title || 'N/A'}</p>
+                  <p style="margin: 5px 0;"><strong>Event Date:</strong> ${event?.event_date ? new Date(event.event_date).toLocaleDateString() : 'TBA'}</p>
+                  <p style="margin: 5px 0;"><strong>Location:</strong> ${event?.location || 'TBA'}</p>
+                  <p style="margin: 5px 0;"><strong>Payment Amount:</strong> R${amount}</p>
+                  <p style="margin: 5px 0;"><strong>Payment Method:</strong> ${paymentMethod}</p>
+                  <p style="margin: 5px 0;"><strong>Status:</strong> Confirmed</p>
+                </div>
+                <p>You can download your ticket from your dashboard. We look forward to seeing you at the event!</p>
                 <p>If you have any questions, please don't hesitate to contact us.</p>
                 <p>Blessings,<br>Christian Leadership Movement Team</p>
               </div>
