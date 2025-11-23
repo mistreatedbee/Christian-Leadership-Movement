@@ -117,12 +117,49 @@ export function UserManagementPage() {
       console.log('Sample profile:', profiles?.[0]);
 
       // Fetch all applications to get emails as fallback
-      const { data: allApplications } = await insforge.database
-        .from('applications')
-        .select('user_id, email')
-        .not('email', 'is', null);
-
-      // emailMap is already created above from allApplications
+      // Try to get email from applications table - handle case where email column doesn't exist
+      let emailMap = new Map<string, string>();
+      
+      try {
+        // First, try to select email column directly
+        const { data: appsWithEmail, error: emailError } = await insforge.database
+          .from('applications')
+          .select('user_id, email')
+          .not('email', 'is', null);
+        
+        if (!emailError && appsWithEmail) {
+          appsWithEmail.forEach((app: any) => {
+            if (app.user_id && app.email && !emailMap.has(app.user_id)) {
+              emailMap.set(app.user_id, app.email);
+            }
+          });
+          console.log('✅ Found emails in applications.email column');
+        } else {
+          // Email column doesn't exist, try to extract from form_data JSONB
+          console.log('⚠️ Email column not found in applications, trying form_data...');
+          const { data: appsWithFormData, error: formDataError } = await insforge.database
+            .from('applications')
+            .select('user_id, form_data')
+            .not('user_id', 'is', null);
+          
+          if (!formDataError && appsWithFormData) {
+            appsWithFormData.forEach((app: any) => {
+              if (app.user_id && app.form_data) {
+                // Try to extract email from form_data (could be 'email' or 'Email')
+                const email = app.form_data?.email || app.form_data?.Email || app.form_data?.EMAIL;
+                if (email && !emailMap.has(app.user_id)) {
+                  emailMap.set(app.user_id, email);
+                }
+              }
+            });
+            console.log('✅ Found emails in applications.form_data');
+          } else {
+            console.warn('⚠️ Could not fetch applications:', formDataError);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching applications for email map:', err);
+      }
 
       // Combine users with their profiles
       const usersData = (allUsers || []).map((user: any) => {
