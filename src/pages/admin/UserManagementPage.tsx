@@ -3,6 +3,7 @@ import { Search, Filter, Plus, Edit, Trash2, Mail, Shield, Save, X, Eye, Downloa
 import { Button } from '../../components/ui/Button';
 import { insforge } from '../../lib/insforge';
 import { useUser } from '@insforge/react';
+import { getStorageUrl } from '../../lib/connection';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -164,7 +165,7 @@ export function UserManagementPage() {
       // Start with registration data from user_profiles and users table
       let enriched: any = {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
-        ...profileData,
+        ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
         email: userData?.email || profileData?.email || user.email || null,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
@@ -177,6 +178,13 @@ export function UserManagementPage() {
         role: profileData?.role || user.role || 'user',
         created_at: user.created_at,
         updated_at: profileData?.updated_at || user.updated_at,
+        // Include all profile fields explicitly
+        phone: profileData?.phone || null,
+        address: profileData?.address || null,
+        city: profileData?.city || null,
+        province: profileData?.province || null,
+        postal_code: profileData?.postal_code || null,
+        date_of_birth: profileData?.date_of_birth || null,
       };
 
       console.log('Initial enriched data (from registration):', enriched);
@@ -768,7 +776,17 @@ export function UserManagementPage() {
                 <div className="w-20 h-20 rounded-full bg-gold flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 overflow-hidden">
                   {(enrichedUserData?.avatar_url || selectedUser.avatar_url) ? (
                     <img 
-                      src={enrichedUserData?.avatar_url || selectedUser.avatar_url} 
+                      src={
+                        enrichedUserData?.avatar_url 
+                          ? (enrichedUserData.avatar_url.includes('http') 
+                              ? enrichedUserData.avatar_url 
+                              : getStorageUrl('avatars', enrichedUserData.avatar_url))
+                          : (selectedUser.avatar_url 
+                              ? (selectedUser.avatar_url.includes('http') 
+                                  ? selectedUser.avatar_url 
+                                  : getStorageUrl('avatars', selectedUser.avatar_url))
+                              : '')
+                      } 
                       alt={enrichedUserData?.full_name || selectedUser.nickname || 'User'} 
                       className="w-full h-full object-cover"
                       onError={(e) => {
@@ -835,6 +853,9 @@ export function UserManagementPage() {
                     <p className="text-sm text-gray-600">Email Address</p>
                     <p className="font-medium break-all">
                       {enrichedUserData?.email || selectedUser.email || 'N/A'}
+                      {!enrichedUserData?.email && !selectedUser.email && (
+                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Email not found - user may need to update their profile</span>
+                      )}
                       {enrichedUserData?.email && enrichedUserData?.email !== selectedUser.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
                   </div>
