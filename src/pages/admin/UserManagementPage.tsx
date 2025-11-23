@@ -193,47 +193,31 @@ export function UserManagementPage() {
     setSyncingEmails(true);
     setMessage(null);
     try {
-      // First, try to get emails from applications
-      // Try to select email column first, if it doesn't exist, try form_data JSONB
+      // Email column doesn't exist in applications - always use form_data JSONB
+      // Don't try to select email column as it causes 400 errors
+      console.log('Fetching emails from applications.form_data...');
       let applications: any[] = [];
-      let emailField = 'email';
       
-      const { data: appsWithEmail, error: emailColumnError } = await insforge.database
+      const { data: appsWithFormData, error: formDataError } = await insforge.database
         .from('applications')
-        .select('user_id, email')
-        .not('user_id', 'is', null);
+        .select('user_id, form_data')
+        .not('user_id', 'is', null)
+        .not('form_data', 'is', null);
       
-      if (emailColumnError) {
-        // If email column doesn't exist, try to get it from form_data JSONB
-        if (emailColumnError.message?.includes('column') && emailColumnError.message?.includes('email')) {
-          console.log('Email column not found, trying form_data JSONB...');
-          const { data: appsWithFormData, error: formDataError } = await insforge.database
-            .from('applications')
-            .select('user_id, form_data')
-            .not('user_id', 'is', null)
-            .not('form_data', 'is', null);
-          
-          if (formDataError) {
-            setMessage({ 
-              type: 'error', 
-              text: 'Cannot sync emails: Email column does not exist and form_data is not available. Please add the email column manually in InsForge Dashboard: Database > Tables > applications > Add Column (name: email, type: TEXT, nullable: YES)' 
-            });
-            setSyncingEmails(false);
-            return;
-          }
-          
-          // Extract email from form_data JSONB
-          applications = (appsWithFormData || []).map((app: any) => ({
-            user_id: app.user_id,
-            email: app.form_data?.email || app.form_data?.Email || null
-          })).filter((app: any) => app.email);
-          emailField = 'form_data.email';
-        } else {
-          throw new Error(`Failed to fetch applications: ${emailColumnError.message}`);
-        }
-      } else {
-        applications = (appsWithEmail || []).filter((app: any) => app.email);
+      if (formDataError) {
+        setMessage({ 
+          type: 'error', 
+          text: 'Cannot sync emails: Failed to fetch applications form_data. Please ensure applications have form_data with email fields.' 
+        });
+        setSyncingEmails(false);
+        return;
       }
+      
+      // Extract email from form_data JSONB
+      applications = (appsWithFormData || []).map((app: any) => ({
+        user_id: app.user_id,
+        email: app.form_data?.email || app.form_data?.Email || app.form_data?.EMAIL || null
+      })).filter((app: any) => app.email);
       
       // If no applications with emails, try to get emails from user registrations
       // Check if users have emails in their registration (from InsForge auth)
