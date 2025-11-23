@@ -263,7 +263,10 @@ CREATE POLICY "Admins manage forum reply likes"
   WITH CHECK (public.is_current_user_admin());
 
 -- Function to update topic reply count and last_reply_at
--- Drop function if it exists
+-- Drop trigger first (it depends on the function)
+DROP TRIGGER IF EXISTS trigger_update_forum_topic_reply_stats ON public.forum_replies;
+
+-- Drop function if it exists (after dropping dependent trigger)
 DROP FUNCTION IF EXISTS public.update_forum_topic_reply_stats();
 
 CREATE FUNCTION public.update_forum_topic_reply_stats()
@@ -289,7 +292,6 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- Trigger to update topic stats when replies are added/deleted
-DROP TRIGGER IF EXISTS trigger_update_forum_topic_reply_stats ON public.forum_replies;
 CREATE TRIGGER trigger_update_forum_topic_reply_stats
   AFTER INSERT OR DELETE ON public.forum_replies
   FOR EACH ROW
