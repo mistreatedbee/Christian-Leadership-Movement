@@ -26,9 +26,8 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
 );
 
 -- Add check constraint for quiz_type
--- Note: If constraint already exists, this will fail - that's okay, just skip it
--- The constraint ensures quiz_type can only be one of the allowed values
--- If your database doesn't support this, remove this section
+-- Drop constraint first if it exists, then add it
+DROP CONSTRAINT IF EXISTS quizzes_quiz_type_check;
 ALTER TABLE public.quizzes
 ADD CONSTRAINT quizzes_quiz_type_check 
 CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
@@ -58,7 +57,9 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
 );
 
 -- Add check constraint for question_type
--- Note: If constraint already exists, this will fail - that's okay, just skip it
+-- Drop constraint first if it exists, then add it
+ALTER TABLE public.quiz_questions
+DROP CONSTRAINT IF EXISTS quiz_questions_question_type_check;
 ALTER TABLE public.quiz_questions
 ADD CONSTRAINT quiz_questions_question_type_check 
 CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay'));

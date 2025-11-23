@@ -11,13 +11,13 @@ ADD COLUMN IF NOT EXISTS bible_school_context TEXT,
 ADD COLUMN IF NOT EXISTS quiz_type TEXT DEFAULT 'course',
 ADD COLUMN IF NOT EXISTS instructions TEXT;
 
--- Add check constraint for quiz_type
--- Note: If this fails because constraint already exists, that's fine - just skip this section
--- The constraint ensures quiz_type can only be one of the allowed values
--- If you get an error about constraint already existing, you can safely ignore it
--- ALTER TABLE public.quizzes
--- ADD CONSTRAINT quizzes_quiz_type_check 
--- CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
+-- Add check constraint for quiz_type (if not already added)
+-- Drop constraint first if it exists, then add it
+ALTER TABLE public.quizzes
+DROP CONSTRAINT IF EXISTS quizzes_quiz_type_check;
+ALTER TABLE public.quizzes
+ADD CONSTRAINT quizzes_quiz_type_check 
+CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_quizzes_program_id ON public.quizzes(program_id);
