@@ -14,7 +14,9 @@ interface Group {
   image_url?: string;
   is_public: boolean;
   max_members?: number;
+  status?: string;
   created_by: string;
+  created_at?: string;
   group_members?: {
     id: string;
     user_id: string;
@@ -50,22 +52,38 @@ export function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      const [allGroupsRes, myGroupsRes] = await Promise.all([
+      const [allGroupsRes, myGroupsRes, myCreatedGroupsRes] = await Promise.all([
+        // Fetch public approved/active groups
         insforge.database
           .from('groups')
           .select('*, users(*), group_members(*)')
           .eq('is_public', true)
+          .in('status', ['approved', 'active'])
           .order('created_at', { ascending: false }),
+        // Fetch groups user is a member of
         user ? insforge.database
           .from('group_members')
           .select('group_id, groups(*, users(*), group_members(*))')
           .eq('user_id', user.id)
           .then(res => res.data?.map((item: any) => item.groups).filter(Boolean) || [])
-        : Promise.resolve([])
+        : Promise.resolve([]),
+        // Fetch groups user created (to see pending status)
+        user ? insforge.database
+          .from('groups')
+          .select('*, users(*), group_members(*)')
+          .eq('created_by', user.id)
+          .order('created_at', { ascending: false })
+        : Promise.resolve({ data: [] })
       ]);
 
       setGroups(allGroupsRes.data || []);
-      setMyGroups(myGroupsRes || []);
+      
+      // Combine member groups and created groups, removing duplicates
+      const allMyGroups = [...(myGroupsRes || []), ...(myCreatedGroupsRes.data || [])];
+      const uniqueMyGroups = allMyGroups.filter((group, index, self) =>
+        index === self.findIndex(g => g.id === group.id)
+      );
+      setMyGroups(uniqueMyGroups || []);
     } catch (error) {
       console.error('Error fetching groups:', error);
     } finally {
@@ -81,12 +99,14 @@ export function GroupsPage() {
     }
 
     try {
+      // Create group with pending status
       const { data, error } = await insforge.database
         .from('groups')
         .insert({
           ...formData,
           max_members: formData.max_members ? parseInt(formData.max_members) : null,
-          created_by: user.id
+          created_by: user.id,
+          status: 'pending' // Set to pending for admin review
         })
         .select()
         .single();
@@ -99,7 +119,7 @@ export function GroupsPage() {
         throw new Error('Group creation failed: No data returned');
       }
 
-      // Add creator as admin
+      // Add creator as admin (only if approved later, but we add them now for visibility)
       const { error: memberError } = await insforge.database
         .from('group_members')
         .insert({
@@ -113,26 +133,52 @@ export function GroupsPage() {
         // Continue anyway - group was created
       }
 
+      // Create notification for user
+      try {
+        await insforge.database
+          .from('notifications')
+          .insert([{
+            user_id: user.id,
+            type: 'group',
+            title: 'Group Creation Request Submitted',
+            message: `Your request to create the group "${formData.name}" has been submitted and is currently pending review by administrators. You will be notified once it's approved or rejected.`,
+            related_id: data.id,
+            link_url: '/groups',
+            read: false
+          }]);
+      } catch (userNotifError) {
+        console.error('Error creating user notification:', userNotifError);
+      }
+
       // Create notification for admins
       try {
-        const { data: admins } = await insforge.database
+        const { data: admins, error: adminError } = await insforge.database
           .from('user_profiles')
           .select('user_id')
           .in('role', ['admin', 'super_admin']);
 
-        if (admins && admins.length > 0) {
+        if (adminError) {
+          console.error('Error fetching admins:', adminError);
+        } else if (admins && admins.length > 0) {
           const notifications = admins.map((admin: any) => ({
             user_id: admin.user_id,
-            type: 'new_group',
-            title: `New Group Created: ${formData.name}`,
-            message: `A new group "${formData.name}" has been created by ${user.email || user.nickname || 'a user'}.`,
+            type: 'group',
+            title: 'New Group Pending Review',
+            message: `A new group "${formData.name}" has been created by ${user.email || user.nickname || 'a user'} and is pending your review.`,
             related_id: data.id,
+            link_url: '/admin/groups',
             read: false
           }));
 
-          await insforge.database
+          const { error: notifError } = await insforge.database
             .from('notifications')
             .insert(notifications);
+
+          if (notifError) {
+            console.error('Error creating admin notifications:', notifError);
+          } else {
+            console.log(`✅ Notifications sent to ${admins.length} admins for group: ${formData.name}`);
+          }
         }
       } catch (notifError) {
         console.error('Error creating notifications:', notifError);
@@ -148,7 +194,7 @@ export function GroupsPage() {
       });
       setShowForm(false);
       fetchGroups();
-      alert('Group created successfully!');
+      alert('Your group creation request has been submitted! It is currently pending review by administrators. You will be notified once it\'s approved or rejected.');
     } catch (error: any) {
       console.error('Error creating group:', error);
       alert(error.message || 'Error creating group. Please try again.');
@@ -291,31 +337,75 @@ export function GroupsPage() {
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-navy-ink mb-4">My Groups</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {myGroups.map((group) => (
-              <Link
-                key={group.id}
-                to={`/groups/${group.id}`}
-                className="bg-white p-6 rounded-card shadow-soft hover:shadow-lg transition-shadow"
-              >
-                {group.image_url && (
-                  <img
-                    src={group.image_url}
-                    alt={group.name}
-                    className="w-full h-32 object-cover rounded-lg mb-4"
-                  />
-                )}
-                <h3 className="text-xl font-bold text-navy-ink mb-2">{group.name}</h3>
-                {group.description && (
-                  <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
-                )}
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <span className="flex items-center gap-1">
-                    <Users className="w-4 h-4" />
-                    {group.group_members?.length || 0} members
-                  </span>
+            {myGroups.map((group) => {
+              const isMyGroup = user && group.created_by === user.id;
+              const isPending = group.status === 'pending';
+              const isRejected = group.status === 'rejected';
+              const isApproved = group.status === 'approved' || group.status === 'active';
+              
+              return (
+                <div
+                  key={group.id}
+                  className="bg-white p-6 rounded-card shadow-soft hover:shadow-lg transition-shadow"
+                >
+                  {group.image_url && (
+                    <img
+                      src={group.image_url}
+                      alt={group.name}
+                      className="w-full h-32 object-cover rounded-lg mb-4"
+                    />
+                  )}
+                  <div className="flex items-start justify-between mb-2">
+                    <h3 className="text-xl font-bold text-navy-ink">{group.name}</h3>
+                    {isMyGroup && isPending && (
+                      <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded-full">
+                        Pending
+                      </span>
+                    )}
+                    {isMyGroup && isRejected && (
+                      <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
+                        Rejected
+                      </span>
+                    )}
+                    {isMyGroup && isApproved && (
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                        Approved
+                      </span>
+                    )}
+                  </div>
+                  {group.description && (
+                    <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
+                  )}
+                  {isMyGroup && isPending && (
+                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                      <p className="text-sm text-amber-800">
+                        ⏳ Your group creation request is pending review by administrators. It will be visible to others once approved.
+                      </p>
+                    </div>
+                  )}
+                  {isMyGroup && isRejected && (
+                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                      <p className="text-sm text-red-800">
+                        ❌ Your group creation request has been rejected. Please contact administrators for more information.
+                      </p>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-sm text-gray-600">
+                      <span className="flex items-center gap-1">
+                        <Users className="w-4 h-4" />
+                        {group.group_members?.length || 0} members
+                      </span>
+                    </div>
+                    {isApproved && (
+                      <Link to={`/groups/${group.id}`}>
+                        <Button variant="outline" size="sm">View</Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
-              </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

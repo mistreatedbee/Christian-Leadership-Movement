@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Users, Trash2, Search, Eye, Lock, Unlock, X } from 'lucide-react';
+import { Users, Trash2, Search, Eye, Lock, Unlock, X, Check, AlertCircle, Pause, Play } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 
@@ -11,6 +11,7 @@ interface Group {
   image_url?: string;
   is_public: boolean;
   max_members?: number;
+  status?: string;
   created_by: string;
   created_at: string;
   group_members?: {
@@ -31,13 +32,14 @@ export function GroupsManagementPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null);
   const [showGroupDetails, setShowGroupDetails] = useState(false);
   const [groupMembers, setGroupMembers] = useState<any[]>([]);
 
   useEffect(() => {
     fetchGroups();
-  }, [filterType]);
+  }, [filterType, filterStatus]);
 
   const fetchGroups = async () => {
     try {
@@ -49,6 +51,10 @@ export function GroupsManagementPage() {
 
       if (filterType !== 'all') {
         query = query.eq('group_type', filterType);
+      }
+
+      if (filterStatus !== 'all') {
+        query = query.eq('status', filterStatus);
       }
 
       const { data } = await query;
@@ -122,6 +128,64 @@ export function GroupsManagementPage() {
     }
   };
 
+  const updateGroupStatus = async (groupId: string, newStatus: string) => {
+    try {
+      const { data: updatedGroup, error } = await insforge.database
+        .from('groups')
+        .update({ status: newStatus })
+        .eq('id', groupId)
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating group status:', error);
+        alert(`Failed to update group status: ${error.message}`);
+        return;
+      }
+
+      // Notify the group creator
+      if (updatedGroup?.created_by) {
+        try {
+          let notificationTitle = '';
+          let notificationMessage = '';
+
+          if (newStatus === 'approved' || newStatus === 'active') {
+            notificationTitle = 'Group Approved';
+            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active!`;
+          } else if (newStatus === 'rejected') {
+            notificationTitle = 'Group Rejected';
+            notificationMessage = `Your group creation request for "${updatedGroup.name}" has been rejected. Please contact administrators for more information.`;
+          } else if (newStatus === 'inactive') {
+            notificationTitle = 'Group Deactivated';
+            notificationMessage = `Your group "${updatedGroup.name}" has been deactivated by administrators.`;
+          }
+
+          if (notificationTitle) {
+            await insforge.database
+              .from('notifications')
+              .insert([{
+                user_id: updatedGroup.created_by,
+                type: 'group',
+                title: notificationTitle,
+                message: notificationMessage,
+                related_id: groupId,
+                link_url: '/groups',
+                read: false
+              }]);
+          }
+        } catch (notifError) {
+          console.error('Error sending notification:', notifError);
+        }
+      }
+
+      fetchGroups();
+      alert(`Group status updated to ${newStatus}`);
+    } catch (error: any) {
+      console.error('Error updating group status:', error);
+      alert(`Failed to update group status: ${error.message || 'Unknown error'}`);
+    }
+  };
+
   const togglePublic = async (groupId: string, currentStatus: boolean) => {
     try {
       await insforge.database
@@ -159,7 +223,8 @@ export function GroupsManagementPage() {
   const filteredGroups = groups.filter(group =>
     group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     group.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.users?.nickname?.toLowerCase().includes(searchTerm.toLowerCase())
+    group.users?.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    group.users?.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const groupTypes = Array.from(new Set(groups.map(g => g.group_type).filter(Boolean))) as string[];
@@ -181,7 +246,7 @@ export function GroupsManagementPage() {
 
       {/* Filters */}
       <div className="bg-white p-6 rounded-card shadow-soft">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             <input
@@ -204,7 +269,27 @@ export function GroupsManagementPage() {
               </option>
             ))}
           </select>
+          <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+          >
+            <option value="all">All Status</option>
+            <option value="pending">Pending Review</option>
+            <option value="approved">Approved</option>
+            <option value="active">Active</option>
+            <option value="inactive">Inactive</option>
+            <option value="rejected">Rejected</option>
+          </select>
         </div>
+        {groups.filter(g => g.status === 'pending').length > 0 && (
+          <div className="mt-4 flex items-center gap-2 px-4 py-2 bg-amber-100 text-amber-800 rounded-lg">
+            <AlertCircle className="w-5 h-5" />
+            <span className="font-medium">
+              {groups.filter(g => g.status === 'pending').length} group(s) pending review
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Groups Table */}
@@ -217,7 +302,8 @@ export function GroupsManagementPage() {
                 <th className="text-left py-3 px-6">Creator</th>
                 <th className="text-left py-3 px-6">Type</th>
                 <th className="text-left py-3 px-6">Members</th>
-                <th className="text-left py-3 px-6">Status</th>
+                <th className="text-left py-3 px-6">Approval Status</th>
+                <th className="text-left py-3 px-6">Visibility</th>
                 <th className="text-left py-3 px-6">Created</th>
                 <th className="text-left py-3 px-6">Actions</th>
               </tr>
@@ -243,6 +329,17 @@ export function GroupsManagementPage() {
                   </td>
                   <td className="py-4 px-6">
                     <span className={`px-2 py-1 text-xs rounded-full ${
+                      group.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                      group.status === 'approved' || group.status === 'active' ? 'bg-green-100 text-green-800' :
+                      group.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      group.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {group.status || 'pending'}
+                    </span>
+                  </td>
+                  <td className="py-4 px-6">
+                    <span className={`px-2 py-1 text-xs rounded-full ${
                       group.is_public ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
                       {group.is_public ? 'Public' : 'Private'}
@@ -252,7 +349,66 @@ export function GroupsManagementPage() {
                     {new Date(group.created_at).toLocaleDateString()}
                   </td>
                   <td className="py-4 px-6">
-                    <div className="flex gap-2">
+                    <div className="flex gap-2 flex-wrap">
+                      {group.status === 'pending' && (
+                        <>
+                          <Button
+                            onClick={() => {
+                              if (confirm('Approve this group and make it active?')) {
+                                updateGroupStatus(group.id, 'approved');
+                              }
+                            }}
+                            variant="primary"
+                            size="sm"
+                            title="Approve"
+                          >
+                            <Check className="w-4 h-4" />
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => {
+                              if (confirm('Reject this group creation request?')) {
+                                updateGroupStatus(group.id, 'rejected');
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            title="Reject"
+                          >
+                            <X className="w-4 h-4" />
+                            Reject
+                          </Button>
+                        </>
+                      )}
+                      {(group.status === 'approved' || group.status === 'active') && (
+                        <Button
+                          onClick={() => {
+                            if (confirm('Deactivate this group?')) {
+                              updateGroupStatus(group.id, 'inactive');
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          title="Deactivate"
+                        >
+                          <Pause className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {group.status === 'inactive' && (
+                        <Button
+                          onClick={() => {
+                            if (confirm('Activate this group?')) {
+                              updateGroupStatus(group.id, 'active');
+                            }
+                          }}
+                          variant="outline"
+                          size="sm"
+                          title="Activate"
+                        >
+                          <Play className="w-4 h-4" />
+                        </Button>
+                      )}
                       <Button
                         onClick={async () => {
                           setSelectedGroup(group);
@@ -326,7 +482,19 @@ export function GroupsManagementPage() {
                     <span className="font-medium">Type:</span> {selectedGroup.group_type || 'N/A'}
                   </div>
                   <div>
-                    <span className="font-medium">Status:</span>{' '}
+                    <span className="font-medium">Approval Status:</span>{' '}
+                    <span className={`px-2 py-1 text-xs rounded-full ${
+                      selectedGroup.status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                      selectedGroup.status === 'approved' || selectedGroup.status === 'active' ? 'bg-green-100 text-green-800' :
+                      selectedGroup.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      selectedGroup.status === 'inactive' ? 'bg-gray-100 text-gray-800' :
+                      'bg-gray-100 text-gray-800'
+                    }`}>
+                      {selectedGroup.status || 'pending'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="font-medium">Visibility:</span>{' '}
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       selectedGroup.is_public ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>

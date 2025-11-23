@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS public.groups (
   image_key TEXT,
   is_public BOOLEAN DEFAULT false,
   max_members INTEGER,
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'active', 'inactive')),
   created_by UUID NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
   created_at TIMESTAMPTZ DEFAULT now(),
   updated_at TIMESTAMPTZ DEFAULT now()
@@ -23,6 +24,7 @@ CREATE TABLE IF NOT EXISTS public.groups (
 CREATE INDEX IF NOT EXISTS idx_groups_created_by ON public.groups(created_by);
 CREATE INDEX IF NOT EXISTS idx_groups_group_type ON public.groups(group_type);
 CREATE INDEX IF NOT EXISTS idx_groups_is_public ON public.groups(is_public);
+CREATE INDEX IF NOT EXISTS idx_groups_status ON public.groups(status);
 CREATE INDEX IF NOT EXISTS idx_groups_created_at ON public.groups(created_at);
 
 -- Group Members Table
@@ -84,13 +86,13 @@ DROP POLICY IF EXISTS "Users create groups" ON public.groups;
 DROP POLICY IF EXISTS "Group leaders manage their groups" ON public.groups;
 DROP POLICY IF EXISTS "Admins manage groups" ON public.groups;
 
--- Public can read public groups
+-- Public can read public approved/active groups
 CREATE POLICY "Public can read public groups"
   ON public.groups
   FOR SELECT
-  USING (is_public = true);
+  USING (is_public = true AND status IN ('approved', 'active'));
 
--- Users can see groups they're members of (any visibility)
+-- Users can see groups they're members of (any visibility) or groups they created (any status)
 CREATE POLICY "Users see groups they're in"
   ON public.groups
   FOR SELECT
@@ -101,6 +103,7 @@ CREATE POLICY "Users see groups they're in"
       AND group_members.user_id = public.get_current_user_id()
     )
     OR created_by = public.get_current_user_id()
+    OR (is_public = true AND status IN ('approved', 'active'))
   );
 
 -- Users can create groups
