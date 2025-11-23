@@ -62,14 +62,25 @@ export function UserManagementPage() {
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (usersError) throw usersError;
+      if (usersError) {
+        console.error('❌ Error fetching users:', usersError);
+        throw usersError;
+      }
+
+      console.log('✅ Fetched users:', allUsers?.length || 0, 'users');
 
       // Fetch all user profiles
       const { data: profiles, error: profilesError } = await insforge.database
         .from('user_profiles')
         .select('*');
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('❌ Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('✅ Fetched profiles:', profiles?.length || 0, 'profiles');
+      console.log('Sample profile:', profiles?.[0]);
 
       // Fetch all applications to get emails as fallback
       const { data: allApplications } = await insforge.database
@@ -103,7 +114,7 @@ export function UserManagementPage() {
             .catch(err => console.error(`❌ Failed to update email for user ${user.id}:`, err));
         }
         
-        return {
+        const userData = {
           id: profile?.id || user.id,
           user_id: user.id,
           nickname: user.nickname || null,
@@ -120,9 +131,27 @@ export function UserManagementPage() {
           avatar_url: user.avatar_url || null,
           bio: user.bio || null
         };
+        
+        // Debug log for first user
+        if (user.id === allUsers?.[0]?.id) {
+          console.log('🔍 Sample user data:', {
+            user_id: user.id,
+            user_email: user.email,
+            profile_phone: profile?.phone,
+            profile_address: profile?.address,
+            profile_city: profile?.city,
+            profile_province: profile?.province,
+            profile_postal_code: profile?.postal_code,
+            profile_date_of_birth: profile?.date_of_birth,
+            final_userData: userData
+          });
+        }
+        
+        return userData;
       });
 
-      console.log('Fetched users with emails:', usersData.map(u => ({ id: u.user_id, email: u.email, nickname: u.nickname })));
+      console.log('✅ Combined users data:', usersData.length, 'users');
+      console.log('Sample combined user:', usersData[0]);
       setUsers(usersData);
     } catch (err: any) {
       console.error('Error fetching users:', err);
