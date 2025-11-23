@@ -281,22 +281,37 @@ export function UserManagementPage() {
         .eq('user_id', user.user_id)
         .maybeSingle();
 
-      // Fetch user's applications
+      // Fetch user's applications (may contain email in form_data)
       const { data: applications } = await insforge.database
         .from('applications')
-        .select('*')
+        .select('*, form_data')
         .eq('user_id', user.user_id)
         .order('created_at', { ascending: false });
 
       setUserApplications(applications || []);
 
+      // Try to get email from applications form_data as fallback
+      if (!userEmail && applications && applications.length > 0) {
+        const mostRecentApp = applications[0];
+        if (mostRecentApp.form_data) {
+          const formEmail = mostRecentApp.form_data.email || 
+                           mostRecentApp.form_data.Email || 
+                           mostRecentApp.form_data.EMAIL;
+          if (formEmail) {
+            userEmail = formEmail;
+            console.log('📧 Found email in application form_data:', formEmail);
+          }
+        }
+      }
+
       // Combine data
       // CRITICAL: Email is stored in users table, NOT in user_profiles table
       // Always use email from users table (userData.email or user.email from list)
+      // Fallback to application form_data if email not in users table
       const enriched: any = {
         ...(profileData || {}),
         // EMAIL: Get ONLY from users table (where emails are actually saved)
-        // Priority: userData.email (from direct query) > user.email (from list) > null
+        // Priority: userData.email (from direct query) > user.email (from list) > application form_data > null
         email: userEmail,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
