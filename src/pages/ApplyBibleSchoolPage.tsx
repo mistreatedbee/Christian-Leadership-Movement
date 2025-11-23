@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useUser } from '@insforge/react';
 import { Button } from '../components/ui/Button';
-import { Upload, X, CheckCircle, User, Mail, Phone, MapPin, Calendar, FileText, Save, Plus, Trash2, Copy, ArrowLeft } from 'lucide-react';
+import { X, FileText, Save, Plus, Trash2, Copy, ArrowLeft } from 'lucide-react';
 import { insforge } from '../lib/insforge';
 import { sendEmailNotification } from '../lib/email';
 import { uploadFileWithUserCheck } from '../lib/uploadHelpers';
@@ -234,9 +234,51 @@ export function ApplyBibleSchoolPage() {
   };
 
   const handleNext = () => {
+    const values = getValues();
+    const missingFields: string[] = [];
+    
+    if (currentStep === 1) {
+      if (!values.fullName) missingFields.push('Full Name');
+      if (!values.idNumber) missingFields.push('ID Number');
+      if (!values.gender) missingFields.push('Gender');
+      if (!values.maritalStatus) missingFields.push('Marital Status');
+      if (!values.contactNumber) missingFields.push('Contact Number');
+      if (!values.email) missingFields.push('Email');
+      if (!values.physicalAddress) missingFields.push('Physical Address');
+      if (!values.country) missingFields.push('Country');
+    } else if (currentStep === 2) {
+      // Step 2 validation
+      if (values.attendsLocalChurch && !values.churchName) missingFields.push('Church Name');
+      if (values.servesInMinistry && !values.ministryServiceDescription) missingFields.push('Ministry Service Description');
+    } else if (currentStep === 3) {
+      if (!values.whyJoinBibleSchool) missingFields.push('Why Join Bible School');
+      else if (values.whyJoinBibleSchool.length < 50) {
+        setError(`"Why Join Bible School" must be at least 50 characters. Current: ${values.whyJoinBibleSchool.length} characters. Please provide more details.`);
+        return;
+      }
+    } else if (currentStep === 4) {
+      if (!values.callingStatement) missingFields.push('Calling Statement');
+      else if (values.callingStatement.length < 100) {
+        setError(`"Calling Statement" must be at least 100 characters. Current: ${values.callingStatement.length} characters. Please provide more details.`);
+        return;
+      }
+    } else if (currentStep === 5) {
+      if (!values.refereeName) missingFields.push('Referee Name');
+      if (!values.refereeContact) missingFields.push('Referee Contact');
+      if (!values.relationshipToReferee) missingFields.push('Relationship to Referee');
+      if (!values.registrationOption) missingFields.push('Registration Option');
+      if (!values.signature) missingFields.push('Signature');
+    }
+    
+    if (missingFields.length > 0) {
+      setError(`Please complete the following required fields before proceeding: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     if (validateStep(currentStep)) {
       saveDraft();
       setCurrentStep(prev => Math.min(prev + 1, 5));
+      setError(null);
     } else {
       setError('Please complete all required fields before proceeding');
     }
@@ -444,7 +486,26 @@ export function ApplyBibleSchoolPage() {
         navigate('/dashboard/applications');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to submit application');
+      console.error('Error submitting application:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to submit application. Please check all required fields and try again.';
+      
+      if (err.message) {
+        if (err.message.includes('required') || err.message.includes('missing')) {
+          errorMessage = 'Please complete all required fields before submitting. Check that all fields marked with * are filled in, including "Why Join Bible School" (minimum 50 characters) and "Calling Statement" (minimum 100 characters).';
+        } else if (err.message.includes('minLength') || err.message.includes('minimum') || err.message.includes('50') || err.message.includes('100')) {
+          errorMessage = 'Some fields do not meet the minimum length requirement. Please check:\n- "Why Join Bible School" must be at least 50 characters\n- "Calling Statement" must be at least 100 characters';
+        } else if (err.message.includes('upload') || err.message.includes('file')) {
+          errorMessage = `File upload error: ${err.message}. Please ensure your files are less than 10MB and try again.`;
+        } else if (err.message.includes('RLS') || err.message.includes('permission')) {
+          errorMessage = 'Permission error. Please make sure you are logged in and try again.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -765,14 +826,26 @@ export function ApplyBibleSchoolPage() {
                     </label>
                     <textarea
                       {...register('whyJoinBibleSchool', {
-                        required: 'This field is required',
-                        minLength: { value: 50, message: 'Please provide at least 50 characters' }
+                        required: 'Why Join Bible School field is required. Please explain why you want to join.',
+                        minLength: { 
+                          value: 50, 
+                          message: 'Your explanation must be at least 50 characters long. Please provide more details about why you want to join Bible School.' 
+                        }
                       })}
                       rows={6}
                       className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       placeholder="Please provide a detailed explanation (minimum 50 characters)"
                     />
-                    {errors.whyJoinBibleSchool && <p className="text-red-500 text-sm mt-1">{errors.whyJoinBibleSchool.message}</p>}
+                    {errors.whyJoinBibleSchool && (
+                      <p className="text-red-500 text-sm mt-1 font-medium">
+                        {errors.whyJoinBibleSchool.message}
+                        {errors.whyJoinBibleSchool.type === 'minLength' && (
+                          <span className="block mt-1 text-xs">
+                            Current length: {watch('whyJoinBibleSchool')?.length || 0} characters. Required: 50 characters minimum.
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -845,14 +918,26 @@ export function ApplyBibleSchoolPage() {
                     </label>
                     <textarea
                       {...register('callingStatement', {
-                        required: 'Calling statement is required',
-                        minLength: { value: 100, message: 'Please provide at least 100 characters' }
+                        required: 'Calling Statement field is required. Please describe your calling and ministry vision.',
+                        minLength: { 
+                          value: 100, 
+                          message: 'Your calling statement must be at least 100 characters long. Please provide more details about your calling and ministry vision.' 
+                        }
                       })}
                       rows={8}
                       className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       placeholder="Please describe your calling and ministry vision (minimum 100 characters)"
                     />
-                    {errors.callingStatement && <p className="text-red-500 text-sm mt-1">{errors.callingStatement.message}</p>}
+                    {errors.callingStatement && (
+                      <p className="text-red-500 text-sm mt-1 font-medium">
+                        {errors.callingStatement.message}
+                        {errors.callingStatement.type === 'minLength' && (
+                          <span className="block mt-1 text-xs">
+                            Current length: {watch('callingStatement')?.length || 0} characters. Required: 100 characters minimum.
+                          </span>
+                        )}
+                      </p>
+                    )}
                   </div>
 
                   <div>

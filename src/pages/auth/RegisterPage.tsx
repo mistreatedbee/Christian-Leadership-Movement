@@ -67,7 +67,7 @@ export function RegisterPage() {
         // Account was created successfully, just navigate to login
         navigate('/login', { 
           state: { 
-            message: '🎉 Your account has been created successfully! Please log in with your email and password to continue.' 
+            message: '✅ Your account has been registered successfully! An email has been sent to your email address. Please check your inbox (and spam folder) to verify your email address, then log back in to continue.' 
           } 
         });
         return;

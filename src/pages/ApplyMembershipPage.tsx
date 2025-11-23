@@ -229,9 +229,40 @@ export function ApplyMembershipPage() {
   };
 
   const handleNext = () => {
+    const values = getValues();
+    const missingFields: string[] = [];
+    
+    if (currentStep === 1) {
+      if (!values.idNumber) missingFields.push('ID Number');
+      if (!values.firstName) missingFields.push('First Name');
+      if (!values.lastName) missingFields.push('Last Name');
+      if (!values.gender) missingFields.push('Gender');
+      if (!values.province) missingFields.push('Province');
+      if (!values.residentialStatus) missingFields.push('Residential Status');
+      if (!values.phone || values.phone.length < 10) missingFields.push('Phone Number (must be at least 10 digits)');
+      if (!values.email) missingFields.push('Email');
+      if (!values.homeLanguage) missingFields.push('Home Language');
+      if (!values.populationGroup) missingFields.push('Population Group');
+    } else if (currentStep === 2) {
+      if (!values.primaryIncomeSource) missingFields.push('Primary Income Source');
+    } else if (currentStep === 3) {
+      if (!values.referenceFirstName) missingFields.push('Reference First Name');
+      if (!values.referenceLastName) missingFields.push('Reference Last Name');
+      if (!values.referenceContact) missingFields.push('Reference Contact');
+      if (!values.referenceEmail) missingFields.push('Reference Email');
+      if (!values.signature) missingFields.push('Signature');
+      if (!idFile) missingFields.push('ID Copy (upload required)');
+    }
+    
+    if (missingFields.length > 0) {
+      setError(`Please complete the following required fields before proceeding: ${missingFields.join(', ')}`);
+      return;
+    }
+    
     if (validateStep(currentStep)) {
       saveDraft();
       setCurrentStep(prev => Math.min(prev + 1, 3));
+      setError(null);
     } else {
       setError('Please complete all required fields before proceeding');
     }
@@ -453,7 +484,24 @@ export function ApplyMembershipPage() {
         navigate('/dashboard/applications');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to submit application');
+      console.error('Error submitting application:', err);
+      
+      // Provide more specific error messages
+      let errorMessage = 'Failed to submit application. Please check all required fields and try again.';
+      
+      if (err.message) {
+        if (err.message.includes('required') || err.message.includes('missing')) {
+          errorMessage = 'Please complete all required fields before submitting. Check that all fields marked with * are filled in, including your ID copy upload.';
+        } else if (err.message.includes('upload') || err.message.includes('file')) {
+          errorMessage = `File upload error: ${err.message}. Please ensure your files are less than 10MB and try again.`;
+        } else if (err.message.includes('RLS') || err.message.includes('permission')) {
+          errorMessage = 'Permission error. Please make sure you are logged in and try again.';
+        } else {
+          errorMessage = err.message;
+        }
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -548,15 +596,24 @@ export function ApplyMembershipPage() {
                         type="text"
                         maxLength={13}
                         {...register('idNumber', {
-                          required: 'ID number is required',
-                          minLength: { value: 13, message: 'ID must be exactly 13 digits' },
-                          maxLength: { value: 13, message: 'ID must be exactly 13 digits' },
-                          pattern: { value: /^\d+$/, message: 'ID must contain only numbers' }
+                          required: 'ID Number is required. Please enter your 13-digit South African ID number.',
+                          minLength: { value: 13, message: 'ID Number must be exactly 13 digits. Please enter all 13 digits of your ID number.' },
+                          maxLength: { value: 13, message: 'ID Number must be exactly 13 digits. Please enter only 13 digits.' },
+                          pattern: { value: /^\d+$/, message: 'ID Number must contain only numbers. Please remove any letters or special characters.' }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         placeholder="13-digit ID number"
                       />
-                      {errors.idNumber && <p className="text-red-500 text-sm mt-1">{errors.idNumber.message}</p>}
+                      {errors.idNumber && (
+                        <p className="text-red-500 text-sm mt-1 font-medium">
+                          {errors.idNumber.message}
+                          {(errors.idNumber.type === 'minLength' || errors.idNumber.type === 'maxLength') && (
+                            <span className="block mt-1 text-xs">
+                              Current length: {watch('idNumber')?.length || 0} digits. Required: exactly 13 digits.
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -594,12 +651,21 @@ export function ApplyMembershipPage() {
                       <input
                         type="text"
                         {...register('firstName', {
-                          required: 'First name is required',
-                          minLength: { value: 2, message: 'First name must be at least 2 characters' }
+                          required: 'First Name is required. Please enter your first name.',
+                          minLength: { value: 2, message: 'First Name must be at least 2 characters long. Please enter your full first name.' }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       />
-                      {errors.firstName && <p className="text-red-500 text-sm mt-1">{errors.firstName.message}</p>}
+                      {errors.firstName && (
+                        <p className="text-red-500 text-sm mt-1 font-medium">
+                          {errors.firstName.message}
+                          {errors.firstName.type === 'minLength' && (
+                            <span className="block mt-1 text-xs">
+                              Current length: {watch('firstName')?.length || 0} characters. Required: at least 2 characters.
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -618,12 +684,21 @@ export function ApplyMembershipPage() {
                       <input
                         type="text"
                         {...register('lastName', {
-                          required: 'Last name is required',
-                          minLength: { value: 2, message: 'Last name must be at least 2 characters' }
+                          required: 'Last Name is required. Please enter your last name.',
+                          minLength: { value: 2, message: 'Last Name must be at least 2 characters long. Please enter your full last name.' }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       />
-                      {errors.lastName && <p className="text-red-500 text-sm mt-1">{errors.lastName.message}</p>}
+                      {errors.lastName && (
+                        <p className="text-red-500 text-sm mt-1 font-medium">
+                          {errors.lastName.message}
+                          {errors.lastName.type === 'minLength' && (
+                            <span className="block mt-1 text-xs">
+                              Current length: {watch('lastName')?.length || 0} characters. Required: at least 2 characters.
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1077,10 +1152,12 @@ export function ApplyMembershipPage() {
                         </label>
                         <input
                           type="tel"
-                          {...register('referenceContact', { required: 'Reference contact is required' })}
+                          {...register('referenceContact', { required: 'Reference Contact is required. Please enter your reference person\'s phone number.' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         />
-                        {errors.referenceContact && <p className="text-red-500 text-sm mt-1">{errors.referenceContact.message}</p>}
+                        {errors.referenceContact && (
+                          <p className="text-red-500 text-sm mt-1 font-medium">{errors.referenceContact.message}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1090,12 +1167,14 @@ export function ApplyMembershipPage() {
                         <input
                           type="email"
                           {...register('referenceEmail', {
-                            required: 'Reference email is required',
-                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format' }
+                            required: 'Reference Email is required. Please enter your reference person\'s email address.',
+                            pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Invalid email format. Please enter a valid email address (e.g., name@example.com).' }
                           })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         />
-                        {errors.referenceEmail && <p className="text-red-500 text-sm mt-1">{errors.referenceEmail.message}</p>}
+                        {errors.referenceEmail && (
+                          <p className="text-red-500 text-sm mt-1 font-medium">{errors.referenceEmail.message}</p>
+                        )}
                       </div>
 
                       <div>
