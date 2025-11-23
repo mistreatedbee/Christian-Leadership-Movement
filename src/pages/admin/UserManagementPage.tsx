@@ -411,6 +411,16 @@ export function UserManagementPage() {
       console.log('🔍 Final userData:', userData);
       console.log('🔍 Final email:', userData?.email);
       
+      // CRITICAL: If email is null/undefined, try to get it from InsForge auth
+      // The email might be stored in the auth system but not synced to users table
+      if (!userData?.email) {
+        console.log('⚠️ Email is null in users table, checking if we can get it from auth context...');
+        // Note: InsForge auth email is not directly accessible, but we can check
+        // if the user object from useUser() has email
+        console.log('🔍 Current user from auth context:', currentUser);
+        console.log('🔍 Current user email:', currentUser?.email);
+      }
+      
       // PRIORITY 2: Fetch from user_profiles table (registration data)
       const { data: profileData, error: profileError } = await insforge.database
         .from('user_profiles')
@@ -424,6 +434,14 @@ export function UserManagementPage() {
       
       console.log('🔍 Profile data:', profileData);
       console.log('🔍 Profile email:', profileData?.email);
+      
+      // If email is still missing, the values in the database are likely actually null
+      // This means emails were never saved during registration
+      if (!userData?.email && !user.email && !profileData?.email) {
+        console.error('❌ EMAIL IS NULL IN ALL SOURCES - Emails may not have been saved during registration!');
+        console.error('❌ This means the registration process is not saving emails to the users table.');
+        console.error('❌ Check the registration code to ensure emails are saved to public.users.email');
+      }
       
       // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email
       // Applications should NOT be used - email should be in users table from registration
