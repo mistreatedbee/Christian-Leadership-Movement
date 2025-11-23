@@ -32,6 +32,7 @@ export function QuizManagementPage() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [programs, setPrograms] = useState<any[]>([]);
+  const [upCourses, setUpCourses] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingQuiz, setEditingQuiz] = useState<Quiz | null>(null);
@@ -58,7 +59,7 @@ export function QuizManagementPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [quizzesRes, coursesRes, programsRes] = await Promise.all([
+      const [quizzesRes, coursesRes, programsRes, upCoursesRes] = await Promise.all([
         insforge.database
           .from('quizzes')
           .select('*, courses(*), programs(*)')
@@ -70,12 +71,18 @@ export function QuizManagementPage() {
         insforge.database
           .from('programs')
           .select('*')
-          .order('name')
+          .order('name'),
+        insforge.database
+          .from('courses')
+          .select('*')
+          .eq('is_up_endorsed', true)
+          .order('title')
       ]);
 
       setQuizzes(quizzesRes.data || []);
       setCourses(coursesRes.data || []);
       setPrograms(programsRes.data || []);
+      setUpCourses(upCoursesRes.data || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -305,22 +312,55 @@ export function QuizManagementPage() {
             )}
 
             {formData.quiz_type === 'program' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Program *</label>
-                <select
-                  value={formData.program_id}
-                  onChange={(e) => setFormData({ ...formData, program_id: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
-                  required
-                >
-                  <option value="">Select a Program</option>
-                  {programs.map((program) => (
-                    <option key={program.id} value={program.id}>
-                      {program.name} ({program.type})
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Program *</label>
+                  <select
+                    value={formData.program_id}
+                    onChange={(e) => {
+                      const selectedProgramId = e.target.value;
+                      const selectedProgram = programs.find(p => p.id === selectedProgramId);
+                      setFormData({ 
+                        ...formData, 
+                        program_id: selectedProgramId,
+                        course_id: '' // Reset course when program changes
+                      });
+                    }}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                    required
+                  >
+                    <option value="">Select a Program</option>
+                    {programs.map((program) => (
+                      <option key={program.id} value={program.id}>
+                        {program.name} ({program.type})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {/* Show UP courses if University of Pretoria is selected */}
+                {formData.program_id && programs.find(p => p.id === formData.program_id)?.name?.toLowerCase().includes('pretoria') && upCourses.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      University of Pretoria Course (Optional)
+                    </label>
+                    <select
+                      value={formData.course_id}
+                      onChange={(e) => setFormData({ ...formData, course_id: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                    >
+                      <option value="">Select a UP Course (Optional)</option>
+                      {upCourses.map((course) => (
+                        <option key={course.id} value={course.id}>
+                          {course.title}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Optional: Select a specific course within the University of Pretoria program
+                    </p>
+                  </div>
+                )}
+              </>
             )}
 
             {formData.quiz_type === 'bible_school' && (

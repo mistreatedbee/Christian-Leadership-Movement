@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
+import { ArrowLeft, Video, FileText, CheckCircle, Play, BookOpen, Clock, ArrowRight } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
@@ -33,6 +34,8 @@ export function CourseLessonPage() {
   const [progress, setProgress] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [quizzes, setQuizzes] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isLoaded || !user || !courseId) return;
@@ -71,6 +74,16 @@ export function CourseLessonPage() {
 
       if (lessonsError) throw lessonsError;
       setLessons(lessonsData || []);
+
+      // Fetch quizzes for this course
+      const { data: quizzesData } = await insforge.database
+        .from('quizzes')
+        .select('*')
+        .eq('course_id', courseId)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      setQuizzes(quizzesData || []);
 
       // Fetch current lesson
       if (lessonId) {
@@ -299,6 +312,43 @@ export function CourseLessonPage() {
           </div>
         )}
       </div>
+
+      {/* Quizzes Section */}
+      {quizzes.length > 0 && (
+        <div className="bg-white rounded-card shadow-soft p-6">
+          <h3 className="font-bold text-navy-ink mb-4 flex items-center">
+            <BookOpen className="mr-2" size={20} />
+            Course Quizzes
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {quizzes.map((quiz) => (
+              <div key={quiz.id} className="border border-gray-200 rounded-card p-4 hover:border-gold transition-all">
+                <div className="flex items-start justify-between mb-2">
+                  <h4 className="font-semibold text-navy-ink">{quiz.title}</h4>
+                  <BookOpen className="text-blue-500" size={18} />
+                </div>
+                {quiz.description && (
+                  <p className="text-sm text-gray-600 mb-3 line-clamp-2">{quiz.description}</p>
+                )}
+                <div className="flex items-center gap-4 text-xs text-gray-500 mb-3">
+                  {quiz.time_limit && (
+                    <div className="flex items-center gap-1">
+                      <Clock size={14} />
+                      <span>{quiz.time_limit} min</span>
+                    </div>
+                  )}
+                  <span>Pass: {quiz.passing_score}%</span>
+                </div>
+                <Link to={`/dashboard/courses/${courseId}/quizzes/${quiz.id}/take`}>
+                  <Button variant="primary" className="w-full text-sm">
+                    Take Quiz <ArrowRight className="ml-2" size={14} />
+                  </Button>
+                </Link>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Lessons Navigation */}
       <div className="bg-white rounded-card shadow-soft p-6">

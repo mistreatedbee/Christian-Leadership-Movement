@@ -6,6 +6,7 @@ import { MissionSection } from '../components/home/MissionSection';
 import { StrategicObjectivesSection } from '../components/home/StrategicObjectivesSection';
 import { ProgramsSection } from '../components/home/ProgramsSection';
 import { UpcomingEventsSection } from '../components/home/UpcomingEventsSection';
+import { CalendarSection } from '../components/home/CalendarSection';
 import { GallerySection } from '../components/home/GallerySection';
 import { PartnersSection } from '../components/home/PartnersSection';
 import { CtaSection } from '../components/home/CtaSection';
@@ -29,6 +30,7 @@ export function HomePage() {
         <StrategicObjectivesSection />
         <ProgramsSection />
         <UpcomingEventsSection />
+        <CalendarSection />
         <GallerySection />
         <PartnersSection />
         <CtaSection />

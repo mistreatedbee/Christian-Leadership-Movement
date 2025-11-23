@@ -251,31 +251,41 @@ export function CoursesPage() {
                   )}
 
                   {canAccess ? (
-                    <Button 
-                      variant="primary" 
-                      className="w-full" 
-                      onClick={() => {
-                        // Navigate to first lesson
-                        const courseLessons = lessons[course.id];
-                        if (courseLessons && courseLessons.length > 0) {
-                          navigate(`/dashboard/courses/${course.id}/lessons/${courseLessons[0].id}`);
-                        } else {
-                          navigate(`/dashboard/courses/${course.id}`);
-                        }
-                      }}
-                    >
-                      {userProgress?.completed ? (
-                        <>
-                          <CheckCircle className="mr-2" size={16} />
-                          View Course
-                        </>
-                      ) : (
-                        <>
-                          <Play className="mr-2" size={16} />
-                          {isAdmin ? 'Access Course' : 'Continue Learning'}
-                        </>
-                      )}
-                    </Button>
+                    <div className="space-y-2">
+                      <Button 
+                        variant="primary" 
+                        className="w-full" 
+                        onClick={() => {
+                          // Navigate to first lesson
+                          const courseLessons = lessons[course.id];
+                          if (courseLessons && courseLessons.length > 0) {
+                            navigate(`/dashboard/courses/${course.id}/lessons/${courseLessons[0].id}`);
+                          } else {
+                            navigate(`/dashboard/courses/${course.id}`);
+                          }
+                        }}
+                      >
+                        {userProgress?.completed ? (
+                          <>
+                            <CheckCircle className="mr-2" size={16} />
+                            View Course
+                          </>
+                        ) : (
+                          <>
+                            <Play className="mr-2" size={16} />
+                            {isAdmin ? 'Access Course' : 'Continue Learning'}
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        className="w-full" 
+                        onClick={() => navigate(`/dashboard/courses/${course.id}/quizzes`)}
+                      >
+                        <BookOpen className="mr-2" size={16} />
+                        View Quizzes
+                      </Button>
+                    </div>
                   ) : (
                     <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-2 rounded-card text-center text-sm">
                       Payment required to access
