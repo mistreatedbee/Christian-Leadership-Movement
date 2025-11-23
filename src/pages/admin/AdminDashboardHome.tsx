@@ -275,19 +275,29 @@ export function AdminDashboardHome() {
         allRecentActivity.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
         setRecentApplications(allRecentActivity.slice(0, 20));
 
-        // Fetch recent notifications for admin
-        const { data: recentNotifications, error: notifError } = await insforge.database
-          .from('notifications')
-          .select('*')
-          .eq('user_id', user.id)
-          .order('created_at', { ascending: false })
-          .limit(20);
+        // Fetch recent notifications for admin (only if user exists)
+        if (user?.id) {
+          try {
+            const { data: recentNotifications, error: notifError } = await insforge.database
+              .from('notifications')
+              .select('*')
+              .eq('user_id', user.id)
+              .order('created_at', { ascending: false })
+              .limit(20);
 
-        if (notifError) {
-          console.error('Error fetching notifications:', notifError);
+            if (notifError) {
+              console.error('Error fetching notifications:', notifError);
+              setNotifications([]);
+            } else {
+              setNotifications(recentNotifications || []);
+            }
+          } catch (notifErr: any) {
+            console.error('Error fetching notifications:', notifErr);
+            setNotifications([]);
+          }
+        } else {
+          setNotifications([]);
         }
-
-        setNotifications(recentNotifications || []);
         
         // Log group notifications for debugging
         const groupNotifs = recentNotifications?.filter((n: any) => n.type === 'group') || [];
