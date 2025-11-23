@@ -40,6 +40,15 @@ export function ForumPage() {
     fetchData();
   }, [selectedCategory]);
 
+  // Refresh data periodically to update view counts
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [selectedCategory]);
+
   const fetchData = async () => {
     try {
       setLoading(true);

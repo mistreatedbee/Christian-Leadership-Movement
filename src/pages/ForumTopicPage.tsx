@@ -76,13 +76,39 @@ export function ForumTopicPage() {
       if (data) {
         setTopic(data);
         
-        // Increment view count (only if user is viewing, not the creator)
-        if (user && user.id !== data.user_id) {
-          await insforge.database
-            .from('forum_topics')
-            .update({ view_count: (data.view_count || 0) + 1 })
-            .eq('id', id);
-        }
+        // Increment view count for all visitors except the creator
+        // Use a small delay to ensure the topic is set first, then update
+        setTimeout(async () => {
+          try {
+            // Only increment if user is not the creator (or if no user, still increment)
+            if (!user || user.id !== data.user_id) {
+              const { error: updateError } = await insforge.database
+                .from('forum_topics')
+                .update({ 
+                  view_count: (data.view_count || 0) + 1,
+                  updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+              if (updateError) {
+                console.error('Error updating view count:', updateError);
+              } else {
+                // Refresh topic data to show updated view count
+                const { data: updatedTopic } = await insforge.database
+                  .from('forum_topics')
+                  .select('*, forum_categories(*), users(*)')
+                  .eq('id', id)
+                  .single();
+                
+                if (updatedTopic) {
+                  setTopic(updatedTopic);
+                }
+              }
+            }
+          } catch (err) {
+            console.error('Error in view count update:', err);
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error fetching topic:', error);

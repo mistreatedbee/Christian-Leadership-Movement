@@ -123,6 +123,13 @@ CREATE POLICY "Users update own forum topics"
   USING (user_id = public.get_current_user_id())
   WITH CHECK (user_id = public.get_current_user_id());
 
+-- Allow anyone to update view_count (for view tracking)
+CREATE POLICY "Anyone can update view count"
+  ON public.forum_topics
+  FOR UPDATE
+  USING (true)
+  WITH CHECK (true);
+
 -- Admins can manage all topics
 CREATE POLICY "Admins manage forum topics"
   ON public.forum_topics
