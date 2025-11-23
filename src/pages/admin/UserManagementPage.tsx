@@ -466,13 +466,7 @@ export function UserManagementPage() {
         }
       }
 
-      // PRIORITY 2: Fetch from user_profiles table (registration data)
-      const { data: profileData, error: profileError } = await insforge.database
-        .from('user_profiles')
-        .select('*')
-        .eq('user_id', user.user_id)
-        .single();
-
+      // profileData already fetched above
       console.log('Profile data from user_profiles (registration):', profileData);
 
       // Fetch user's applications - skip join to avoid errors
