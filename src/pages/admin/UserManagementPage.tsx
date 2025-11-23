@@ -184,7 +184,8 @@ export function UserManagementPage() {
       // If email is missing from users table, try to get it from applications
       let emailFromApps = null;
       if (!userData?.email) {
-        const { data: appWithEmail } = await insforge.database
+        console.log('🔍 Email missing from users table, checking applications...');
+        const { data: appWithEmail, error: appError } = await insforge.database
           .from('applications')
           .select('email')
           .eq('user_id', user.user_id)
@@ -192,21 +193,35 @@ export function UserManagementPage() {
           .limit(1)
           .maybeSingle();
         
+        if (appError) {
+          console.error('Error fetching email from applications:', appError);
+        }
+        
         emailFromApps = appWithEmail?.email || null;
         console.log('🔍 EMAIL FROM APPLICATIONS:', emailFromApps);
         
-        // If we found email in applications, update users table
+        // If we found email in applications, update users table (wait for it to complete)
         if (emailFromApps) {
-          insforge.database
-            .from('users')
-            .update({ email: emailFromApps })
-            .eq('id', user.user_id)
-            .then(() => {
+          try {
+            const { error: updateError } = await insforge.database
+              .from('users')
+              .update({ email: emailFromApps })
+              .eq('id', user.user_id);
+            
+            if (updateError) {
+              console.error('❌ Failed to update email in users table:', updateError);
+            } else {
               console.log('✅ Updated email in users table from applications');
-              // Refresh userData
-              userData.email = emailFromApps;
-            })
-            .catch(err => console.error('❌ Failed to update email:', err));
+              // Update userData object so it's available immediately
+              if (userData) {
+                userData.email = emailFromApps;
+              } else {
+                userData = { email: emailFromApps };
+              }
+            }
+          } catch (updateErr) {
+            console.error('❌ Exception updating email:', updateErr);
+          }
         }
       }
 
@@ -241,12 +256,13 @@ export function UserManagementPage() {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
-        // EMAIL PRIORITY: users.email > applications.email > user.email
-        email: userData?.email || emailFromApps || user.email || null,
+        // EMAIL PRIORITY: users.email (after update) > emailFromApps > user.email
+        email: (userData?.email || emailFromApps || user.email || null),
         // Store debug info
         _debug_userDataEmail: userData?.email,
         _debug_emailFromApps: emailFromApps,
         _debug_userEmail: user.email,
+        _debug_finalEmail: (userData?.email || emailFromApps || user.email || null),
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
