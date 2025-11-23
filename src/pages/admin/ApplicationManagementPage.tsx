@@ -250,9 +250,40 @@ export function ApplicationManagementPage() {
 
     addSection('Personal Information', personalInfo);
 
-    // Disability Information (Membership)
-    if (application.disabilities && Array.isArray(application.disabilities) && application.disabilities.length > 0) {
-      addSection('Disability Information', [['Disabilities:', application.disabilities.join(', ')]]);
+    // Disability Information (Membership) - Show all disability fields
+    if (application.program_type === 'membership') {
+      const disabilityFields: Array<[string, any]> = [];
+      
+      // Check form_data for individual disability checkboxes
+      if (application.form_data) {
+        if (application.form_data.disabilityNone !== undefined) {
+          disabilityFields.push(['No Disability:', application.form_data.disabilityNone ? 'Yes' : 'No']);
+        }
+        if (application.form_data.disabilitySight !== undefined) {
+          disabilityFields.push(['Sight Disability:', application.form_data.disabilitySight ? 'Yes' : 'No']);
+        }
+        if (application.form_data.disabilityHearing !== undefined) {
+          disabilityFields.push(['Hearing Disability:', application.form_data.disabilityHearing ? 'Yes' : 'No']);
+        }
+        if (application.form_data.disabilitySpeech !== undefined) {
+          disabilityFields.push(['Speech Disability:', application.form_data.disabilitySpeech ? 'Yes' : 'No']);
+        }
+        if (application.form_data.disabilityPhysical !== undefined) {
+          disabilityFields.push(['Physical Disability:', application.form_data.disabilityPhysical ? 'Yes' : 'No']);
+        }
+        if (application.form_data.disabilityOther) {
+          disabilityFields.push(['Other Disability:', application.form_data.disabilityOther]);
+        }
+      }
+      
+      // Also show the combined disabilities array if available
+      if (application.disabilities && Array.isArray(application.disabilities) && application.disabilities.length > 0) {
+        disabilityFields.push(['Disabilities (Combined):', application.disabilities.join(', ')]);
+      }
+      
+      if (disabilityFields.length > 0) {
+        addSection('Disability Information', disabilityFields);
+      }
     }
 
     // Spiritual Background (Bible School)
@@ -273,12 +304,11 @@ export function ApplicationManagementPage() {
       }
     }
 
-    // Ministry Involvement (Membership)
+    // Ministry Involvement (Membership) - Show all ministry type checkboxes
     if (application.program_type === 'membership') {
       const ministryInfo: Array<[string, any]> = [
         ['Current Ministry Name:', application.current_ministry_name],
         ['Denomination:', application.denomination],
-        ['Ministry Types:', Array.isArray(application.ministry_types) ? application.ministry_types.join(', ') : application.ministry_types],
         ['Ministry Position:', application.ministry_position],
         ['Ministry Website:', application.ministry_website],
         ['Years Part-Time Ministry:', application.years_part_time],
@@ -286,6 +316,37 @@ export function ApplicationManagementPage() {
         ['Primary Income Source:', application.primary_income_source],
         ['Primary Income Other:', application.primary_income_other]
       ].filter(([_, value]) => value);
+      
+      // Show combined ministry types
+      if (application.ministry_types && Array.isArray(application.ministry_types) && application.ministry_types.length > 0) {
+        ministryInfo.push(['Ministry Types (Combined):', application.ministry_types.join(', ')]);
+      }
+      
+      // Show individual ministry type checkboxes from form_data
+      if (application.form_data) {
+        if (application.form_data.ministryTypeLocalChurch !== undefined) {
+          ministryInfo.push(['Ministry Type - Local Church:', application.form_data.ministryTypeLocalChurch ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeTeaching !== undefined) {
+          ministryInfo.push(['Ministry Type - Teaching Institution:', application.form_data.ministryTypeTeaching ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeCounselling !== undefined) {
+          ministryInfo.push(['Ministry Type - Counselling:', application.form_data.ministryTypeCounselling ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeYouth !== undefined) {
+          ministryInfo.push(['Ministry Type - Youth/Child:', application.form_data.ministryTypeYouth ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeOther !== undefined) {
+          ministryInfo.push(['Ministry Type - Other:', application.form_data.ministryTypeOther ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeNotApplicable !== undefined) {
+          ministryInfo.push(['Ministry Type - Not Applicable:', application.form_data.ministryTypeNotApplicable ? 'Yes' : 'No']);
+        }
+        if (application.form_data.ministryTypeOtherText) {
+          ministryInfo.push(['Ministry Type Other Text:', application.form_data.ministryTypeOtherText]);
+        }
+      }
+      
       if (ministryInfo.length > 0) {
         addSection('Ministry Involvement', ministryInfo);
       }
@@ -901,10 +962,58 @@ export function ApplicationManagementPage() {
                       <p className="font-medium">{selectedApplication.country || 'N/A'}</p>
                     </div>
                   )}
-                  {selectedApplication.program_type === 'membership' && selectedApplication.disabilities && Array.isArray(selectedApplication.disabilities) && selectedApplication.disabilities.length > 0 && (
+                  {/* Disability Information - Membership Only - Show ALL disability fields */}
+                  {selectedApplication.program_type === 'membership' && (
                     <div className="col-span-2">
-                      <p className="text-sm text-gray-600">Disabilities</p>
-                      <p className="font-medium">{selectedApplication.disabilities.join(', ')}</p>
+                      <h4 className="text-md font-semibold text-navy-ink mb-2">Disability Information</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {selectedApplication.form_data && (
+                          <>
+                            {selectedApplication.form_data.disabilityNone !== undefined && (
+                              <div>
+                                <p className="text-sm text-gray-600">No Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilityNone ? 'Yes' : 'No'}</p>
+                              </div>
+                            )}
+                            {selectedApplication.form_data.disabilitySight !== undefined && (
+                              <div>
+                                <p className="text-sm text-gray-600">Sight Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilitySight ? 'Yes' : 'No'}</p>
+                              </div>
+                            )}
+                            {selectedApplication.form_data.disabilityHearing !== undefined && (
+                              <div>
+                                <p className="text-sm text-gray-600">Hearing Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilityHearing ? 'Yes' : 'No'}</p>
+                              </div>
+                            )}
+                            {selectedApplication.form_data.disabilitySpeech !== undefined && (
+                              <div>
+                                <p className="text-sm text-gray-600">Speech Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilitySpeech ? 'Yes' : 'No'}</p>
+                              </div>
+                            )}
+                            {selectedApplication.form_data.disabilityPhysical !== undefined && (
+                              <div>
+                                <p className="text-sm text-gray-600">Physical Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilityPhysical ? 'Yes' : 'No'}</p>
+                              </div>
+                            )}
+                            {selectedApplication.form_data.disabilityOther && (
+                              <div className="col-span-2">
+                                <p className="text-sm text-gray-600">Other Disability</p>
+                                <p className="font-medium">{selectedApplication.form_data.disabilityOther}</p>
+                              </div>
+                            )}
+                          </>
+                        )}
+                        {selectedApplication.disabilities && Array.isArray(selectedApplication.disabilities) && selectedApplication.disabilities.length > 0 && (
+                          <div className="col-span-2">
+                            <p className="text-sm text-gray-600">Disabilities (Combined)</p>
+                            <p className="font-medium">{selectedApplication.disabilities.join(', ')}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -1033,8 +1142,58 @@ export function ApplicationManagementPage() {
                     </div>
                     {selectedApplication.ministry_types && Array.isArray(selectedApplication.ministry_types) && selectedApplication.ministry_types.length > 0 && (
                       <div className="col-span-2">
-                        <p className="text-sm text-gray-600">Ministry Types</p>
+                        <p className="text-sm text-gray-600">Ministry Types (Combined)</p>
                         <p className="font-medium">{selectedApplication.ministry_types.join(', ')}</p>
+                      </div>
+                    )}
+                    {/* Show individual ministry type checkboxes */}
+                    {selectedApplication.form_data && (
+                      <div className="col-span-2">
+                        <h4 className="text-md font-semibold text-navy-ink mb-2">Ministry Type Details</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          {selectedApplication.form_data.ministryTypeLocalChurch !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Local Church</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeLocalChurch ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeTeaching !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Teaching Institution</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeTeaching ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeCounselling !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Counselling</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeCounselling ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeYouth !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Youth/Child</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeYouth ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeOther !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Other</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeOther ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeNotApplicable !== undefined && (
+                            <div>
+                              <p className="text-sm text-gray-600">Not Applicable</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeNotApplicable ? 'Yes' : 'No'}</p>
+                            </div>
+                          )}
+                          {selectedApplication.form_data.ministryTypeOtherText && (
+                            <div className="col-span-2">
+                              <p className="text-sm text-gray-600">Ministry Type Other Text</p>
+                              <p className="font-medium">{selectedApplication.form_data.ministryTypeOtherText}</p>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     <div>
