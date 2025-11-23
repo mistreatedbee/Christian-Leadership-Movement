@@ -796,12 +796,21 @@ export function ApplyMembershipPage() {
                       <input
                         type="tel"
                         {...register('phone', {
-                          required: 'Phone number is required',
-                          minLength: { value: 10, message: 'Phone must be at least 10 digits' }
+                          required: 'Phone Number is required. Please enter your contact phone number.',
+                          minLength: { value: 10, message: 'Phone Number must be at least 10 digits long. Please enter a valid phone number including area code.' }
                         })}
                         className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                       />
-                      {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone.message}</p>}
+                      {errors.phone && (
+                        <p className="text-red-500 text-sm mt-1 font-medium">
+                          {errors.phone.message}
+                          {errors.phone.type === 'minLength' && (
+                            <span className="block mt-1 text-xs">
+                              Current length: {watch('phone')?.length || 0} digits. Required: at least 10 digits.
+                            </span>
+                          )}
+                        </p>
+                      )}
                     </div>
 
                     <div>
@@ -1128,10 +1137,12 @@ export function ApplyMembershipPage() {
                         </label>
                         <input
                           type="text"
-                          {...register('referenceFirstName', { required: 'Reference first name is required' })}
+                          {...register('referenceFirstName', { required: 'Reference First Name is required. Please enter your reference person\'s first name.' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         />
-                        {errors.referenceFirstName && <p className="text-red-500 text-sm mt-1">{errors.referenceFirstName.message}</p>}
+                        {errors.referenceFirstName && (
+                          <p className="text-red-500 text-sm mt-1 font-medium">{errors.referenceFirstName.message}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1140,10 +1151,12 @@ export function ApplyMembershipPage() {
                         </label>
                         <input
                           type="text"
-                          {...register('referenceLastName', { required: 'Reference last name is required' })}
+                          {...register('referenceLastName', { required: 'Reference Last Name is required. Please enter your reference person\'s last name.' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         />
-                        {errors.referenceLastName && <p className="text-red-500 text-sm mt-1">{errors.referenceLastName.message}</p>}
+                        {errors.referenceLastName && (
+                          <p className="text-red-500 text-sm mt-1 font-medium">{errors.referenceLastName.message}</p>
+                        )}
                       </div>
 
                       <div>
@@ -1271,10 +1284,12 @@ export function ApplyMembershipPage() {
                         </label>
                         <input
                           type="text"
-                          {...register('signature', { required: 'Signature is required' })}
+                          {...register('signature', { required: 'Signature is required. Please type your full name to confirm your application.' })}
                           className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         />
-                        {errors.signature && <p className="text-red-500 text-sm mt-1">{errors.signature.message}</p>}
+                        {errors.signature && (
+                          <p className="text-red-500 text-sm mt-1 font-medium">{errors.signature.message}</p>
+                        )}
                       </div>
 
                       <div>
