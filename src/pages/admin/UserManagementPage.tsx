@@ -247,13 +247,22 @@ export function UserManagementPage() {
     setMessage(null);
 
     try {
-      // SIMPLIFIED LOGIC: Same as fetchUsers - fetch all columns including email
-      // Fetch from users table (registration data)
+      // CRITICAL: Email is stored in users table
+      // First, use email from the user object (from the list) - this was fetched by fetchUsers from users table
+      // This is the most reliable source since fetchUsers already got it with select('*')
+      let userEmail = user.email || null;
+      
+      // Also fetch from users table directly to ensure we have the latest
       const { data: userData } = await insforge.database
         .from('users')
         .select('*')
         .eq('id', user.user_id)
         .maybeSingle();
+
+      // Use email from direct query if available, otherwise use email from list
+      if (userData?.email) {
+        userEmail = userData.email;
+      }
 
       // Fetch from user_profiles table (registration data)
       const { data: profileData } = await insforge.database
@@ -273,12 +282,12 @@ export function UserManagementPage() {
 
       // Combine data
       // CRITICAL: Email is stored in users table, NOT in user_profiles table
-      // Always fetch email from users.email (where it's actually saved)
+      // Always use email from users table (userData.email or user.email from list)
       const enriched: any = {
         ...(profileData || {}),
         // EMAIL: Get ONLY from users table (where emails are actually saved)
-        // Do NOT use user_profiles.email as it's not being saved there
-        email: userData?.email || user.email || null,
+        // Priority: userData.email (from direct query) > user.email (from list) > null
+        email: userEmail,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
         bio: userData?.bio || profileData?.bio || user.bio || null,
