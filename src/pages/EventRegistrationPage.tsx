@@ -332,7 +332,7 @@ export function EventRegistrationPage() {
 
         <div className="p-8">
           <h1 className="text-3xl font-bold text-navy-ink mb-2">{event.title}</h1>
-        <div className="space-y-2 mb-6 text-gray-600">
+          <div className="space-y-2 mb-6 text-gray-600">
           <div className="flex items-center">
             <Calendar className="mr-2" size={16} />
             <span>{eventDate.toLocaleDateString('en-US', { 
@@ -354,16 +354,16 @@ export function EventRegistrationPage() {
               <span className="font-semibold">Registration Fee: R {event.registration_fee.toFixed(2)}</span>
             </div>
           )}
-        </div>
-
-        {event.description && (
-          <div className="mb-6">
-            <h3 className="font-semibold mb-2">About this Event</h3>
-            <p className="text-gray-600">{event.description}</p>
           </div>
-        )}
 
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+          {event.description && (
+            <div className="mb-6">
+              <h3 className="font-semibold mb-2">About this Event</h3>
+              <p className="text-gray-600">{event.description}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <h2 className="text-xl font-bold text-navy-ink">Registration Information</h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -456,7 +456,8 @@ export function EventRegistrationPage() {
               Cancel
             </Button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
