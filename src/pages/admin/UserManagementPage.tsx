@@ -253,15 +253,25 @@ export function UserManagementPage() {
       let userEmail = user.email || null;
       
       // Also fetch from users table directly to ensure we have the latest
-      const { data: userData } = await insforge.database
+      const { data: userData, error: userDataError } = await insforge.database
         .from('users')
         .select('*')
         .eq('id', user.user_id)
         .maybeSingle();
 
+      // Debug: Log what we got
+      console.log('🔍 User Details Debug:', {
+        'user.email (from list)': user.email,
+        'userData?.email (from query)': userData?.email,
+        'userData object keys': userData ? Object.keys(userData) : null,
+        'userDataError': userDataError
+      });
+
       // Use email from direct query if available, otherwise use email from list
       if (userData?.email) {
         userEmail = userData.email;
+      } else if (user.email) {
+        userEmail = user.email; // Use email from list if direct query didn't return it
       }
 
       // Fetch from user_profiles table (registration data)
