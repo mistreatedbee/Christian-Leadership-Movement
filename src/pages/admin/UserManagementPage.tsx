@@ -56,6 +56,17 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      // First, try to sync emails from auth.users (if function exists)
+      try {
+        await insforge.database.rpc('sync_user_email');
+        console.log('✅ Email sync function called');
+      } catch (syncError: any) {
+        // Function might not exist yet, that's okay
+        if (!syncError.message?.includes('function') && !syncError.message?.includes('does not exist')) {
+          console.warn('Email sync warning:', syncError);
+        }
+      }
+      
       // Fetch ALL users from users table (including those who just registered)
       const { data: allUsers, error: usersError } = await insforge.database
         .from('users')
@@ -168,6 +179,17 @@ export function UserManagementPage() {
     setEnrichedUserData(null); // Will be set after fetching
     
     try {
+      // PRIORITY 0: Try to sync email from auth.users first (if function exists)
+      try {
+        await insforge.database.rpc('sync_user_email');
+        console.log('✅ Email sync function called for user:', user.user_id);
+      } catch (syncError: any) {
+        // Function might not exist yet, that's okay
+        if (!syncError.message?.includes('function') && !syncError.message?.includes('does not exist')) {
+          console.warn('Email sync warning:', syncError);
+        }
+      }
+      
       // PRIORITY 1: Fetch from users table (registration data)
       const { data: userData, error: userError } = await insforge.database
         .from('users')
@@ -181,7 +203,7 @@ export function UserManagementPage() {
         console.error('Error fetching userData:', userError);
       }
       
-      // If email is missing from users table, try to get it from applications
+      // If email is still missing, try to get it from applications
       let emailFromApps = null;
       if (!userData?.email) {
         console.log('🔍 Email missing from users table, checking applications...');
@@ -221,6 +243,28 @@ export function UserManagementPage() {
             }
           } catch (updateErr) {
             console.error('❌ Exception updating email:', updateErr);
+          }
+        } else {
+          // If no email in applications either, try to sync from auth one more time
+          console.log('🔍 No email in applications, trying manual sync...');
+          try {
+            // Re-fetch user data after sync
+            const { data: syncedUserData } = await insforge.database
+              .from('users')
+              .select('email')
+              .eq('id', user.user_id)
+              .maybeSingle();
+            
+            if (syncedUserData?.email) {
+              console.log('✅ Found email after sync:', syncedUserData.email);
+              if (userData) {
+                userData.email = syncedUserData.email;
+              } else {
+                userData = { email: syncedUserData.email };
+              }
+            }
+          } catch (syncRetryErr) {
+            console.error('Error on sync retry:', syncRetryErr);
           }
         }
       }
