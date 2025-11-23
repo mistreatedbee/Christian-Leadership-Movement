@@ -4,8 +4,9 @@ import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
-import { ArrowLeft, Calendar, MapPin, DollarSign, Check, Download } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, DollarSign, Check, Download, Image as ImageIcon } from 'lucide-react';
 import { generateEventTicketPDF } from '../lib/ticketGenerator';
+import { getStorageUrl } from '../lib/connection';
 
 interface Event {
   id: string;
@@ -283,14 +284,54 @@ export function EventRegistrationPage() {
   const eventDate = new Date(event.event_date);
 
   return (
-    <div className="max-w-3xl mx-auto p-6">
-      <Link to="/dashboard/events" className="flex items-center text-gold hover:text-gold/80 mb-6">
+      <div className="max-w-3xl mx-auto p-6">
+      <Link to={`/events/${event.id}`} className="flex items-center text-gold hover:text-gold/80 mb-6">
         <ArrowLeft className="mr-2" size={20} />
-        Back to Events
+        Back to Event Details
       </Link>
 
-      <div className="bg-white rounded-card shadow-soft p-8">
-        <h1 className="text-3xl font-bold text-navy-ink mb-2">{event.title}</h1>
+      <div className="bg-white rounded-card shadow-soft overflow-hidden">
+        {/* Event Image Gallery */}
+        {(() => {
+          const allImages: string[] = [];
+          if (event.image_url) {
+            const mainUrl = event.image_url.startsWith('http') ? event.image_url : getStorageUrl('gallery', event.image_url);
+            if (mainUrl) allImages.push(mainUrl);
+          }
+          if (event.images && Array.isArray(event.images)) {
+            event.images.forEach((img: any) => {
+              const url = typeof img === 'string' 
+                ? (img.startsWith('http') ? img : getStorageUrl('gallery', img))
+                : (img.url?.startsWith('http') ? img.url : getStorageUrl('gallery', img.url));
+              if (url && !allImages.includes(url)) allImages.push(url);
+            });
+          }
+          
+          if (allImages.length > 0) {
+            return (
+              <div className="relative h-64 overflow-hidden bg-gray-200">
+                <img
+                  src={allImages[0]}
+                  alt={event.title}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = 'none';
+                  }}
+                />
+                {allImages.length > 1 && (
+                  <div className="absolute bottom-4 right-4 bg-black/50 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2">
+                    <ImageIcon size={16} />
+                    {allImages.length} images
+                  </div>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })()}
+
+        <div className="p-8">
+          <h1 className="text-3xl font-bold text-navy-ink mb-2">{event.title}</h1>
         <div className="space-y-2 mb-6 text-gray-600">
           <div className="flex items-center">
             <Calendar className="mr-2" size={16} />

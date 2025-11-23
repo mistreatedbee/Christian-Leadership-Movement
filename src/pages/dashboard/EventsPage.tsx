@@ -3,7 +3,8 @@ import { useUser } from '@insforge/react';
 import { Link } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
-import { Calendar, MapPin, Users, Clock } from 'lucide-react';
+import { Calendar, MapPin, Users, Clock, Image as ImageIcon } from 'lucide-react';
+import { getStorageUrl } from '../../lib/connection';
 
 interface Event {
   id: string;
@@ -137,13 +138,31 @@ export function EventsPage() {
             return (
               <div key={event.id} className="bg-white rounded-card shadow-soft overflow-hidden">
                 {event.image_url && (
-                  <div className="h-48 overflow-hidden">
-                    <img src={event.image_url} alt={event.title} className="w-full h-full object-cover" />
-                  </div>
+                  <Link to={`/events/${event.id}`}>
+                    <div className="h-48 overflow-hidden cursor-pointer relative group">
+                      <img 
+                        src={event.image_url.startsWith('http') ? event.image_url : getStorageUrl('gallery', event.image_url)} 
+                        alt={event.title} 
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" 
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = 'none';
+                        }}
+                      />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                      {event.images && event.images.length > 0 && (
+                        <div className="absolute bottom-2 right-2 bg-black/50 text-white px-2 py-1 rounded-full text-xs flex items-center gap-1">
+                          <ImageIcon size={12} />
+                          {event.images.length + 1}
+                        </div>
+                      )}
+                    </div>
+                  </Link>
                 )}
                 <div className="p-6">
-                  <h3 className="text-xl font-bold text-navy-ink mb-2">{event.title}</h3>
-                  <p className="text-gray-600 mb-4">{event.description}</p>
+                  <Link to={`/events/${event.id}`}>
+                    <h3 className="text-xl font-bold text-navy-ink mb-2 hover:text-gold transition-colors cursor-pointer">{event.title}</h3>
+                  </Link>
+                  <p className="text-gray-600 mb-4 line-clamp-2">{event.description}</p>
                   
                   <div className="space-y-2 mb-4">
                     <div className="flex items-center text-gray-600">
@@ -179,24 +198,26 @@ export function EventsPage() {
                     )}
                   </div>
 
-                  {isRegistered ? (
-                    <div className="space-y-2">
-                      <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-card text-center">
-                        ✓ Registered
-                      </div>
-                      <Link to={`/events/${event.id}/registration`}>
-                        <Button variant="outline" className="w-full">
+                  <div className="flex gap-2">
+                    <Link to={`/events/${event.id}`} className="flex-1">
+                      <Button variant="outline" className="w-full">
+                        View Details
+                      </Button>
+                    </Link>
+                    {isRegistered ? (
+                      <Link to={`/events/${event.id}/registration`} className="flex-1">
+                        <Button variant="primary" className="w-full">
                           View Registration
                         </Button>
                       </Link>
-                    </div>
-                  ) : (
-                    <Link to={`/events/${event.id}/registration`}>
-                      <Button variant="primary" className="w-full">
-                        Register Now
-                      </Button>
-                    </Link>
-                  )}
+                    ) : (
+                      <Link to={`/events/${event.id}/registration`} className="flex-1">
+                        <Button variant="primary" className="w-full">
+                          Register Now
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
                 </div>
               </div>
             );
