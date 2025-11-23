@@ -90,6 +90,10 @@ ALTER TABLE public.forum_topic_follows ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.forum_reply_likes ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies for Forum Categories
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can read active forum categories" ON public.forum_categories;
+DROP POLICY IF EXISTS "Admins manage forum categories" ON public.forum_categories;
+
 -- Public can read active categories
 CREATE POLICY "Public can read active forum categories"
   ON public.forum_categories
@@ -146,6 +150,13 @@ CREATE POLICY "Admins manage forum topics"
   WITH CHECK (public.is_current_user_admin());
 
 -- RLS Policies for Forum Replies
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can read forum replies" ON public.forum_replies;
+DROP POLICY IF EXISTS "Users create own forum replies" ON public.forum_replies;
+DROP POLICY IF EXISTS "Users update own forum replies" ON public.forum_replies;
+DROP POLICY IF EXISTS "Users delete own forum replies" ON public.forum_replies;
+DROP POLICY IF EXISTS "Admins manage forum replies" ON public.forum_replies;
+
 -- Public can read replies
 CREATE POLICY "Public can read forum replies"
   ON public.forum_replies
@@ -179,6 +190,12 @@ CREATE POLICY "Admins manage forum replies"
   WITH CHECK (public.is_current_user_admin());
 
 -- RLS Policies for Forum Topic Follows
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users see own forum topic follows" ON public.forum_topic_follows;
+DROP POLICY IF EXISTS "Users create own forum topic follows" ON public.forum_topic_follows;
+DROP POLICY IF EXISTS "Users delete own forum topic follows" ON public.forum_topic_follows;
+DROP POLICY IF EXISTS "Admins manage forum topic follows" ON public.forum_topic_follows;
+
 -- Users can see their own follows
 CREATE POLICY "Users see own forum topic follows"
   ON public.forum_topic_follows
@@ -205,6 +222,12 @@ CREATE POLICY "Admins manage forum topic follows"
   WITH CHECK (public.is_current_user_admin());
 
 -- RLS Policies for Forum Reply Likes
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users see forum reply likes" ON public.forum_reply_likes;
+DROP POLICY IF EXISTS "Users create own forum reply likes" ON public.forum_reply_likes;
+DROP POLICY IF EXISTS "Users delete own forum reply likes" ON public.forum_reply_likes;
+DROP POLICY IF EXISTS "Admins manage forum reply likes" ON public.forum_reply_likes;
+
 -- Users can see all likes
 CREATE POLICY "Users see forum reply likes"
   ON public.forum_reply_likes
