@@ -74,6 +74,27 @@ export function ObjectivesManagementPage() {
     fetchObjectives();
   }, []);
 
+  // Reset form when editingObjective changes
+  useEffect(() => {
+    if (editingObjective) {
+      resetObjective({
+        title: editingObjective.title || '',
+        slug: editingObjective.slug || '',
+        short_description: editingObjective.short_description || '',
+        full_description: editingObjective.full_description || '',
+        icon: editingObjective.icon || null
+      });
+    } else {
+      resetObjective({
+        title: '',
+        slug: '',
+        short_description: '',
+        full_description: '',
+        icon: null
+      });
+    }
+  }, [editingObjective, resetObjective]);
+
   useEffect(() => {
     if (selectedObjective && activeTab !== 'objectives') {
       fetchRelatedData();
