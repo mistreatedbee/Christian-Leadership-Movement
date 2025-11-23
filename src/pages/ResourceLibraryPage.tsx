@@ -4,6 +4,7 @@ import { FileText, Video, Headphones, Download, Search, Filter, LayoutDashboard 
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
+import { getStorageUrl } from '../lib/connection';
 
 interface ResourceCategory {
   id: string;
@@ -118,7 +119,9 @@ export function ResourceLibraryPage() {
           ...r,
           source: 'bible_school',
           source_label: 'Bible School',
-          resource_type: r.resource_type || 'document'
+          resource_type: r.resource_type || 'document',
+          file_key: r.file_key || r.file_url,
+          external_link: r.external_link
         });
       });
 
@@ -147,9 +150,38 @@ export function ResourceLibraryPage() {
     }
   };
 
-  const handleDownload = async (resource: Resource & { source?: string }) => {
-    const url = (resource as any).external_link || resource.file_url;
-    if (url) {
+  const handleDownload = async (resource: Resource & { source?: string; external_link?: string; file_key?: string }) => {
+    try {
+      let downloadUrl: string | null = null;
+
+      // Check for external link first (YouTube, Vimeo, Google Drive, etc.)
+      if (resource.external_link) {
+        downloadUrl = resource.external_link;
+      } else if (resource.file_url) {
+        // If file_url is already a full URL, use it directly
+        if (resource.file_url.startsWith('http://') || resource.file_url.startsWith('https://')) {
+          downloadUrl = resource.file_url;
+        } else {
+          // Otherwise, construct the storage URL
+          // Determine the bucket based on source
+          let bucket = 'resources';
+          if (resource.source === 'bible_school') {
+            bucket = 'bible-school-resources';
+          } else if (resource.source === 'course') {
+            bucket = 'courses';
+          }
+          
+          // Use file_key if available, otherwise use file_url
+          const fileKey = resource.file_key || resource.file_url;
+          downloadUrl = getStorageUrl(bucket, fileKey);
+        }
+      }
+
+      if (!downloadUrl) {
+        alert('Download URL not available for this resource.');
+        return;
+      }
+
       // Track download for general and bible school resources
       if (resource.source === 'general') {
         try {
@@ -171,8 +203,11 @@ export function ResourceLibraryPage() {
         }
       }
 
-      // Open download link
-      window.open(url, '_blank');
+      // Open download link in new tab
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading resource:', error);
+      alert('Failed to download resource. Please try again.');
     }
   };
 

@@ -166,23 +166,43 @@ export function BibleSchoolPage() {
   };
 
   const handleDownloadResource = async (resource: any) => {
-    if (resource.external_link) {
-      window.open(resource.external_link, '_blank');
-    } else if (resource.file_url) {
-      const url = resource.file_url.startsWith('http') 
-        ? resource.file_url 
-        : getStorageUrl('resources', resource.file_url);
-      window.open(url, '_blank');
-    }
-
-    // Increment download count
     try {
-      await insforge.database
-        .from('bible_school_resources')
-        .update({ download_count: (resource.download_count || 0) + 1 })
-        .eq('id', resource.id);
-    } catch (err) {
-      console.error('Error updating download count:', err);
+      let downloadUrl: string | null = null;
+
+      // Check for external link first (YouTube, Vimeo, Google Drive, etc.)
+      if (resource.external_link) {
+        downloadUrl = resource.external_link;
+      } else if (resource.file_url) {
+        // If file_url is already a full URL, use it directly
+        if (resource.file_url.startsWith('http://') || resource.file_url.startsWith('https://')) {
+          downloadUrl = resource.file_url;
+        } else {
+          // Otherwise, construct the storage URL using bible-school-resources bucket
+          const fileKey = resource.file_key || resource.file_url;
+          downloadUrl = getStorageUrl('bible-school-resources', fileKey);
+        }
+      }
+
+      if (!downloadUrl) {
+        alert('Download URL not available for this resource.');
+        return;
+      }
+
+      // Increment download count
+      try {
+        await insforge.database
+          .from('bible_school_resources')
+          .update({ download_count: (resource.download_count || 0) + 1 })
+          .eq('id', resource.id);
+      } catch (err) {
+        console.error('Error updating download count:', err);
+      }
+
+      // Open download link in new tab
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading resource:', error);
+      alert('Failed to download resource. Please try again.');
     }
   };
 
