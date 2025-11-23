@@ -147,8 +147,13 @@ export function TopNav() {
         {isMenuOpen && (
           <div className="md:hidden bg-white border-t border-gray-100">
             <div className="container mx-auto px-4 py-4 flex flex-col space-y-4">
-            <Link to="/blog" className="text-navy-ink py-2" onClick={toggleMenu}>
+            <Link to="/blog" className="text-navy-ink py-2 relative" onClick={toggleMenu}>
               News
+              {unreadNotifications > 0 && (
+                <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              )}
             </Link>
             <Link to="/courses" className="text-navy-ink py-2 flex items-center gap-2" onClick={toggleMenu}>
               <BookOpen size={16} />
