@@ -54,20 +54,30 @@ export function DashboardHome() {
           notifications: notifications?.length || 0
         });
 
-        // Build recent activity from notifications
+        // Build recent activity from notifications (prioritize blog/news/announcement notifications)
         const { data: recentNotifs } = await insforge.database
           .from('notifications')
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(5);
+          .limit(10);
         
-        setRecentActivity(recentNotifs?.map((n: any) => ({
+        // Sort to show blog/news/announcement notifications first
+        const sortedNotifs = (recentNotifs || []).sort((a: any, b: any) => {
+          const aIsBlog = a.type === 'blog' || a.title?.toLowerCase().includes('news') || a.title?.toLowerCase().includes('announcement');
+          const bIsBlog = b.type === 'blog' || b.title?.toLowerCase().includes('news') || b.title?.toLowerCase().includes('announcement');
+          if (aIsBlog && !bIsBlog) return -1;
+          if (!aIsBlog && bIsBlog) return 1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+        
+        setRecentActivity(sortedNotifs.slice(0, 5).map((n: any) => ({
           id: n.id,
           type: n.type,
           title: n.title,
-          date: new Date(n.created_at).toLocaleString()
-        })) || []);
+          date: new Date(n.created_at).toLocaleString(),
+          link: n.link_url
+        })));
       } catch (err) {
         console.error('Error fetching dashboard data:', err);
       } finally {
@@ -150,13 +160,23 @@ export function DashboardHome() {
           <p className="text-gray-600 text-center py-8">No recent activity</p>
         ) : (
         <div className="space-y-4">
-          {recentActivity.map(activity => <div key={activity.id} className="flex items-start space-x-4 p-4 bg-muted-gray rounded-card">
-              <div className="w-2 h-2 bg-gold rounded-full mt-2"></div>
+          {recentActivity.map(activity => (
+            <div 
+              key={activity.id} 
+              className="flex items-start space-x-4 p-4 bg-muted-gray rounded-card hover:bg-gray-200 transition-colors cursor-pointer"
+              onClick={() => activity.link && window.location.href = activity.link}
+            >
+              <div className={`w-2 h-2 rounded-full mt-2 ${
+                activity.type === 'blog' || activity.title?.toLowerCase().includes('news') || activity.title?.toLowerCase().includes('announcement')
+                  ? 'bg-blue-500' 
+                  : 'bg-gold'
+              }`}></div>
               <div className="flex-1">
                 <p className="font-medium text-navy-ink">{activity.title}</p>
                 <p className="text-sm text-gray-600">{activity.date}</p>
               </div>
-            </div>)}
+            </div>
+          ))}
         </div>
         )}
       </div>

@@ -96,34 +96,118 @@ export function BlogManagementPage() {
 
     try {
       const slug = formData.slug || generateSlug(formData.title);
+      const isPublishing = formData.status === 'published';
+      const wasDraft = editingPost?.status !== 'published';
+      const isNewPost = !editingPost;
+      
       const data = {
         ...formData,
         author_id: user.id,
         slug,
         category_id: formData.category_id || null,
-        published_at: formData.status === 'published' && !formData.published_at
+        published_at: isPublishing && !formData.published_at
           ? new Date().toISOString()
           : formData.published_at || null
       };
 
+      let savedPost;
       if (editingPost) {
-        await insforge.database
+        const { data: updated, error: updateError } = await insforge.database
           .from('blog_posts')
           .update(data)
-          .eq('id', editingPost.id);
+          .eq('id', editingPost.id)
+          .select()
+          .single();
+        
+        if (updateError) throw updateError;
+        savedPost = updated;
       } else {
-        await insforge.database
+        const { data: inserted, error: insertError } = await insforge.database
           .from('blog_posts')
-          .insert(data);
+          .insert(data)
+          .select()
+          .single();
+        
+        if (insertError) throw insertError;
+        savedPost = inserted;
+      }
+
+      // Send notifications to all users when a post is published (new or updated from draft)
+      if (isPublishing && savedPost && (isNewPost || wasDraft)) {
+        await sendNotificationsToAllUsers(savedPost);
       }
 
       setShowForm(false);
       setEditingPost(null);
       resetForm();
       fetchData();
-    } catch (error) {
+      alert(isPublishing ? 'Post published successfully! All users have been notified.' : 'Post saved successfully!');
+    } catch (error: any) {
       console.error('Error saving post:', error);
-      alert('Error saving post');
+      alert(`Error saving post: ${error.message || 'Unknown error'}`);
+    }
+  };
+
+  const sendNotificationsToAllUsers = async (post: BlogPost) => {
+    try {
+      // Get all users
+      const { data: allUsers, error: usersError } = await insforge.database
+        .from('users')
+        .select('id');
+
+      if (usersError) {
+        console.error('Error fetching users for notifications:', usersError);
+        return;
+      }
+
+      if (!allUsers || allUsers.length === 0) {
+        console.log('No users found to notify');
+        return;
+      }
+
+      // Determine notification message based on post type
+      let notificationTitle = '';
+      let notificationMessage = '';
+      
+      if (post.post_type === 'announcement') {
+        notificationTitle = 'New Announcement';
+        notificationMessage = `A new announcement has been published: ${post.title}`;
+      } else if (post.post_type === 'news') {
+        notificationTitle = 'New News';
+        notificationMessage = `New news has been published: ${post.title}`;
+      } else {
+        notificationTitle = 'New Blog Post';
+        notificationMessage = `A new blog post has been published: ${post.title}`;
+      }
+
+      // Create notifications for all users
+      const notifications = allUsers.map((u: any) => ({
+        user_id: u.id,
+        type: 'blog',
+        title: notificationTitle,
+        message: notificationMessage,
+        read: false,
+        link_url: `/blog/${post.slug}`,
+        related_id: post.id
+      }));
+
+      // Insert notifications in batches to avoid overwhelming the database
+      const batchSize = 100;
+      for (let i = 0; i < notifications.length; i += batchSize) {
+        const batch = notifications.slice(i, i + batchSize);
+        const { error: notifError } = await insforge.database
+          .from('notifications')
+          .insert(batch);
+
+        if (notifError) {
+          console.error(`Error creating notifications batch ${i / batchSize + 1}:`, notifError);
+        }
+      }
+
+      console.log(`✅ Notifications sent to ${allUsers.length} users for post: ${post.title}`);
+    } catch (error) {
+      console.error('Error sending notifications:', error);
+      // Don't throw - notification failure shouldn't prevent post from being saved
     }
   };
 
@@ -172,19 +256,33 @@ export function BlogManagementPage() {
 
   const toggleStatus = async (post: BlogPost) => {
     const newStatus = post.status === 'published' ? 'draft' : 'published';
+    const isPublishing = newStatus === 'published';
+    
     try {
-      await insforge.database
+      const { data: updatedPost, error } = await insforge.database
         .from('blog_posts')
         .update({
           status: newStatus,
-          published_at: newStatus === 'published' && !post.published_at
+          published_at: isPublishing && !post.published_at
             ? new Date().toISOString()
             : post.published_at
         })
-        .eq('id', post.id);
+        .eq('id', post.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // If publishing for the first time, send notifications
+      if (isPublishing && updatedPost && post.status !== 'published') {
+        await sendNotificationsToAllUsers(updatedPost);
+        alert('Post published! All users have been notified.');
+      }
+
       fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating status:', error);
+      alert(`Error updating status: ${error.message || 'Unknown error'}`);
     }
   };
 

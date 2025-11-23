@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { MenuIcon, X as CloseIcon, User, LogOut, BookOpen, LayoutDashboard } from 'lucide-react';
+import { MenuIcon, X as CloseIcon, User, LogOut, BookOpen, LayoutDashboard, Bell } from 'lucide-react';
 import { useUser, useAuth } from '@insforge/react';
 import { Button } from '../ui/Button';
 import { ThemeToggle } from '../ThemeToggle';
 import { checkAdminAccess } from '../../lib/auth';
+import { insforge } from '../../lib/insforge';
 
 export function TopNav() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
   const { user, isLoaded } = useUser();
   const { signOut } = useAuth();
   const navigate = useNavigate();
@@ -16,10 +18,30 @@ export function TopNav() {
   useEffect(() => {
     if (user && isLoaded) {
       checkAdminAccess(user.id).then(setIsAdmin);
+      fetchUnreadNotifications();
     } else {
       setIsAdmin(false);
+      setUnreadNotifications(0);
     }
   }, [user, isLoaded]);
+
+  const fetchUnreadNotifications = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await insforge.database
+        .from('notifications')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('read', false);
+
+      if (!error && data) {
+        setUnreadNotifications(data.length);
+      }
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+    }
+  };
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
@@ -48,8 +70,13 @@ export function TopNav() {
 
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center space-x-6">
-          <Link to="/blog" className="text-navy-ink hover:text-gold transition-colors">
+          <Link to="/blog" className="text-navy-ink hover:text-gold transition-colors relative">
             News
+            {unreadNotifications > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {unreadNotifications > 9 ? '9+' : unreadNotifications}
+              </span>
+            )}
           </Link>
           <Link to="/courses" className="text-navy-ink hover:text-gold transition-colors flex items-center gap-1">
             <BookOpen size={16} />
