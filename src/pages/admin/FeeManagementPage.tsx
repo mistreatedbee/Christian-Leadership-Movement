@@ -102,12 +102,13 @@ export function FeeManagementPage() {
       console.log('🔍 Updating to amount:', newAmount);
       console.log('🔍 Update data:', updateData);
 
-      // Perform the update - ensure amount is a proper number
+      // Perform the update - ensure amount is a proper number (DECIMAL in database)
+      // Use string representation to avoid precision issues with DECIMAL type
       const { error, data } = await insforge.database
         .from('fee_settings')
         .update({
-          amount: Number(newAmount), // Explicitly convert to number
-          description: updateData.description,
+          amount: newAmount.toString(), // Convert to string for DECIMAL type
+          description: updateData.description || null,
           updated_at: updateData.updated_at
         })
         .eq('id', feeId)
@@ -115,34 +116,53 @@ export function FeeManagementPage() {
 
       if (error) {
         console.error('❌ Database error:', error);
-        throw error;
+        console.error('❌ Error details:', JSON.stringify(error, null, 2));
+        setMessage({ 
+          type: 'error', 
+          text: `Failed to update fee: ${error.message || 'Unknown error'}. Please check RLS policies.` 
+        });
+        setSaving(null);
+        return;
       }
 
       console.log('✅ Update response:', data);
 
+      // Wait a moment for database to commit
+      await new Promise(resolve => setTimeout(resolve, 500));
+
       // Immediately refresh to get the latest data
       await fetchFees();
 
-      // Verify by checking the refreshed data
-      const updatedFees = await insforge.database
+      // Verify by checking the refreshed data directly from database
+      const { data: verifyData, error: verifyError } = await insforge.database
         .from('fee_settings')
         .select('id, amount, fee_type')
         .eq('id', feeId)
         .maybeSingle();
 
-      console.log('🔍 Fee after refresh:', updatedFees);
-      const actualAmount = updatedFees?.data ? parseFloat(updatedFees.data.amount) : null;
+      if (verifyError) {
+        console.error('❌ Verification error:', verifyError);
+      }
 
-      if (actualAmount === newAmount) {
+      console.log('🔍 Fee after refresh:', verifyData);
+      const actualAmount = verifyData ? parseFloat(verifyData.amount.toString()) : null;
+
+      console.log('🔍 Expected amount:', newAmount);
+      console.log('🔍 Actual amount in DB:', actualAmount);
+      console.log('🔍 Amounts match?', Math.abs(actualAmount - newAmount) < 0.01);
+
+      // Check if amounts match (with small tolerance for floating point)
+      if (verifyData && Math.abs(actualAmount - newAmount) < 0.01) {
         setMessage({ 
           type: 'success', 
           text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 
         });
       } else {
-        console.warn('⚠️ Amount mismatch - expected:', newAmount, 'got:', actualAmount);
+        console.error('❌ UPDATE FAILED - Amount mismatch!');
+        console.error('Expected:', newAmount, 'Got:', actualAmount);
         setMessage({ 
-          type: 'warning', 
-          text: `Update completed. Please refresh the page to see the updated amount.` 
+          type: 'error', 
+          text: `Update failed! Expected R ${newAmount.toFixed(2)} but database shows R ${actualAmount?.toFixed(2) || 'unknown'}. Please check RLS policies or try again.` 
         });
       }
 
