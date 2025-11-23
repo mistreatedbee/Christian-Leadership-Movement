@@ -1,15 +1,36 @@
 -- =====================================================
 -- ENHANCE QUIZ SUPPORT FOR BIBLE SCHOOL, COURSES, AND PROGRAMS
 -- =====================================================
+-- NOTE: Run CREATE_QUIZ_TABLES.sql FIRST if the quizzes table doesn't exist!
+
+-- Check if quizzes table exists, if not, create it first
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'quizzes') THEN
+    RAISE EXCEPTION 'quizzes table does not exist. Please run CREATE_QUIZ_TABLES.sql first!';
+  END IF;
+END $$;
 
 -- Add new columns to quizzes table to support multiple contexts
 ALTER TABLE public.quizzes
 ADD COLUMN IF NOT EXISTS program_id UUID REFERENCES public.programs(id) ON DELETE CASCADE,
 ADD COLUMN IF NOT EXISTS bible_school_context TEXT,
-ADD COLUMN IF NOT EXISTS quiz_type TEXT DEFAULT 'course' CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general')),
-ADD COLUMN IF NOT EXISTS instructions TEXT,
-ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now(),
-ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ADD COLUMN IF NOT EXISTS quiz_type TEXT DEFAULT 'course',
+ADD COLUMN IF NOT EXISTS instructions TEXT;
+
+-- Add check constraint for quiz_type if it doesn't exist
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint 
+    WHERE conname = 'quizzes_quiz_type_check' 
+    AND conrelid = 'public.quizzes'::regclass
+  ) THEN
+    ALTER TABLE public.quizzes
+    ADD CONSTRAINT quizzes_quiz_type_check 
+    CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
+  END IF;
+END $$;
 
 -- Create indexes for better query performance
 CREATE INDEX IF NOT EXISTS idx_quizzes_program_id ON public.quizzes(program_id);
