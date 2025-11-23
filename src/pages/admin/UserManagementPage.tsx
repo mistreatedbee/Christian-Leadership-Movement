@@ -441,24 +441,15 @@ export function UserManagementPage() {
         } else {
           // If no email in applications either, try to sync from auth one more time
           console.log('🔍 No email in applications, trying manual sync...');
-          try {
-            // Re-fetch user data after sync
-            const { data: syncedUserData } = await insforge.database
-              .from('users')
-              .select('email')
-              .eq('id', user.user_id)
-              .maybeSingle();
-            
-            if (syncedUserData?.email) {
-              console.log('✅ Found email after sync:', syncedUserData.email);
-              if (userData) {
-                userData.email = syncedUserData.email;
-              } else {
-                userData = { email: syncedUserData.email };
-              }
+          // Don't try to re-fetch with email column - it might not exist
+          // Instead, use email from the user object (from the list) which was fetched with select('*')
+          if (user.email) {
+            console.log('✅ Using email from user list object:', user.email);
+            if (userData) {
+              userData.email = user.email;
+            } else {
+              userData = { email: user.email };
             }
-          } catch (syncRetryErr) {
-            console.error('Error on sync retry:', syncRetryErr);
           }
         }
       }
