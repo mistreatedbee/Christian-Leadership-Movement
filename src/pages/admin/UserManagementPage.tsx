@@ -760,6 +760,15 @@ export function UserManagementPage() {
           </h1>
           <p className="text-gray-600">Manage all registered users and their applications</p>
         </div>
+        <Button
+          variant="outline"
+          onClick={handleSyncEmails}
+          disabled={syncingEmails}
+          className="flex items-center gap-2"
+        >
+          <Mail size={16} />
+          {syncingEmails ? 'Syncing...' : 'Sync Emails from Auth'}
+        </Button>
       </div>
 
       {message && (
