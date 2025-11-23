@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useUser } from '@insforge/react';
+import { Link } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 import { Calendar, MapPin, Users, Clock } from 'lucide-react';
@@ -179,17 +180,22 @@ export function EventsPage() {
                   </div>
 
                   {isRegistered ? (
-                    <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-card text-center">
-                      ✓ Registered
+                    <div className="space-y-2">
+                      <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-2 rounded-card text-center">
+                        ✓ Registered
+                      </div>
+                      <Link to={`/events/${event.id}/registration`}>
+                        <Button variant="outline" className="w-full">
+                          View Registration
+                        </Button>
+                      </Link>
                     </div>
                   ) : (
-                    <Button
-                      variant="primary"
-                      className="w-full"
-                      onClick={() => handleRegister(event.id)}
-                    >
-                      Register Now
-                    </Button>
+                    <Link to={`/events/${event.id}/registration`}>
+                      <Button variant="primary" className="w-full">
+                        Register Now
+                      </Button>
+                    </Link>
                   )}
                 </div>
               </div>

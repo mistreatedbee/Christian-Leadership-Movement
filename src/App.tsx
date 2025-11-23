@@ -82,6 +82,7 @@ import { CourseCataloguePage } from './pages/CourseCataloguePage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { ProgramsPage } from './pages/ProgramsPage';
 import { EventsPage } from './pages/EventsPage';
+import { EventRegistrationPage } from './pages/EventRegistrationPage';
 import { BibleSchoolProgramPage } from './pages/BibleSchoolProgramPage';
 import { MembershipProgramPage } from './pages/MembershipProgramPage';
 import { PartnersPage } from './pages/PartnersPage';
@@ -114,6 +115,7 @@ export function App() {
           <Route path="/programs/bible-school" element={<BibleSchoolProgramPage />} />
           <Route path="/programs/membership" element={<MembershipProgramPage />} />
           <Route path="/events" element={<EventsPage />} />
+          <Route path="/events/:id/registration" element={<EventRegistrationPage />} />
           <Route path="/partners" element={<PartnersPage />} />
           <Route path="/prayer-requests" element={<PrayerRequestsPage />} />
           <Route path="/testimonials" element={<TestimonialsPage />} />
