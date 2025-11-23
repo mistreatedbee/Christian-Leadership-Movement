@@ -123,12 +123,20 @@ CREATE POLICY "Users update own forum topics"
   USING (user_id = public.get_current_user_id())
   WITH CHECK (user_id = public.get_current_user_id());
 
--- Allow anyone to update view_count (for view tracking)
-CREATE POLICY "Anyone can update view count"
-  ON public.forum_topics
-  FOR UPDATE
-  USING (true)
-  WITH CHECK (true);
+-- Function to increment view count (bypasses RLS)
+CREATE OR REPLACE FUNCTION public.increment_forum_topic_view_count(p_topic_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  UPDATE public.forum_topics
+  SET 
+    view_count = COALESCE(view_count, 0) + 1,
+    updated_at = now()
+  WHERE id = p_topic_id;
+END;
+$$;
 
 -- Admins can manage all topics
 CREATE POLICY "Admins manage forum topics"

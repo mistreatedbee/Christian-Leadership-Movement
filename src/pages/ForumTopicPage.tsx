@@ -82,27 +82,35 @@ export function ForumTopicPage() {
           try {
             // Only increment if user is not the creator (or if no user, still increment)
             if (!user || user.id !== data.user_id) {
-              const { error: updateError } = await insforge.database
-                .from('forum_topics')
-                .update({ 
-                  view_count: (data.view_count || 0) + 1,
-                  updated_at: new Date().toISOString()
-                })
-                .eq('id', id);
+              // Use the SECURITY DEFINER function to bypass RLS
+              const { error: functionError } = await insforge.database
+                .rpc('increment_forum_topic_view_count', { p_topic_id: id });
 
-              if (updateError) {
-                console.error('Error updating view count:', updateError);
-              } else {
-                // Refresh topic data to show updated view count
-                const { data: updatedTopic } = await insforge.database
+              if (functionError) {
+                // Fallback to direct update if function doesn't exist
+                console.warn('Function not available, trying direct update:', functionError);
+                const { error: updateError } = await insforge.database
                   .from('forum_topics')
-                  .select('*, forum_categories(*), users(*)')
-                  .eq('id', id)
-                  .single();
-                
-                if (updatedTopic) {
-                  setTopic(updatedTopic);
+                  .update({ 
+                    view_count: (data.view_count || 0) + 1,
+                    updated_at: new Date().toISOString()
+                  })
+                  .eq('id', id);
+
+                if (updateError) {
+                  console.error('Error updating view count:', updateError);
                 }
+              }
+
+              // Refresh topic data to show updated view count
+              const { data: updatedTopic } = await insforge.database
+                .from('forum_topics')
+                .select('*, forum_categories(*), users(*)')
+                .eq('id', id)
+                .single();
+              
+              if (updatedTopic) {
+                setTopic(updatedTopic);
               }
             }
           } catch (err) {
