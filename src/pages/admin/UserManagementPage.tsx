@@ -210,6 +210,9 @@ export function UserManagementPage() {
         // Override with users table data (registration) - this has email, nickname, name
         // EMAIL PRIORITY: users.email > applications.email > user.email
         email: userData?.email || user.email || null,
+        // Store debug info
+        _debug_userDataEmail: userData?.email,
+        _debug_userEmail: user.email,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
@@ -924,7 +927,12 @@ export function UserManagementPage() {
                     <p className="font-medium break-all">
                       {enrichedUserData?.email || selectedUser.email || 'N/A'}
                       {!enrichedUserData?.email && !selectedUser.email && (
-                        <span className="text-xs text-red-600 ml-2 block mt-1">⚠️ Email not found - user may need to update their profile</span>
+                        <span className="text-xs text-red-600 ml-2 block mt-1">
+                          ⚠️ Email not found in database. 
+                          <br />
+                          Debug: userData.email={enrichedUserData?._debug_userDataEmail || 'N/A'}, 
+                          user.email={selectedUser.email || 'N/A'}
+                        </span>
                       )}
                       {enrichedUserData?.email && enrichedUserData?.email !== selectedUser.email && <span className="text-xs text-green-600 ml-2">(from application)</span>}
                     </p>
