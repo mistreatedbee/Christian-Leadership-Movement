@@ -116,75 +116,19 @@ export function UserManagementPage() {
       console.log('✅ Fetched profiles:', profiles?.length || 0, 'profiles');
       console.log('Sample profile:', profiles?.[0]);
 
-      // Fetch all applications to get emails as fallback
-      // Try to get email from applications table - handle case where email column doesn't exist
-      let emailMap = new Map<string, string>();
-      
-      try {
-        // First, try to select email column directly
-        const { data: appsWithEmail, error: emailError } = await insforge.database
-          .from('applications')
-          .select('user_id, email')
-          .not('email', 'is', null);
-        
-        if (!emailError && appsWithEmail) {
-          appsWithEmail.forEach((app: any) => {
-            if (app.user_id && app.email && !emailMap.has(app.user_id)) {
-              emailMap.set(app.user_id, app.email);
-            }
-          });
-          console.log('✅ Found emails in applications.email column');
-        } else {
-          // Email column doesn't exist, try to extract from form_data JSONB
-          console.log('⚠️ Email column not found in applications, trying form_data...');
-          const { data: appsWithFormData, error: formDataError } = await insforge.database
-            .from('applications')
-            .select('user_id, form_data')
-            .not('user_id', 'is', null);
-          
-          if (!formDataError && appsWithFormData) {
-            appsWithFormData.forEach((app: any) => {
-              if (app.user_id && app.form_data) {
-                // Try to extract email from form_data (could be 'email' or 'Email')
-                const email = app.form_data?.email || app.form_data?.Email || app.form_data?.EMAIL;
-                if (email && !emailMap.has(app.user_id)) {
-                  emailMap.set(app.user_id, email);
-                }
-              }
-            });
-            console.log('✅ Found emails in applications.form_data');
-          } else {
-            console.warn('⚠️ Could not fetch applications:', formDataError);
-          }
-        }
-      } catch (err: any) {
-        console.error('Error fetching applications for email map:', err);
-      }
+      // EMAIL PRIORITY: users.email (from registration) > user_profiles (if it has email) > applications (last resort)
+      // Don't fetch from applications here - it causes 400 errors and emails should be in users table from registration
+      // Only use applications as absolute last resort in handleViewDetails if email is still missing
 
       // Combine users with their profiles
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
-        // Get email from users table, or fallback to applications
-        const userEmail = user.email || emailMap.get(user.id) || null;
+        // EMAIL PRIORITY: users.email (from registration) > user_profiles.email (if exists)
+        // Email should be in users table from registration - that's the primary source
+        const userEmail = user.email || profile?.email || null;
         
-        // If email is missing but we have it from applications, try to update the users table (async, non-blocking)
-        // BUT: Only if email column exists - check by trying to update (will fail silently if column doesn't exist)
-        if (!user.email && emailMap.has(user.id)) {
-          const appEmail = emailMap.get(user.id);
-          // Silently try to update - don't block the UI
-          // Wrap in try-catch to handle case where email column doesn't exist
-          insforge.database
-            .from('users')
-            .update({ email: appEmail } as any) // Use 'as any' to bypass TypeScript check
-            .eq('id', user.id)
-            .then(() => console.log(`✅ Updated email for user ${user.id}`))
-            .catch(err => {
-              // Don't log if it's a column doesn't exist error - that's expected
-              if (!err.message?.includes('does not exist') && !err.message?.includes('column')) {
-                console.error(`❌ Failed to update email for user ${user.id}:`, err);
-              }
-            });
-        }
+        // Email should already be in users table from registration
+        // If it's missing, it's a data issue, not something we should fix by syncing from applications
         
         // CRITICAL: Log the raw user object to see what fields are actually available
         if (user.id === allUsers?.[0]?.id) {
