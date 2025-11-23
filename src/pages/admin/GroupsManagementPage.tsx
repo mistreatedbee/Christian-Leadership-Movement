@@ -97,11 +97,49 @@ export function GroupsManagementPage() {
           const groupsWithCreators = await Promise.all(
             fallbackData.map(async (group: any) => {
               try {
+                // Fetch from users table
                 const { data: creatorData } = await insforge.database
                   .from('users')
                   .select('id, nickname, email, avatar_url')
                   .eq('id', group.created_by)
-                  .single();
+                  .maybeSingle();
+                
+                // If no nickname, try to get from user_profiles
+                let creatorName = creatorData?.nickname || creatorData?.email;
+                if (!creatorName || creatorName === 'Unknown') {
+                  try {
+                    const { data: profileData } = await insforge.database
+                      .from('user_profiles')
+                      .select('*')
+                      .eq('user_id', group.created_by)
+                      .maybeSingle();
+                    
+                    // Try to get name from profile (could be in different fields)
+                    if (profileData) {
+                      // Check if there's a name field or combine first/last name
+                      const firstName = (profileData as any).first_name || (profileData as any).firstName || '';
+                      const lastName = (profileData as any).last_name || (profileData as any).lastName || '';
+                      if (firstName || lastName) {
+                        creatorName = `${firstName} ${lastName}`.trim();
+                      }
+                    }
+                  } catch (profileErr) {
+                    console.warn('Could not fetch profile for creator:', profileErr);
+                  }
+                }
+                
+                // Combine creator data with name
+                const enrichedCreatorData = creatorData ? {
+                  ...creatorData,
+                  nickname: creatorName || creatorData.nickname || creatorData.email || 'Unknown',
+                  displayName: creatorName || creatorData.nickname || creatorData.email || 'Unknown'
+                } : {
+                  id: group.created_by,
+                  nickname: creatorName || 'Unknown',
+                  email: null,
+                  avatar_url: null,
+                  displayName: creatorName || 'Unknown'
+                };
                 
                 const { data: membersData } = await insforge.database
                   .from('group_members')
@@ -110,14 +148,19 @@ export function GroupsManagementPage() {
                 
                 return {
                   ...group,
-                  users: creatorData || null,
+                  users: enrichedCreatorData,
                   group_members: membersData || []
                 };
               } catch (err) {
                 console.error('Error fetching creator for group:', group.id, err);
                 return {
                   ...group,
-                  users: null,
+                  users: {
+                    id: group.created_by,
+                    nickname: 'Unknown',
+                    email: null,
+                    displayName: 'Unknown'
+                  },
                   group_members: []
                 };
               }
@@ -128,7 +171,54 @@ export function GroupsManagementPage() {
           setGroups([]);
         }
       } else {
-        setGroups(data || []);
+        // Enrich groups with better creator names
+        const enrichedGroups = await Promise.all(
+          (data || []).map(async (group: any) => {
+            // If creator info exists but name is missing, try to fetch from profile
+            if (group.users && (!group.users.nickname || group.users.nickname === 'Unknown')) {
+              try {
+                const { data: profileData } = await insforge.database
+                  .from('user_profiles')
+                  .select('*')
+                  .eq('user_id', group.created_by)
+                  .maybeSingle();
+                
+                if (profileData) {
+                  const firstName = (profileData as any).first_name || (profileData as any).firstName || '';
+                  const lastName = (profileData as any).last_name || (profileData as any).lastName || '';
+                  if (firstName || lastName) {
+                    const fullName = `${firstName} ${lastName}`.trim();
+                    return {
+                      ...group,
+                      users: {
+                        ...group.users,
+                        nickname: fullName || group.users.nickname || group.users.email || 'Unknown',
+                        displayName: fullName || group.users.nickname || group.users.email || 'Unknown'
+                      }
+                    };
+                  }
+                }
+              } catch (profileErr) {
+                console.warn('Could not fetch profile for creator:', profileErr);
+              }
+            }
+            
+            // Ensure displayName is set
+            return {
+              ...group,
+              users: group.users ? {
+                ...group.users,
+                displayName: group.users.nickname || group.users.email || 'Unknown'
+              } : {
+                id: group.created_by,
+                nickname: 'Unknown',
+                email: null,
+                displayName: 'Unknown'
+              }
+            };
+          })
+        );
+        setGroups(enrichedGroups);
       }
     } catch (error) {
       console.error('Error fetching groups:', error);
@@ -415,14 +505,14 @@ export function GroupsManagementPage() {
                       {group.users?.avatar_url && (
                         <img
                           src={group.users.avatar_url.startsWith('http') ? group.users.avatar_url : getStorageUrl('avatars', group.users.avatar_url)}
-                          alt={group.users.nickname || group.users.email}
+                          alt={group.users?.displayName || group.users?.nickname || group.users?.email || 'Unknown'}
                           className="w-6 h-6 rounded-full object-cover"
                           onError={(e) => {
                             (e.target as HTMLImageElement).style.display = 'none';
                           }}
                         />
                       )}
-                      <span>{group.users?.nickname || group.users?.email || 'Unknown'}</span>
+                      <span>{group.users?.displayName || group.users?.nickname || group.users?.email || 'Unknown'}</span>
                     </div>
                   </td>
                   <td className="py-4 px-6 text-sm">
@@ -607,7 +697,7 @@ export function GroupsManagementPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="font-medium">Creator:</span> {selectedGroup.users?.nickname || selectedGroup.users?.email || 'Unknown'}
+                    <span className="font-medium">Creator:</span> {selectedGroup.users?.displayName || selectedGroup.users?.nickname || selectedGroup.users?.email || 'Unknown'}
                   </div>
                   <div>
                     <span className="font-medium">Created:</span> {new Date(selectedGroup.created_at).toLocaleDateString()}
@@ -637,7 +727,7 @@ export function GroupsManagementPage() {
                         )}
                         <div>
                           <span className="font-medium">
-                            {member.users?.nickname || member.users?.email || 'Unknown'}
+                            {member.users?.displayName || member.users?.nickname || member.users?.email || 'Unknown'}
                           </span>
                           <span className="ml-2 px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
                             {member.role}
