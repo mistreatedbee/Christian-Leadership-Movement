@@ -160,31 +160,38 @@ export function ResourceLibraryPage() {
     try {
       let downloadUrl: string | null = null;
 
+      console.log('Downloading resource:', resource);
+
       // Check for external link first (YouTube, Vimeo, Google Drive, etc.)
       if (resource.external_link) {
         downloadUrl = resource.external_link;
+        console.log('Using external link:', downloadUrl);
       } else if (resource.file_url) {
         // If file_url is already a full URL, use it directly
         if (resource.file_url.startsWith('http://') || resource.file_url.startsWith('https://')) {
           downloadUrl = resource.file_url;
+          console.log('Using full URL:', downloadUrl);
         } else {
           // Otherwise, construct the storage URL
           // Determine the bucket based on source
+          // Note: Bible School resources are stored in 'resources' bucket, not 'bible-school-resources'
           let bucket = 'resources';
-          if (resource.source === 'bible_school') {
-            bucket = 'bible-school-resources';
-          } else if (resource.source === 'course') {
+          if (resource.source === 'course') {
             bucket = 'courses';
           }
           
           // Use file_key if available, otherwise use file_url
           const fileKey = resource.file_key || resource.file_url;
-          downloadUrl = getStorageUrl(bucket, fileKey);
+          if (fileKey) {
+            downloadUrl = getStorageUrl(bucket, fileKey);
+            console.log('Using storage URL:', downloadUrl, 'bucket:', bucket, 'key:', fileKey);
+          }
         }
       }
 
       if (!downloadUrl) {
-        alert('Download URL not available for this resource.');
+        console.error('No download URL available for resource:', resource);
+        alert('Download URL not available for this resource. Please ensure the resource has a file or external link.');
         return;
       }
 

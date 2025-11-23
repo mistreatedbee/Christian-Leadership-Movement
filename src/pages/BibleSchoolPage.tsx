@@ -169,22 +169,30 @@ export function BibleSchoolPage() {
     try {
       let downloadUrl: string | null = null;
 
+      console.log('Downloading Bible School resource:', resource);
+
       // Check for external link first (YouTube, Vimeo, Google Drive, etc.)
       if (resource.external_link) {
         downloadUrl = resource.external_link;
+        console.log('Using external link:', downloadUrl);
       } else if (resource.file_url) {
         // If file_url is already a full URL, use it directly
         if (resource.file_url.startsWith('http://') || resource.file_url.startsWith('https://')) {
           downloadUrl = resource.file_url;
+          console.log('Using full URL:', downloadUrl);
         } else {
-          // Otherwise, construct the storage URL using bible-school-resources bucket
+          // Bible School resources are stored in 'resources' bucket
           const fileKey = resource.file_key || resource.file_url;
-          downloadUrl = getStorageUrl('bible-school-resources', fileKey);
+          if (fileKey) {
+            downloadUrl = getStorageUrl('resources', fileKey);
+            console.log('Using storage URL:', downloadUrl, 'key:', fileKey);
+          }
         }
       }
 
       if (!downloadUrl) {
-        alert('Download URL not available for this resource.');
+        console.error('No download URL available for resource:', resource);
+        alert('Download URL not available for this resource. Please ensure the resource has a file or external link.');
         return;
       }
 
