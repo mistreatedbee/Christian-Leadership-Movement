@@ -208,8 +208,16 @@ export function ProfilePage() {
       }
 
       // Update or create profile - check if exists first
+      // Get email from users table to sync to profile
+      const { data: userData } = await insforge.database
+        .from('users')
+        .select('email')
+        .eq('id', user.id)
+        .maybeSingle();
+      
       const profileData = {
         user_id: user.id,
+        email: userData?.email || user.email || null, // Sync email to profile
         phone: data.phone || null,
         address: data.address || null,
         city: data.city || null,

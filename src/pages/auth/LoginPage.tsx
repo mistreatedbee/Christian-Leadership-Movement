@@ -77,9 +77,22 @@ export function LoginPage() {
           
           if (!profile) {
             try {
+              // Get email from users table or auth
+              const { data: userData } = await insforge.database
+                .from('users')
+                .select('email')
+                .eq('id', result.user.id)
+                .maybeSingle();
+              
+              const userEmail = userData?.email || result.user.email || null;
+              
               const { error: insertError } = await insforge.database
                 .from('user_profiles')
-                .insert([{ user_id: result.user.id, role: 'user' }]);
+                .insert([{ 
+                  user_id: result.user.id, 
+                  role: 'user',
+                  email: userEmail // Include email when creating profile during login
+                }]);
               
               if (insertError) {
                 console.error('Error creating profile:', insertError);
@@ -87,6 +100,25 @@ export function LoginPage() {
               }
             } catch (insertErr) {
               console.error('Exception creating profile:', insertErr);
+              // Continue anyway
+            }
+          } else if (profile && !profile.email) {
+            // If profile exists but email is missing, sync it from users table
+            try {
+              const { data: userData } = await insforge.database
+                .from('users')
+                .select('email')
+                .eq('id', result.user.id)
+                .maybeSingle();
+              
+              if (userData?.email) {
+                await insforge.database
+                  .from('user_profiles')
+                  .update({ email: userData.email })
+                  .eq('user_id', result.user.id);
+              }
+            } catch (syncErr) {
+              console.error('Exception syncing email to profile:', syncErr);
               // Continue anyway
             }
           }
