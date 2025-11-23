@@ -108,6 +108,12 @@ CREATE POLICY "Admins manage forum categories"
   WITH CHECK (public.is_current_user_admin());
 
 -- RLS Policies for Forum Topics
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Public can read forum topics" ON public.forum_topics;
+DROP POLICY IF EXISTS "Users create own forum topics" ON public.forum_topics;
+DROP POLICY IF EXISTS "Users update own forum topics" ON public.forum_topics;
+DROP POLICY IF EXISTS "Admins manage forum topics" ON public.forum_topics;
+
 -- Public can read topics
 CREATE POLICY "Public can read forum topics"
   ON public.forum_topics
@@ -128,7 +134,10 @@ CREATE POLICY "Users update own forum topics"
   WITH CHECK (user_id = public.get_current_user_id());
 
 -- Function to increment view count (bypasses RLS)
-CREATE OR REPLACE FUNCTION public.increment_forum_topic_view_count(p_topic_id UUID)
+-- Drop function if it exists
+DROP FUNCTION IF EXISTS public.increment_forum_topic_view_count(UUID);
+
+CREATE FUNCTION public.increment_forum_topic_view_count(p_topic_id UUID)
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -254,7 +263,10 @@ CREATE POLICY "Admins manage forum reply likes"
   WITH CHECK (public.is_current_user_admin());
 
 -- Function to update topic reply count and last_reply_at
-CREATE OR REPLACE FUNCTION public.update_forum_topic_reply_stats()
+-- Drop function if it exists
+DROP FUNCTION IF EXISTS public.update_forum_topic_reply_stats();
+
+CREATE FUNCTION public.update_forum_topic_reply_stats()
 RETURNS TRIGGER AS $$
 BEGIN
   IF TG_OP = 'INSERT' THEN
