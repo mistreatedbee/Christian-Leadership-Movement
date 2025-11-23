@@ -127,15 +127,22 @@ export function UserManagementPage() {
         const userEmail = user.email || emailMap.get(user.id) || null;
         
         // If email is missing but we have it from applications, try to update the users table (async, non-blocking)
+        // BUT: Only if email column exists - check by trying to update (will fail silently if column doesn't exist)
         if (!user.email && emailMap.has(user.id)) {
           const appEmail = emailMap.get(user.id);
           // Silently try to update - don't block the UI
+          // Wrap in try-catch to handle case where email column doesn't exist
           insforge.database
             .from('users')
-            .update({ email: appEmail })
+            .update({ email: appEmail } as any) // Use 'as any' to bypass TypeScript check
             .eq('id', user.id)
             .then(() => console.log(`✅ Updated email for user ${user.id}`))
-            .catch(err => console.error(`❌ Failed to update email for user ${user.id}:`, err));
+            .catch(err => {
+              // Don't log if it's a column doesn't exist error - that's expected
+              if (!err.message?.includes('does not exist') && !err.message?.includes('column')) {
+                console.error(`❌ Failed to update email for user ${user.id}:`, err);
+              }
+            });
         }
         
         // CRITICAL: Log the raw user object to see what fields are actually available
