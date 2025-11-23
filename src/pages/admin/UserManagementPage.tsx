@@ -138,11 +138,21 @@ export function UserManagementPage() {
             .catch(err => console.error(`❌ Failed to update email for user ${user.id}:`, err));
         }
         
+        // CRITICAL: Log the raw user object to see what fields are actually available
+        if (user.id === allUsers?.[0]?.id) {
+          console.log('🔍 RAW USER OBJECT FROM DATABASE:', user);
+          console.log('🔍 USER OBJECT KEYS:', Object.keys(user));
+          console.log('🔍 USER.EMAIL VALUE:', user.email);
+          console.log('🔍 USER.EMAIL TYPE:', typeof user.email);
+          console.log('🔍 USER.EMAIL === null?', user.email === null);
+          console.log('🔍 USER.EMAIL === undefined?', user.email === undefined);
+        }
+        
         const userData = {
           id: profile?.id || user.id,
           user_id: user.id,
           nickname: user.nickname || null,
-          email: userEmail,
+          email: userEmail || user.email || null, // Use user.email directly as fallback
           phone: profile?.phone || null,
           city: profile?.city || null,
           province: profile?.province || null,
@@ -160,7 +170,9 @@ export function UserManagementPage() {
         if (user.id === allUsers?.[0]?.id) {
           console.log('🔍 Sample user data:', {
             user_id: user.id,
-            user_email: user.email,
+            raw_user_email: user.email,
+            userEmail_from_map: userEmail,
+            final_email: userData.email,
             profile_phone: profile?.phone,
             profile_address: profile?.address,
             profile_city: profile?.city,
@@ -355,10 +367,18 @@ export function UserManagementPage() {
         userData = result.data;
         userError = result.error;
         
-        console.log('🔍 User data from users table:', userData);
+        console.log('🔍 User data from users table (individual query):', userData);
         console.log('🔍 Available keys:', userData ? Object.keys(userData) : 'null');
         console.log('🔍 Email field exists?', userData ? ('email' in userData) : false);
         console.log('🔍 Email value:', userData?.email);
+        console.log('🔍 Email value type:', typeof userData?.email);
+        console.log('🔍 Email === null?', userData?.email === null);
+        console.log('🔍 Email === undefined?', userData?.email === undefined);
+        
+        // Also check the user object from the list
+        console.log('🔍 User object from list:', user);
+        console.log('🔍 User.email from list:', user.email);
+        console.log('🔍 User object keys:', Object.keys(user));
         
         // If email column doesn't exist, userData.email will be undefined
         // In that case, we'll need to get email from another source
