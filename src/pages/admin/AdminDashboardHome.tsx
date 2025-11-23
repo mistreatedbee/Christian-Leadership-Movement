@@ -272,13 +272,19 @@ export function AdminDashboardHome() {
           .select('*')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false })
-          .limit(10);
+          .limit(20);
 
         if (notifError) {
           console.error('Error fetching notifications:', notifError);
         }
 
         setNotifications(recentNotifications || []);
+        
+        // Log group notifications for debugging
+        const groupNotifs = recentNotifications?.filter((n: any) => n.type === 'group') || [];
+        if (groupNotifs.length > 0) {
+          console.log(`📬 Admin has ${groupNotifs.length} group-related notifications`);
+        }
       } catch (err) {
         console.error('Error fetching admin data:', err);
       } finally {
