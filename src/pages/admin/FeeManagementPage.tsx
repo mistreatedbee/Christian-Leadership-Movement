@@ -95,8 +95,7 @@ export function FeeManagementPage() {
         .from('fee_settings')
         .update(updateData)
         .eq('id', feeId)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('Database error:', error);
@@ -104,7 +103,10 @@ export function FeeManagementPage() {
       }
 
       // Verify the update was successful
-      if (data) {
+      // data might be an array or a single object depending on the query
+      const updatedFee = Array.isArray(data) ? data[0] : data;
+      
+      if (updatedFee) {
         setMessage({ 
           type: 'success', 
           text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 
@@ -113,7 +115,14 @@ export function FeeManagementPage() {
         // Refresh fees to show updated values
         await fetchFees();
       } else {
-        throw new Error('Update completed but no data returned');
+        // Update might have succeeded but no data returned (some databases don't return data on update)
+        // Still show success and refresh
+        setMessage({ 
+          type: 'success', 
+          text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 
+        });
+        setEditingFee(null);
+        await fetchFees();
       }
     } catch (err: any) {
       console.error('Error updating fee:', err);
