@@ -169,30 +169,35 @@ export function BibleSchoolPage() {
     try {
       let downloadUrl: string | null = null;
 
-      console.log('Downloading Bible School resource:', resource);
-
       // Check for external link first (YouTube, Vimeo, Google Drive, etc.)
-      if (resource.external_link) {
-        downloadUrl = resource.external_link;
-        console.log('Using external link:', downloadUrl);
-      } else if (resource.file_url) {
+      if (resource.external_link && resource.external_link.trim() !== '') {
+        downloadUrl = resource.external_link.trim();
+      } else if (resource.file_url && resource.file_url.trim() !== '') {
+        const fileUrl = resource.file_url.trim();
         // If file_url is already a full URL, use it directly
-        if (resource.file_url.startsWith('http://') || resource.file_url.startsWith('https://')) {
-          downloadUrl = resource.file_url;
-          console.log('Using full URL:', downloadUrl);
+        if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+          downloadUrl = fileUrl;
         } else {
           // Bible School resources are stored in 'resources' bucket
-          const fileKey = resource.file_key || resource.file_url;
+          const fileKey = (resource.file_key && resource.file_key.trim() !== '') 
+            ? resource.file_key.trim() 
+            : fileUrl;
+          
           if (fileKey) {
             downloadUrl = getStorageUrl('resources', fileKey);
-            console.log('Using storage URL:', downloadUrl, 'key:', fileKey);
           }
         }
       }
 
       if (!downloadUrl) {
-        console.error('No download URL available for resource:', resource);
-        alert('Download URL not available for this resource. Please ensure the resource has a file or external link.');
+        console.error('No download URL available for resource:', {
+          id: resource.id,
+          title: resource.title,
+          file_url: resource.file_url,
+          file_key: resource.file_key,
+          external_link: resource.external_link
+        });
+        alert(`Download URL not available for "${resource.title}". This resource may not have a file or external link configured. Please contact an administrator.`);
         return;
       }
 
