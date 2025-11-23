@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Calendar, Award, TrendingUp, FileText } from 'lucide-react';
+import { BookOpen, Calendar, Award, TrendingUp, FileText, Users, AlertCircle } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
+import { Link } from 'react-router-dom';
 
 export function DashboardHome() {
   const { user, isLoaded } = useUser();
@@ -14,6 +15,7 @@ export function DashboardHome() {
   });
   const [loading, setLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
+  const [pendingGroups, setPendingGroups] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isLoaded || !user) return;
@@ -47,6 +49,15 @@ export function DashboardHome() {
           .eq('user_id', user.id)
           .eq('read', false);
 
+        // Fetch pending groups created by user
+        const { data: pendingGroupsData } = await insforge.database
+          .from('groups')
+          .select('*')
+          .eq('created_by', user.id)
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+
+        setPendingGroups(pendingGroupsData || []);
         setStats({
           courses: courses?.length || 0,
           events: events?.length || 0,
@@ -124,6 +135,31 @@ export function DashboardHome() {
         </div>
       ) : (
         <>
+      {/* Pending Groups Alert */}
+      {pendingGroups.length > 0 && (
+        <div className="bg-amber-50 border-l-4 border-amber-500 p-6 rounded-card shadow-soft">
+          <div className="flex items-start">
+            <AlertCircle className="w-6 h-6 text-amber-600 mr-3 mt-1" />
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-amber-900 mb-2">Group Creation Status</h3>
+              {pendingGroups.map((group) => (
+                <div key={group.id} className="mb-3 last:mb-0">
+                  <p className="text-amber-800 font-medium mb-1">
+                    ✅ Your group "<strong>{group.name}</strong>" has successfully been created!
+                  </p>
+                  <p className="text-amber-700 text-sm">
+                    It is currently waiting for admin approval. You will be notified once it's approved or rejected.
+                  </p>
+                  <Link to="/groups" className="text-amber-900 hover:underline text-sm font-medium mt-1 inline-block">
+                    View your groups →
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {statsData.map(stat => <div key={stat.label} className="bg-white p-6 rounded-card shadow-soft">

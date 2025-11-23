@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { ArrowLeft, Users, Calendar, MessageSquare, Settings, UserPlus, Mail } from 'lucide-react';
+import { ArrowLeft, Users, Calendar, MessageSquare, Settings, UserPlus, Mail, Heart, Smile, ThumbsUp, Reply, X } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
@@ -60,6 +60,35 @@ interface GroupMessage {
     email?: string;
     avatar_url?: string;
   };
+  reactions?: GroupMessageReaction[];
+  replies?: GroupMessageReply[];
+}
+
+interface GroupMessageReaction {
+  id: string;
+  message_id: string;
+  user_id: string;
+  reaction_type: string;
+  created_at: string;
+  users?: {
+    id: string;
+    nickname?: string;
+    email?: string;
+  };
+}
+
+interface GroupMessageReply {
+  id: string;
+  message_id: string;
+  user_id: string;
+  content: string;
+  created_at: string;
+  users?: {
+    id: string;
+    nickname?: string;
+    email?: string;
+    avatar_url?: string;
+  };
 }
 
 export function GroupDetailPage() {
@@ -74,6 +103,9 @@ export function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [messageContent, setMessageContent] = useState('');
   const [activeTab, setActiveTab] = useState<'overview' | 'members' | 'events' | 'messages'>('overview');
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [showReactions, setShowReactions] = useState<string | null>(null);
 
   useEffect(() => {
     if (id) {
@@ -107,13 +139,40 @@ export function GroupDetailPage() {
           .select('*, users(*)')
           .eq('group_id', id)
           .order('created_at', { ascending: false })
-          .limit(20)
+          .limit(50)
       ]);
+
+      // Fetch reactions and replies for each message
+      if (messagesRes.data && messagesRes.data.length > 0) {
+        const messageIds = messagesRes.data.map((m: any) => m.id);
+        
+        const [reactionsRes, repliesRes] = await Promise.all([
+          insforge.database
+            .from('group_message_reactions')
+            .select('*, users(*)')
+            .in('message_id', messageIds),
+          insforge.database
+            .from('group_message_replies')
+            .select('*, users(*)')
+            .in('message_id', messageIds)
+            .order('created_at', { ascending: true })
+        ]);
+
+        // Combine messages with reactions and replies
+        const messagesWithReactions = messagesRes.data.map((msg: any) => ({
+          ...msg,
+          reactions: reactionsRes.data?.filter((r: any) => r.message_id === msg.id) || [],
+          replies: repliesRes.data?.filter((r: any) => r.message_id === msg.id) || []
+        }));
+
+        setMessages(messagesWithReactions);
+      } else {
+        setMessages([]);
+      }
 
       setGroup(groupRes.data);
       setMembers(membersRes.data || []);
       setEvents(eventsRes.data || []);
-      setMessages(messagesRes.data || []);
 
       if (user) {
         const userMember = membersRes.data?.find(m => m.user_id === user.id);
@@ -168,6 +227,90 @@ export function GroupDetailPage() {
       console.error('Error sending message:', error);
       alert(error.message || 'Error sending message. Please try again.');
     }
+  };
+
+  const handleAddReaction = async (messageId: string, reactionType: string) => {
+    if (!user || !id) return;
+
+    try {
+      // Check if user already reacted with this type
+      const { data: existing } = await insforge.database
+        .from('group_message_reactions')
+        .select('id')
+        .eq('message_id', messageId)
+        .eq('user_id', user.id)
+        .eq('reaction_type', reactionType)
+        .maybeSingle();
+
+      if (existing) {
+        // Remove reaction
+        await insforge.database
+          .from('group_message_reactions')
+          .delete()
+          .eq('id', existing.id);
+      } else {
+        // Remove any existing reaction from this user on this message
+        await insforge.database
+          .from('group_message_reactions')
+          .delete()
+          .eq('message_id', messageId)
+          .eq('user_id', user.id);
+
+        // Add new reaction
+        await insforge.database
+          .from('group_message_reactions')
+          .insert({
+            message_id: messageId,
+            user_id: user.id,
+            reaction_type: reactionType
+          });
+      }
+      fetchData();
+    } catch (error: any) {
+      console.error('Error adding reaction:', error);
+      alert(error.message || 'Error adding reaction. Please try again.');
+    }
+  };
+
+  const handleSendReply = async (messageId: string) => {
+    if (!user || !id || !replyContent.trim()) return;
+
+    try {
+      await insforge.database
+        .from('group_message_replies')
+        .insert({
+          message_id: messageId,
+          user_id: user.id,
+          content: replyContent.trim()
+        });
+      setReplyContent('');
+      setReplyingTo(null);
+      fetchData();
+    } catch (error: any) {
+      console.error('Error sending reply:', error);
+      alert(error.message || 'Error sending reply. Please try again.');
+    }
+  };
+
+  const getReactionIcon = (type: string) => {
+    switch (type) {
+      case 'like': return '👍';
+      case 'love': return '❤️';
+      case 'laugh': return '😂';
+      case 'wow': return '😮';
+      case 'sad': return '😢';
+      case 'angry': return '😠';
+      case 'pray': return '🙏';
+      default: return '👍';
+    }
+  };
+
+  const getReactionCount = (message: GroupMessage, type: string) => {
+    return message.reactions?.filter(r => r.reaction_type === type).length || 0;
+  };
+
+  const hasUserReacted = (message: GroupMessage, type: string) => {
+    return message.reactions?.some(r => r.user_id === user?.id && r.reaction_type === type) || false;
   };
 
   const handleRemoveMember = async (memberId: string) => {
@@ -442,7 +585,133 @@ export function GroupDetailPage() {
                           {new Date(message.created_at).toLocaleString()}
                         </p>
                       </div>
-                      <p className="text-gray-700">{message.content}</p>
+                      <p className="text-gray-700 mb-3">{message.content}</p>
+                      
+                      {/* Reactions */}
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-1">
+                          {['like', 'love', 'laugh', 'pray'].map((type) => {
+                            const count = getReactionCount(message, type);
+                            if (count === 0) return null;
+                            return (
+                              <button
+                                key={type}
+                                onClick={() => handleAddReaction(message.id, type)}
+                                className={`px-2 py-1 rounded-full text-sm flex items-center gap-1 ${
+                                  hasUserReacted(message, type)
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                                title={type.charAt(0).toUpperCase() + type.slice(1)}
+                              >
+                                <span>{getReactionIcon(type)}</span>
+                                <span>{count}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <button
+                          onClick={() => setShowReactions(showReactions === message.id ? null : message.id)}
+                          className="text-sm text-gray-600 hover:text-gray-800"
+                        >
+                          {showReactions === message.id ? 'Hide' : 'React'}
+                        </button>
+                        <button
+                          onClick={() => setReplyingTo(replyingTo === message.id ? null : message.id)}
+                          className="text-sm text-gray-600 hover:text-gray-800 flex items-center gap-1"
+                        >
+                          <Reply className="w-4 h-4" />
+                          Reply
+                        </button>
+                      </div>
+
+                      {/* Reaction Picker */}
+                      {showReactions === message.id && (
+                        <div className="flex gap-2 mb-3 p-2 bg-gray-50 rounded-lg">
+                          {['like', 'love', 'laugh', 'wow', 'sad', 'angry', 'pray'].map((type) => (
+                            <button
+                              key={type}
+                              onClick={() => {
+                                handleAddReaction(message.id, type);
+                                setShowReactions(null);
+                              }}
+                              className={`p-2 rounded-full hover:bg-gray-200 ${
+                                hasUserReacted(message, type) ? 'bg-blue-100' : ''
+                              }`}
+                              title={type.charAt(0).toUpperCase() + type.slice(1)}
+                            >
+                              <span className="text-xl">{getReactionIcon(type)}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Reply Form */}
+                      {replyingTo === message.id && (
+                        <div className="mb-3 p-3 bg-gray-50 rounded-lg">
+                          <form
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              handleSendReply(message.id);
+                            }}
+                            className="flex gap-2"
+                          >
+                            <input
+                              type="text"
+                              value={replyContent}
+                              onChange={(e) => setReplyContent(e.target.value)}
+                              placeholder="Write a reply..."
+                              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                            />
+                            <Button type="submit" variant="primary" size="sm">
+                              Send
+                            </Button>
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setReplyingTo(null);
+                                setReplyContent('');
+                              }}
+                              variant="outline"
+                              size="sm"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </form>
+                        </div>
+                      )}
+
+                      {/* Replies */}
+                      {message.replies && message.replies.length > 0 && (
+                        <div className="ml-4 mt-3 space-y-3 border-l-2 border-gray-200 pl-4">
+                          {message.replies.map((reply) => (
+                            <div key={reply.id} className="flex items-start gap-3">
+                              {reply.users?.avatar_url ? (
+                                <img
+                                  src={reply.users.avatar_url}
+                                  alt={reply.users.nickname || reply.users.email}
+                                  className="w-8 h-8 rounded-full"
+                                />
+                              ) : (
+                                <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                                  {(reply.users?.nickname || reply.users?.email || 'U')[0].toUpperCase()}
+                                </div>
+                              )}
+                              <div className="flex-1">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <p className="font-medium text-sm text-navy-ink">
+                                    {reply.users?.nickname || reply.users?.email || 'Unknown'}
+                                  </p>
+                                  <p className="text-xs text-gray-500">
+                                    {new Date(reply.created_at).toLocaleString()}
+                                  </p>
+                                </div>
+                                <p className="text-sm text-gray-700">{reply.content}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

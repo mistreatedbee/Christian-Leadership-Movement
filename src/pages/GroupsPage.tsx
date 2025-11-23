@@ -163,10 +163,10 @@ export function GroupsPage() {
           const notifications = admins.map((admin: any) => ({
             user_id: admin.user_id,
             type: 'group',
-            title: 'New Group Pending Review',
-            message: `A new group "${formData.name}" has been created by ${user.email || user.nickname || 'a user'} and is pending your review.`,
+            title: 'New Group Pending Approval',
+            message: `A new group "${formData.name}" has been created and is pending your review. Please approve or reject it.`,
             related_id: data.id,
-            link_url: '/admin/groups',
+            link_url: '/admin/groups?status=pending',
             read: false
           }));
 
