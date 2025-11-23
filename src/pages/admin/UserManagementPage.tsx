@@ -123,6 +123,7 @@ export function UserManagementPage() {
     setSelectedUser(user);
     setShowDetailsModal(true);
     setLoadingApplications(true);
+    setEnrichedUserData(null); // Will be set after fetching
     
     try {
       // PRIORITY 1: Fetch from users table (registration data)
