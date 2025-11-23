@@ -432,8 +432,24 @@ export function UserManagementPage() {
         console.error('Error fetching profileData:', profileError);
       }
       
-      console.log('🔍 Profile data:', profileData);
+      console.log('🔍 Profile data (RAW):', JSON.stringify(profileData, null, 2));
       console.log('🔍 Profile email:', profileData?.email);
+      console.log('🔍 Profile email type:', typeof profileData?.email);
+      console.log('🔍 Profile email === null?', profileData?.email === null);
+      console.log('🔍 Profile email === undefined?', profileData?.email === undefined);
+      console.log('🔍 Profile has email key?', profileData ? ('email' in profileData) : false);
+      console.log('🔍 Profile all keys:', profileData ? Object.keys(profileData) : 'null');
+      
+      // If email is missing from profileData, it means:
+      // 1. The email column doesn't exist in user_profiles (SQL script not run)
+      // 2. The email value is null for this user (needs to be synced)
+      if (profileData && !('email' in profileData)) {
+        console.error('❌ EMAIL COLUMN DOES NOT EXIST IN USER_PROFILES!');
+        console.error('❌ Please run ADD_EMAIL_TO_USER_PROFILES.sql in InsForge SQL Editor');
+      } else if (profileData && profileData.email === null) {
+        console.warn('⚠️ Email column exists but value is NULL for this user');
+        console.warn('⚠️ This user needs their email synced to user_profiles');
+      }
       
       // If email is still missing, the values in the database are likely actually null
       // This means emails were never saved during registration
