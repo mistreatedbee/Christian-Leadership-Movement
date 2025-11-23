@@ -25,10 +25,12 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Add check constraint for quiz_type (if supported)
--- If this fails, you can manually set quiz_type values in the application
+-- Add check constraint for quiz_type
+-- Note: If constraint already exists, this will fail - that's okay, just skip it
+-- The constraint ensures quiz_type can only be one of the allowed values
+-- If your database doesn't support this, remove this section
 ALTER TABLE public.quizzes
-ADD CONSTRAINT IF NOT EXISTS quizzes_quiz_type_check 
+ADD CONSTRAINT quizzes_quiz_type_check 
 CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
 
 -- Create indexes for quizzes
@@ -56,8 +58,9 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
 );
 
 -- Add check constraint for question_type
+-- Note: If constraint already exists, this will fail - that's okay, just skip it
 ALTER TABLE public.quiz_questions
-ADD CONSTRAINT IF NOT EXISTS quiz_questions_question_type_check 
+ADD CONSTRAINT quiz_questions_question_type_check 
 CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay'));
 
 -- Create indexes for quiz_questions
