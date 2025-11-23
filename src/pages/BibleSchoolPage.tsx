@@ -6,6 +6,7 @@ import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
 import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as LinkIcon, Download, ExternalLink, CheckCircle } from 'lucide-react';
 import { getStorageUrl } from '../lib/connection';
+import { getUserRole } from '../lib/auth';
 
 type TabType = 'studies' | 'classes' | 'meetings' | 'resources';
 
@@ -28,36 +29,69 @@ export function BibleSchoolPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Check if user is admin
+      let isAdmin = false;
+      if (user) {
+        try {
+          const role = await getUserRole(user.id);
+          isAdmin = role === 'admin' || role === 'super_admin';
+        } catch (err) {
+          console.error('Error checking admin status:', err);
+        }
+      }
+
       if (activeTab === 'studies') {
-        const { data } = await insforge.database
+        let query = insforge.database
           .from('bible_school_studies')
           .select('*')
-          .eq('status', 'scheduled')
           .gte('scheduled_date', new Date().toISOString())
           .order('scheduled_date', { ascending: true });
+        
+        // Non-admins only see scheduled studies
+        if (!isAdmin) {
+          query = query.eq('status', 'scheduled');
+        }
+        
+        const { data } = await query;
         setStudies(data || []);
       } else if (activeTab === 'classes') {
-        const { data } = await insforge.database
+        let query = insforge.database
           .from('bible_school_classes')
           .select('*')
-          .eq('status', 'scheduled')
           .gte('scheduled_date', new Date().toISOString())
           .order('scheduled_date', { ascending: true });
+        
+        if (!isAdmin) {
+          query = query.eq('status', 'scheduled');
+        }
+        
+        const { data } = await query;
         setClasses(data || []);
       } else if (activeTab === 'meetings') {
-        const { data } = await insforge.database
+        let query = insforge.database
           .from('bible_school_meetings')
           .select('*')
-          .eq('status', 'scheduled')
           .gte('scheduled_date', new Date().toISOString())
           .order('scheduled_date', { ascending: true });
+        
+        if (!isAdmin) {
+          query = query.eq('status', 'scheduled');
+        }
+        
+        const { data } = await query;
         setMeetings(data || []);
       } else if (activeTab === 'resources') {
-        const { data } = await insforge.database
+        let query = insforge.database
           .from('bible_school_resources')
           .select('*')
-          .eq('is_public', true)
           .order('created_at', { ascending: false });
+        
+        // Non-admins only see public resources
+        if (!isAdmin) {
+          query = query.eq('is_public', true);
+        }
+        
+        const { data } = await query;
         setResources(data || []);
       }
 
@@ -587,30 +621,65 @@ export function BibleSchoolPage() {
                   {resources.length === 0 ? (
                     <p className="text-gray-500 text-center py-8">No resources available.</p>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      {resources.map(resource => (
-                        <div key={resource.id} className="bg-white rounded-card shadow-soft p-6">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="text-lg font-bold text-navy-ink">{resource.title}</h3>
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
-                              {resource.resource_type}
-                            </span>
-                          </div>
-                          <p className="text-gray-600 text-sm mb-4">{resource.description}</p>
-                          {resource.category && (
-                            <p className="text-xs text-gray-500 mb-2">Category: {resource.category}</p>
-                          )}
-                          <Button
-                            variant="outline"
-                            className="w-full"
-                            onClick={() => handleDownloadResource(resource)}
-                          >
-                            <Download className="mr-2" size={16} />
-                            Download
-                          </Button>
+                    <>
+                      {/* Resource Categories Filter */}
+                      <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-navy-ink mb-4">Browse Resources by Category</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+                          {['Study Materials', 'Video & Audio', 'Practical Tools', 'All Resources'].map((cat, idx) => (
+                            <div key={idx} className="bg-white rounded-card shadow-soft p-4 border-2 border-transparent hover:border-gold transition-colors cursor-pointer">
+                              <h4 className="font-semibold text-navy-ink">{cat}</h4>
+                              <p className="text-xs text-gray-500 mt-1">
+                                {cat === 'Study Materials' && 'Books, Notes, Commentaries'}
+                                {cat === 'Video & Audio' && 'Lectures, Sermons, Teaching'}
+                                {cat === 'Practical Tools' && 'Templates, Worksheets, Guides'}
+                                {cat === 'All Resources' && 'View everything'}
+                              </p>
+                            </div>
+                          ))}
                         </div>
-                      ))}
-                    </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {resources.map(resource => (
+                          <div key={resource.id} className="bg-white rounded-card shadow-soft p-6 hover:shadow-lg transition-shadow">
+                            <div className="flex items-start justify-between mb-2">
+                              <h3 className="text-lg font-bold text-navy-ink flex-1">{resource.title}</h3>
+                              <span className={`px-2 py-1 text-xs rounded ml-2 ${
+                                resource.resource_type === 'book' ? 'bg-blue-100 text-blue-800' :
+                                resource.resource_type === 'notes' ? 'bg-green-100 text-green-800' :
+                                resource.resource_type === 'test' ? 'bg-yellow-100 text-yellow-800' :
+                                resource.resource_type === 'video' ? 'bg-red-100 text-red-800' :
+                                resource.resource_type === 'audio' ? 'bg-purple-100 text-purple-800' :
+                                resource.resource_type === 'document' ? 'bg-gray-100 text-gray-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {resource.resource_type}
+                              </span>
+                            </div>
+                            <p className="text-gray-600 text-sm mb-3">{resource.description}</p>
+                            {resource.category && (
+                              <p className="text-xs text-gray-500 mb-3">
+                                <span className="font-medium">Category:</span> {resource.category}
+                              </p>
+                            )}
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500">
+                                {resource.download_count || 0} downloads
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleDownloadResource(resource)}
+                              >
+                                <Download className="mr-1" size={14} />
+                                Download
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
                   )}
                 </>
               )}
