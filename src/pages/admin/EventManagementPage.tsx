@@ -55,8 +55,16 @@ export function EventManagementPage() {
     handleSubmit,
     formState: { errors },
     reset,
-    setValue
-  } = useForm<EventFormData>();
+    setValue,
+    watch
+  } = useForm<EventFormData>({
+    defaultValues: {
+      has_registration_fee: false,
+      registration_fee: '0'
+    }
+  });
+  
+  const hasRegistrationFee = watch('has_registration_fee');
 
   useEffect(() => {
     fetchEvents();
