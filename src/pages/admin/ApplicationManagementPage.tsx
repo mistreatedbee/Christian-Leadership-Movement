@@ -463,36 +463,35 @@ export function ApplicationManagementPage() {
       });
     }
 
-    // Additional Form Data - Include all fields from form_data JSONB
+    // Complete Form Data - Include ALL fields from form_data JSONB
     if (application.form_data && typeof application.form_data === 'object') {
-      const additionalData: Array<[string, any]> = [];
-      const displayedFields = new Set([
-        'full_name', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'title',
-        'id_number', 'nationality', 'email', 'phone', 'contact_number', 'date_of_birth',
-        'gender', 'marital_status', 'province', 'city', 'postal_code', 'physical_address',
-        'address', 'country', 'residential_status', 'home_language', 'population_group',
-        'disabilities', 'date_accepted_christ', 'is_baptized', 'baptism_date',
-        'attends_local_church', 'church_name', 'denomination', 'pastor_name',
-        'serves_in_ministry', 'ministry_service_description', 'why_join_bible_school',
-        'previous_leadership_experience', 'leadership_roles', 'calling_statement',
-        'leadership_ambitions', 'current_ministry_name', 'ministry_types',
-        'ministry_position', 'ministry_website', 'years_part_time', 'years_full_time',
-        'primary_income_source', 'primary_income_other', 'high_school',
-        'highest_ministry_qualification', 'highest_other_qualification', 'other_training',
-        'referee_name', 'reference_first_name', 'reference_last_name', 'referee_contact',
-        'reference_contact', 'reference_email', 'reference_title', 'relationship_to_referee',
-        'registration_option', 'signature', 'declaration_date'
-      ]);
+      const allFormData: Array<[string, any]> = [];
       
       Object.entries(application.form_data).forEach(([key, value]) => {
-        if (!displayedFields.has(key.toLowerCase()) && value !== null && value !== undefined && value !== '') {
-          const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
-          additionalData.push([`${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:`, displayValue]);
+        if (value !== null && value !== undefined && value !== '') {
+          let displayValue: string;
+          if (typeof value === 'boolean') {
+            displayValue = value ? 'Yes' : 'No';
+          } else if (Array.isArray(value)) {
+            displayValue = value.length > 0 ? value.join(', ') : 'N/A';
+          } else if (typeof value === 'object') {
+            displayValue = JSON.stringify(value, null, 2);
+          } else {
+            displayValue = String(value);
+          }
+          
+          const displayKey = key
+            .replace(/([A-Z])/g, ' $1')
+            .replace(/_/g, ' ')
+            .replace(/\b\w/g, l => l.toUpperCase())
+            .trim();
+          
+          allFormData.push([`${displayKey}:`, displayValue]);
         }
       });
       
-      if (additionalData.length > 0) {
-        addSection('Additional Form Data', additionalData);
+      if (allFormData.length > 0) {
+        addSection('Complete Form Data (All Fields from form_data)', allFormData);
       }
     }
 
@@ -842,8 +841,14 @@ export function ApplicationManagementPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone / Contact Number</p>
-                    <p className="font-medium">{selectedApplication.phone || selectedApplication.contact_number || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.phone || selectedApplication.contact_number || selectedApplication.contactNumber || 'N/A'}</p>
                   </div>
+                  {selectedApplication.program_type === 'bible_school' && (
+                    <div>
+                      <p className="text-sm text-gray-600">Contact Number (Bible School)</p>
+                      <p className="font-medium">{selectedApplication.contact_number || selectedApplication.contactNumber || 'N/A'}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
                     <p className="font-medium">{selectedApplication.date_of_birth ? new Date(selectedApplication.date_of_birth).toLocaleDateString() : 'N/A'}</p>
@@ -1173,44 +1178,60 @@ export function ApplicationManagementPage() {
                 </div>
               )}
 
-              {/* Additional Form Data - Show all fields from form_data JSONB if they exist */}
+              {/* Complete Form Data Display - Show ALL fields including form_data */}
               {selectedApplication.form_data && typeof selectedApplication.form_data === 'object' && (
                 <div>
-                  <h3 className="text-lg font-bold text-navy-ink mb-4">Additional Form Data</h3>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Complete Form Data (All Fields)</h3>
+                  <div className="bg-gray-50 p-4 rounded-card mb-4">
+                    <p className="text-sm text-gray-600 mb-2">This section shows all fields from the form_data JSONB column, including any fields that may not be displayed above.</p>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     {Object.entries(selectedApplication.form_data).map(([key, value]: [string, any]) => {
-                      // Skip fields already displayed above
-                      const displayedFields = [
-                        'full_name', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'title',
-                        'id_number', 'nationality', 'email', 'phone', 'contact_number', 'date_of_birth',
-                        'gender', 'marital_status', 'province', 'city', 'postal_code', 'physical_address',
-                        'address', 'country', 'residential_status', 'home_language', 'population_group',
-                        'disabilities', 'date_accepted_christ', 'is_baptized', 'baptism_date',
-                        'attends_local_church', 'church_name', 'denomination', 'pastor_name',
-                        'serves_in_ministry', 'ministry_service_description', 'why_join_bible_school',
-                        'previous_leadership_experience', 'leadership_roles', 'calling_statement',
-                        'leadership_ambitions', 'current_ministry_name', 'ministry_types',
-                        'ministry_position', 'ministry_website', 'years_part_time', 'years_full_time',
-                        'primary_income_source', 'primary_income_other', 'high_school',
-                        'highest_ministry_qualification', 'highest_other_qualification', 'other_training',
-                        'referee_name', 'reference_first_name', 'reference_last_name', 'referee_contact',
-                        'reference_contact', 'reference_email', 'reference_title', 'relationship_to_referee',
-                        'registration_option', 'signature', 'declaration_date'
-                      ];
+                      // Skip null, undefined, or empty values
+                      if (value === null || value === undefined || value === '') return null;
                       
-                      if (displayedFields.includes(key.toLowerCase()) || !value) return null;
+                      // Format the key for display
+                      const displayKey = key
+                        .replace(/([A-Z])/g, ' $1') // Add space before capital letters
+                        .replace(/_/g, ' ') // Replace underscores with spaces
+                        .replace(/\b\w/g, l => l.toUpperCase()) // Capitalize first letter of each word
+                        .trim();
+                      
+                      // Format the value for display
+                      let displayValue: string;
+                      if (typeof value === 'boolean') {
+                        displayValue = value ? 'Yes' : 'No';
+                      } else if (Array.isArray(value)) {
+                        displayValue = value.length > 0 ? value.join(', ') : 'N/A';
+                      } else if (typeof value === 'object') {
+                        displayValue = JSON.stringify(value, null, 2);
+                      } else {
+                        displayValue = String(value);
+                      }
                       
                       return (
-                        <div key={key}>
-                          <p className="text-sm text-gray-600">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
-                          <p className="font-medium">
-                            {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                        <div key={key} className={key.toLowerCase().includes('signature') ? 'col-span-2' : ''}>
+                          <p className="text-sm text-gray-600 font-medium">{displayKey}</p>
+                          <p className={`font-medium ${key.toLowerCase().includes('signature') ? 'break-all text-xs' : ''}`}>
+                            {displayValue}
                           </p>
                         </div>
                       );
                     })}
                   </div>
                 </div>
+              )}
+              
+              {/* Raw Form Data (for debugging) - Collapsible */}
+              {selectedApplication.form_data && typeof selectedApplication.form_data === 'object' && (
+                <details className="bg-gray-50 p-4 rounded-card">
+                  <summary className="cursor-pointer text-sm font-medium text-gray-700 mb-2">
+                    View Raw Form Data (JSON) - For Technical Review
+                  </summary>
+                  <pre className="mt-2 text-xs bg-white p-3 rounded border overflow-auto max-h-64">
+                    {JSON.stringify(selectedApplication.form_data, null, 2)}
+                  </pre>
+                </details>
               )}
 
               {/* Program Information */}
