@@ -393,6 +393,20 @@ export function UserManagementPage() {
       console.log('🔍 Final userData:', userData);
       console.log('🔍 Final email:', userData?.email);
       
+      // PRIORITY 2: Fetch from user_profiles table (registration data)
+      const { data: profileData, error: profileError } = await insforge.database
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.user_id)
+        .maybeSingle();
+      
+      if (profileError) {
+        console.error('Error fetching profileData:', profileError);
+      }
+      
+      console.log('🔍 Profile data:', profileData);
+      console.log('🔍 Profile email:', profileData?.email);
+      
       // EMAIL PRIORITY: userData.email (from users table/registration) > user.email (from list) > profileData.email
       // Applications should NOT be used - email should be in users table from registration
       // Only check applications as absolute last resort if email is still missing from all registration sources
