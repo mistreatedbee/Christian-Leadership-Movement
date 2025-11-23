@@ -533,7 +533,7 @@ export function ObjectivesManagementPage() {
               {editingObjective ? 'Edit Objective' : 'Add New Objective'}
             </h2>
             <form onSubmit={handleSubmitObjective(onObjectiveSubmit)} className="space-y-4">
-                <div>
+              <div>
                   <label className="block text-sm font-medium text-navy-ink mb-2">Title</label>
                   <input
                     type="text"
@@ -677,7 +677,7 @@ export function ObjectivesManagementPage() {
                       Cancel
                     </Button>
                   )}
-                </div>
+              </div>
             </form>
           </div>
 
