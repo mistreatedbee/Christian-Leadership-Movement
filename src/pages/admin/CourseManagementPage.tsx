@@ -447,6 +447,36 @@ export function CourseManagementPage() {
 
       // Verify the lesson was saved
       if (savedLesson) {
+        // Notify enrolled users about the new/updated lesson
+        try {
+          const { data: enrolledUsers } = await insforge.database
+            .from('user_course_progress')
+            .select('user_id')
+            .eq('course_id', selectedCourse!);
+
+          if (enrolledUsers && enrolledUsers.length > 0) {
+            const uniqueUserIds = Array.from(new Set(enrolledUsers.map((e: any) => e.user_id)));
+            const notifications = uniqueUserIds.map((userId: string) => ({
+              user_id: userId,
+              type: 'course',
+              title: editingLesson ? 'Lesson Updated' : 'New Lesson Available',
+              message: editingLesson
+                ? `The lesson "${savedLesson.title}" in your course has been updated.`
+                : `A new lesson "${savedLesson.title}" is now available in your course.${savedLesson.scheduled_date ? ` Scheduled for: ${new Date(savedLesson.scheduled_date).toLocaleDateString()}` : ''}`,
+              related_id: savedLesson.id,
+              link_url: `/dashboard/courses/${selectedCourse}/lessons/${savedLesson.id}`,
+              read: false
+            }));
+
+            await insforge.database
+              .from('notifications')
+              .insert(notifications);
+          }
+        } catch (notifError) {
+          console.error('Error creating lesson notifications:', notifError);
+          // Don't fail the lesson creation if notifications fail
+        }
+
         setShowLessonForm(false);
         resetLesson();
         setVideoFile(null);
