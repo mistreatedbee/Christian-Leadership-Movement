@@ -1,5 +1,33 @@
 -- Fix RLS policies for user_profiles and users tables
 -- This ensures admins can see and manage all user information
+-- IMPORTANT: Run this in your InsForge SQL Editor
+
+-- =====================================================
+-- CREATE HELPER FUNCTION FOR ADMIN CHECK (BYPASSES RLS)
+-- =====================================================
+
+-- Create a function that checks if current user is admin
+-- This function uses SECURITY DEFINER to bypass RLS for the check
+CREATE OR REPLACE FUNCTION public.is_current_user_admin()
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  user_role TEXT;
+BEGIN
+  SELECT role INTO user_role
+  FROM public.user_profiles
+  WHERE user_id = public.get_current_user_id()
+  LIMIT 1;
+  
+  RETURN user_role IN ('admin', 'super_admin');
+EXCEPTION
+  WHEN OTHERS THEN
+    RETURN false;
+END;
+$$;
 
 -- =====================================================
 -- FIX USER_PROFILES RLS POLICIES
@@ -13,7 +41,7 @@ DROP POLICY IF EXISTS "Admins see all profiles" ON public.user_profiles;
 DROP POLICY IF EXISTS "Admins update all profiles" ON public.user_profiles;
 DROP POLICY IF EXISTS "Admins insert all profiles" ON public.user_profiles;
 
--- Users can see their own profile
+-- Users can see their own profile (MUST BE FIRST to avoid circular dependency)
 CREATE POLICY "Users see own profile"
   ON public.user_profiles
   FOR SELECT
@@ -32,55 +60,24 @@ CREATE POLICY "Users update own profile"
   USING (user_id = public.get_current_user_id())
   WITH CHECK (user_id = public.get_current_user_id());
 
--- Admins can see ALL profiles
--- IMPORTANT: This uses a service role check to avoid circular dependency
--- If the current user has admin role, they can see all profiles
+-- Admins can see ALL profiles (uses helper function to avoid circular dependency)
 CREATE POLICY "Admins see all profiles"
   ON public.user_profiles
   FOR SELECT
-  USING (
-    -- Allow if user is viewing their own profile (handled by other policy)
-    user_id = public.get_current_user_id()
-    OR
-    -- Allow if current user has admin role (check without circular dependency)
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-      -- Use service role or bypass RLS for this check
-    )
-  );
+  USING (public.is_current_user_admin());
 
 -- Admins can update ALL profiles
 CREATE POLICY "Admins update all profiles"
   ON public.user_profiles
   FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  );
+  USING (public.is_current_user_admin())
+  WITH CHECK (public.is_current_user_admin());
 
 -- Admins can insert profiles (for creating profiles for users)
 CREATE POLICY "Admins insert all profiles"
   ON public.user_profiles
   FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  );
+  WITH CHECK (public.is_current_user_admin());
 
 -- =====================================================
 -- FIX USERS TABLE RLS POLICIES
@@ -110,42 +107,17 @@ CREATE POLICY "Users update own data"
 CREATE POLICY "Admins see all users"
   ON public.users
   FOR SELECT
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  );
+  USING (public.is_current_user_admin());
 
 -- Admins can update ALL users
 CREATE POLICY "Admins update all users"
   ON public.users
   FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  )
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  );
+  USING (public.is_current_user_admin())
+  WITH CHECK (public.is_current_user_admin());
 
 -- Admins can insert users (for creating user records)
 CREATE POLICY "Admins insert all users"
   ON public.users
   FOR INSERT
-  WITH CHECK (
-    EXISTS (
-      SELECT 1 FROM public.user_profiles up
-      WHERE up.user_id = public.get_current_user_id()
-      AND up.role IN ('admin', 'super_admin')
-    )
-  );
-
+  WITH CHECK (public.is_current_user_admin());
