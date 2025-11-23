@@ -119,7 +119,17 @@ export function BlogManagementPage() {
           .select()
           .single();
         
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error('❌ Update error details:', {
+            error: updateError,
+            message: updateError.message,
+            code: updateError.code,
+            details: updateError.details,
+            hint: updateError.hint,
+            data: data
+          });
+          throw updateError;
+        }
         savedPost = updated;
       } else {
         const { data: inserted, error: insertError } = await insforge.database
@@ -128,7 +138,17 @@ export function BlogManagementPage() {
           .select()
           .single();
         
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('❌ Insert error details:', {
+            error: insertError,
+            message: insertError.message,
+            code: insertError.code,
+            details: insertError.details,
+            hint: insertError.hint,
+            data: data
+          });
+          throw insertError;
+        }
         savedPost = inserted;
       }
 
@@ -143,8 +163,29 @@ export function BlogManagementPage() {
       fetchData();
       alert(isPublishing ? 'Post published successfully! All users have been notified.' : 'Post saved successfully!');
     } catch (error: any) {
-      console.error('Error saving post:', error);
-      alert(`Error saving post: ${error.message || 'Unknown error'}`);
+      console.error('❌ Error saving post:', error);
+      console.error('❌ Full error object:', JSON.stringify(error, null, 2));
+      
+      // Provide more detailed error message
+      let errorMessage = 'Unknown error';
+      if (error?.message) {
+        errorMessage = error.message;
+      } else if (error?.code) {
+        errorMessage = `Database error (${error.code})`;
+        if (error.code === '42501') {
+          errorMessage = 'Permission denied. Please check RLS policies.';
+        } else if (error.code === '23505') {
+          errorMessage = 'A post with this slug already exists. Please use a different slug.';
+        } else if (error.code === '23503') {
+          errorMessage = 'Invalid category or author. Please check your selections.';
+        }
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      } else if (error?.error) {
+        errorMessage = error.error;
+      }
+      
+      alert(`Error saving post: ${errorMessage}\n\nCheck the browser console for more details.`);
     }
   };
 
