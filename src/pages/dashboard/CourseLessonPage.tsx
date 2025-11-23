@@ -34,7 +34,6 @@ export function CourseLessonPage() {
   const [loading, setLoading] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
   const [quizzes, setQuizzes] = useState<any[]>([]);
-  const [quizzes, setQuizzes] = useState<any[]>([]);
 
   useEffect(() => {
     if (!isLoaded || !user || !courseId) return;
