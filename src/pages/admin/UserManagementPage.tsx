@@ -199,7 +199,25 @@ export function UserManagementPage() {
         date_of_birth: profileData?.date_of_birth || null,
       };
 
+      console.log('=== USER DATA DEBUG ===');
+      console.log('UserData from users table:', userData);
+      console.log('ProfileData from user_profiles:', profileData);
+      console.log('UserData email:', userData?.email);
+      console.log('ProfileData phone:', profileData?.phone);
+      console.log('ProfileData address:', profileData?.address);
+      console.log('ProfileData city:', profileData?.city);
+      console.log('ProfileData province:', profileData?.province);
+      console.log('ProfileData postal_code:', profileData?.postal_code);
+      console.log('ProfileData date_of_birth:', profileData?.date_of_birth);
       console.log('Initial enriched data (from registration):', enriched);
+      console.log('Final enriched email:', enriched.email);
+      console.log('Final enriched phone:', enriched.phone);
+      console.log('Final enriched address:', enriched.address);
+      console.log('Final enriched city:', enriched.city);
+      console.log('Final enriched province:', enriched.province);
+      console.log('Final enriched postal_code:', enriched.postal_code);
+      console.log('Final enriched date_of_birth:', enriched.date_of_birth);
+      console.log('======================');
 
       // If applications exist, merge their data (prioritize application data)
       if (applications.length > 0) {
