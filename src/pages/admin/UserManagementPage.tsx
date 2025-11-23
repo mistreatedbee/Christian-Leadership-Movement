@@ -123,18 +123,25 @@ export function UserManagementPage() {
     setSelectedUser(user);
     setShowDetailsModal(true);
     setLoadingApplications(true);
-    // Initialize with user data immediately so modal shows something
-    setEnrichedUserData(user);
     
     try {
-      // First, fetch the user's email from the users table (in case it's not in user_profiles)
+      // PRIORITY 1: Fetch from users table (registration data)
       const { data: userData, error: userError } = await insforge.database
         .from('users')
-        .select('email, nickname, avatar_url, bio')
+        .select('*')
         .eq('id', user.user_id)
         .single();
 
-      console.log('User data from users table:', userData);
+      console.log('User data from users table (registration):', userData);
+
+      // PRIORITY 2: Fetch from user_profiles table (registration data)
+      const { data: profileData, error: profileError } = await insforge.database
+        .from('user_profiles')
+        .select('*')
+        .eq('user_id', user.user_id)
+        .single();
+
+      console.log('Profile data from user_profiles (registration):', profileData);
 
       // Fetch user's applications - skip join to avoid errors
       const result = await insforge.database
@@ -152,15 +159,26 @@ export function UserManagementPage() {
       console.log('User ID used for query:', user.user_id);
       setUserApplications(applications);
 
-      // Enrich user data - start with user profile, add from users table, then from applications
+      // PRIORITY ORDER: user_profiles (registration) > users table (registration) > applications > original user
+      // Start with registration data from user_profiles and users table
       let enriched: any = {
-        ...user,
-        // Override with data from users table (email, nickname, avatar, bio)
-        email: userData?.email || user.email || null,
-        nickname: userData?.nickname || user.nickname || null,
-        avatar_url: userData?.avatar_url || user.avatar_url || null,
-        bio: userData?.bio || user.bio || null,
+        // Start with profile data (registration) - this has phone, address, city, province, etc.
+        ...profileData,
+        // Override with users table data (registration) - this has email, nickname, name
+        email: userData?.email || profileData?.email || user.email || null,
+        nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
+        name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
+        avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
+        bio: userData?.bio || profileData?.bio || user.bio || null,
+        // Ensure user_id is set
+        user_id: user.user_id,
+        id: user.id,
+        role: profileData?.role || user.role || 'user',
+        created_at: user.created_at,
+        updated_at: profileData?.updated_at || user.updated_at,
       };
+
+      console.log('Initial enriched data (from registration):', enriched);
 
       // If applications exist, merge their data (prioritize application data)
       if (applications.length > 0) {
@@ -196,17 +214,18 @@ export function UserManagementPage() {
         
         console.log('Combined application data:', combinedAppData);
         
-        // Merge application data, prioritizing application data over profile data
+        // Merge application data - ONLY use if registration data is missing
+        // Priority: Registration data (user_profiles/users) > Application data
         enriched = {
           ...enriched,
-          // Personal Information from applications - prioritize application data
-          email: combinedAppData.email || userData?.email || enriched.email || null,
-          phone: combinedAppData.phone || combinedAppData.contact_number || enriched.phone || null,
-          address: combinedAppData.physical_address || combinedAppData.address || enriched.address || null,
-          city: combinedAppData.city || enriched.city || null,
-          province: combinedAppData.province || enriched.province || null,
-          postal_code: combinedAppData.postal_code || enriched.postal_code || null,
-          date_of_birth: combinedAppData.date_of_birth || enriched.date_of_birth || null,
+          // Personal Information - only use application data if registration data is missing
+          email: enriched.email || combinedAppData.email || null,
+          phone: enriched.phone || combinedAppData.phone || combinedAppData.contact_number || null,
+          address: enriched.address || combinedAppData.physical_address || combinedAppData.address || null,
+          city: enriched.city || combinedAppData.city || null,
+          province: enriched.province || combinedAppData.province || null,
+          postal_code: enriched.postal_code || combinedAppData.postal_code || null,
+          date_of_birth: enriched.date_of_birth || combinedAppData.date_of_birth || null,
           // Additional fields from applications
           id_number: combinedAppData.id_number || null,
           nationality: combinedAppData.nationality || null,
@@ -236,10 +255,18 @@ export function UserManagementPage() {
 
       setMessage(null); // Clear any previous errors
     } catch (err: any) {
-      console.error('Error fetching applications:', err);
-      setMessage({ type: 'error', text: `Failed to fetch user applications: ${err.message || 'Unknown error'}` });
+      console.error('Error fetching user details:', err);
+      setMessage({ type: 'error', text: `Failed to fetch user details: ${err.message || 'Unknown error'}` });
       setUserApplications([]); // Set empty array on error
-      setEnrichedUserData(user); // Fallback to user data only
+      // Fallback: try to use what we have from the user object
+      setEnrichedUserData({
+        ...user,
+        email: user.email || null,
+        phone: user.phone || null,
+        address: user.address || null,
+        city: user.city || null,
+        province: user.province || null
+      });
     } finally {
       setLoadingApplications(false);
     }

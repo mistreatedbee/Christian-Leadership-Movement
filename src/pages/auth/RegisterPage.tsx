@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Button } from '../../components/ui/Button';
-import { User, Mail, Lock, Phone, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, Phone, Eye, EyeOff, MapPin, Calendar } from 'lucide-react';
 import { useAuth } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 
@@ -11,6 +11,12 @@ interface RegisterFormData {
   lastName: string;
   email: string;
   phone: string;
+  address?: string;
+  city?: string;
+  province?: string;
+  postalCode?: string;
+  dateOfBirth?: string;
+  gender?: string;
   password: string;
   confirmPassword: string;
   agreeToTerms: boolean;
@@ -69,61 +75,85 @@ export function RegisterPage() {
       
       console.log('User created, ID:', result.user.id);
       
-      // CRITICAL: Create user record in public.users FIRST (before profile)
-      // This ensures the user exists for storage foreign key constraints
-      try {
-        const { error: userCreateError } = await insforge.database
-          .from('users')
-          .insert([{
-            id: result.user.id,
-            email: data.email,
-            nickname: `${data.firstName} ${data.lastName}`
-          }]);
-        
-        if (userCreateError) {
-          // If user already exists (race condition), that's okay
-          if (userCreateError.code !== '23505' && !userCreateError.message?.includes('duplicate')) {
-            console.error('Error creating user record:', userCreateError);
+        // CRITICAL: Create user record in public.users FIRST (before profile)
+        // This ensures the user exists for storage foreign key constraints
+        try {
+          const { error: userCreateError } = await insforge.database
+            .from('users')
+            .insert([{
+              id: result.user.id,
+              email: data.email,
+              nickname: `${data.firstName} ${data.lastName}`,
+              name: `${data.firstName} ${data.lastName}`
+            }]);
+          
+          if (userCreateError) {
+            // If user already exists (race condition), that's okay
+            if (userCreateError.code !== '23505' && !userCreateError.message?.includes('duplicate')) {
+              console.error('Error creating user record:', userCreateError);
+            } else {
+              console.log('User record already exists, updating...');
+              // Update existing record with all available data
+              await insforge.database
+                .from('users')
+                .update({ 
+                  email: data.email,
+                  nickname: `${data.firstName} ${data.lastName}`,
+                  name: `${data.firstName} ${data.lastName}`
+                })
+                .eq('id', result.user.id);
+            }
           } else {
-            console.log('User record already exists, updating...');
-            // Update existing record
-            await insforge.database
-              .from('users')
-              .update({ 
-                email: data.email,
-                nickname: `${data.firstName} ${data.lastName}` 
-              })
-              .eq('id', result.user.id);
+            console.log('User record created in public.users');
           }
-        } else {
-          console.log('User record created in public.users');
+          
+          // Wait to ensure user record is committed (important for storage foreign keys)
+          await new Promise(resolve => setTimeout(resolve, 300));
+        } catch (userErr) {
+          console.error('Exception creating user record:', userErr);
+          // Continue - user might already exist
         }
         
-        // Wait to ensure user record is committed (important for storage foreign keys)
-        await new Promise(resolve => setTimeout(resolve, 300));
-      } catch (userErr) {
-        console.error('Exception creating user record:', userErr);
-        // Continue - user might already exist
-      }
-      
-      // Create user profile
-      try {
-        const { error: profileError } = await insforge.database
-          .from('user_profiles')
-          .insert([{
-            user_id: result.user.id,
-            phone: data.phone,
-            role: 'user'
-          }]);
-        
-        if (profileError) {
-          console.error('Error creating profile:', profileError);
-          // Don't fail registration if profile creation fails, just log it
+        // Create user profile with ALL registration information
+        try {
+          const { error: profileError } = await insforge.database
+            .from('user_profiles')
+            .insert([{
+              user_id: result.user.id,
+              phone: data.phone,
+              address: data.address || null,
+              city: data.city || null,
+              province: data.province || null,
+              postal_code: data.postalCode || null,
+              date_of_birth: data.dateOfBirth || null,
+              role: 'user'
+            }]);
+          
+          if (profileError) {
+            console.error('Error creating profile:', profileError);
+            // Try to update if insert fails (profile might already exist)
+            try {
+              await insforge.database
+                .from('user_profiles')
+                .update({
+                  phone: data.phone,
+                  address: data.address || null,
+                  city: data.city || null,
+                  province: data.province || null,
+                  postal_code: data.postalCode || null,
+                  date_of_birth: data.dateOfBirth || null
+                })
+                .eq('user_id', result.user.id);
+            } catch (updateErr) {
+              console.error('Error updating profile:', updateErr);
+            }
+          } else {
+            console.log('User profile created with all registration data');
+          }
+        } catch (profileErr) {
+          console.error('Exception creating profile:', profileErr);
+          // Continue even if profile creation fails
         }
-      } catch (profileErr) {
-        console.error('Exception creating profile:', profileErr);
-        // Continue even if profile creation fails
-      }
       
               // Show success message before navigating
               setError(null);
@@ -206,7 +236,7 @@ export function RegisterPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-navy-ink mb-2">
-                Phone Number
+                Phone Number *
               </label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
@@ -217,6 +247,70 @@ export function RegisterPage() {
               {errors.phone && <p className="text-red-500 text-sm mt-1">
                   {errors.phone.message}
                 </p>}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">
+                Physical Address
+              </label>
+              <div className="relative">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input type="text" {...register('address')} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" placeholder="Street address, suburb" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">
+                  City
+                </label>
+                <input type="text" {...register('city')} className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" placeholder="City" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">
+                  Province
+                </label>
+                <select {...register('province')} className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold">
+                  <option value="">Select Province</option>
+                  <option value="Eastern Cape">Eastern Cape</option>
+                  <option value="Free State">Free State</option>
+                  <option value="Gauteng">Gauteng</option>
+                  <option value="KwaZulu-Natal">KwaZulu-Natal</option>
+                  <option value="Limpopo">Limpopo</option>
+                  <option value="Mpumalanga">Mpumalanga</option>
+                  <option value="Northern Cape">Northern Cape</option>
+                  <option value="North West">North West</option>
+                  <option value="Western Cape">Western Cape</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">
+                  Postal Code
+                </label>
+                <input type="text" {...register('postalCode')} className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" placeholder="0000" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">
+                  Date of Birth
+                </label>
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input type="date" {...register('dateOfBirth')} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" />
+                </div>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">
+                Gender
+              </label>
+              <select {...register('gender')} className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
