@@ -1,45 +1,106 @@
--- Sync emails from auth.users to public.users
--- This ensures all users have their email in the public.users table
+-- Sync emails to public.users table
+-- This script works with InsForge's auth system
+-- Note: InsForge may not expose auth.users directly, so we'll use alternative methods
 
--- Create a function to sync email from auth.users to public.users
+-- =====================================================
+-- METHOD 1: Sync emails from applications table
+-- =====================================================
+
+-- Create a function to sync emails from applications to users table
 CREATE OR REPLACE FUNCTION public.sync_user_email()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public
 AS $$
 DECLARE
-  user_record RECORD;
+  updated_count INTEGER := 0;
 BEGIN
-  -- Update public.users with email from auth.users where email is missing
+  -- Update public.users with email from applications where email is missing
   UPDATE public.users u
-  SET email = au.email
-  FROM auth.users au
-  WHERE u.id = au.id
-    AND (u.email IS NULL OR u.email = '')
-    AND au.email IS NOT NULL
-    AND au.email != '';
+  SET email = app.email
+  FROM (
+    SELECT DISTINCT ON (user_id) user_id, email
+    FROM public.applications
+    WHERE email IS NOT NULL 
+      AND email != ''
+      AND user_id IS NOT NULL
+    ORDER BY user_id, created_at DESC
+  ) app
+  WHERE u.id = app.user_id
+    AND (u.email IS NULL OR u.email = '');
   
-  RAISE NOTICE 'Email sync completed';
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  RAISE NOTICE 'Synced % emails from applications', updated_count;
 END;
 $$;
 
--- Run the sync function
-SELECT public.sync_user_email();
+-- =====================================================
+-- METHOD 2: Admin function to sync all emails
+-- =====================================================
 
--- Also create a trigger to automatically sync email when a user is created
+CREATE OR REPLACE FUNCTION public.admin_sync_all_emails()
+RETURNS TABLE(updated_count INTEGER, synced_users JSONB)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  updated_count INTEGER := 0;
+  synced_data JSONB;
+BEGIN
+  -- Sync emails from applications
+  UPDATE public.users u
+  SET email = app.email
+  FROM (
+    SELECT DISTINCT ON (user_id) user_id, email
+    FROM public.applications
+    WHERE email IS NOT NULL 
+      AND email != ''
+      AND user_id IS NOT NULL
+    ORDER BY user_id, created_at DESC
+  ) app
+  WHERE u.id = app.user_id
+    AND (u.email IS NULL OR u.email = '');
+  
+  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  
+  -- Return summary of synced users
+  SELECT jsonb_agg(
+    jsonb_build_object(
+      'id', id,
+      'email', email,
+      'nickname', nickname
+    )
+  ) INTO synced_data
+  FROM public.users
+  WHERE email IS NOT NULL
+  ORDER BY updated_at DESC
+  LIMIT 20;
+  
+  RETURN QUERY SELECT updated_count, synced_data;
+END;
+$$;
+
+-- =====================================================
+-- METHOD 3: Trigger to auto-sync email on user insert
+-- =====================================================
+
 CREATE OR REPLACE FUNCTION public.sync_email_on_user_insert()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public
 AS $$
 BEGIN
-  -- Try to get email from auth.users if not provided
+  -- If email is not provided, try to get it from applications
   IF NEW.email IS NULL OR NEW.email = '' THEN
     SELECT email INTO NEW.email
-    FROM auth.users
-    WHERE id = NEW.id
+    FROM public.applications
+    WHERE user_id = NEW.id
+      AND email IS NOT NULL
+      AND email != ''
+    ORDER BY created_at DESC
     LIMIT 1;
   END IF;
   
@@ -54,38 +115,50 @@ CREATE TRIGGER sync_email_on_user_insert_trigger
   FOR EACH ROW
   EXECUTE FUNCTION public.sync_email_on_user_insert();
 
--- Also create a function that admins can call to manually sync emails
-CREATE OR REPLACE FUNCTION public.admin_sync_all_emails()
-RETURNS TABLE(updated_count INTEGER, user_id UUID, email TEXT)
+-- =====================================================
+-- METHOD 4: Function to get email for a specific user
+-- =====================================================
+
+CREATE OR REPLACE FUNCTION public.get_user_email(user_uuid UUID)
+RETURNS TEXT
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public
 AS $$
 DECLARE
-  updated_count INTEGER := 0;
+  user_email TEXT;
 BEGIN
-  -- Update all users with missing emails
-  UPDATE public.users u
-  SET email = au.email
-  FROM auth.users au
-  WHERE u.id = au.id
-    AND (u.email IS NULL OR u.email = '')
-    AND au.email IS NOT NULL
-    AND au.email != '';
+  -- First check users table
+  SELECT email INTO user_email
+  FROM public.users
+  WHERE id = user_uuid;
   
-  GET DIAGNOSTICS updated_count = ROW_COUNT;
+  -- If not found, check applications
+  IF user_email IS NULL OR user_email = '' THEN
+    SELECT email INTO user_email
+    FROM public.applications
+    WHERE user_id = user_uuid
+      AND email IS NOT NULL
+      AND email != ''
+    ORDER BY created_at DESC
+    LIMIT 1;
+    
+    -- If found in applications, update users table
+    IF user_email IS NOT NULL THEN
+      UPDATE public.users
+      SET email = user_email
+      WHERE id = user_uuid;
+    END IF;
+  END IF;
   
-  -- Return updated records
-  RETURN QUERY
-  SELECT updated_count, u.id, u.email
-  FROM public.users u
-  WHERE u.email IS NOT NULL
-  ORDER BY u.created_at DESC
-  LIMIT 10;
+  RETURN user_email;
 END;
 $$;
 
--- Grant execute permission to authenticated users (admins will use it)
+-- Grant execute permissions
 GRANT EXECUTE ON FUNCTION public.sync_user_email() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_sync_all_emails() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_user_email(UUID) TO authenticated;
 
+-- Run initial sync
+SELECT public.sync_user_email();
