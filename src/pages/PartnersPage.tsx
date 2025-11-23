@@ -12,7 +12,7 @@ const partners = [
   },
   {
     id: 2,
-    name: 'SAQA Recognized Center for Faith Community Enterprise @ University of Pretoria',
+    name: 'University of Pretoria',
     description: 'A recognized center providing quality assurance and accreditation for faith-based education programs.',
     logo: 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=SAQA',
     website: '#'
