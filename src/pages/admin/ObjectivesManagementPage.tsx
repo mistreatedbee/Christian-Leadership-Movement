@@ -744,14 +744,17 @@ export function ObjectivesManagementPage() {
                           e.stopPropagation();
                           setSelectedObjective(obj.id);
                           setEditingObjective(obj);
-                          resetObjective(obj);
+                          setImageFile(null);
+                          setObjectiveImageFiles([]);
+                          // Reset form with objective data - useEffect will handle this
                           // Scroll to form after a brief delay to ensure it's rendered
                           setTimeout(() => {
                             formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                           }, 100);
                         }}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-card transition-colors"
                         type="button"
+                        title="Edit this objective"
                       >
                         <Edit size={18} />
                       </button>
