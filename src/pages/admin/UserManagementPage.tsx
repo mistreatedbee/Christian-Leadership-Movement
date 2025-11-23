@@ -122,6 +122,12 @@ export function UserManagementPage() {
     setSyncingEmails(true);
     setMessage(null);
     try {
+      // First, get all users to check current state
+      const { data: allUsers } = await insforge.database
+        .from('users')
+        .select('id, email')
+        .order('created_at', { ascending: false });
+      
       // Email column doesn't exist in applications - always use form_data JSONB
       // Don't try to select email column as it causes 400 errors
       console.log('Fetching emails from applications.form_data...');
@@ -148,22 +154,48 @@ export function UserManagementPage() {
         email: app.form_data?.email || app.form_data?.Email || app.form_data?.EMAIL || null
       })).filter((app: any) => app.email);
       
-      // If no applications with emails, try to get emails from user registrations
-      // Check if users have emails in their registration (from InsForge auth)
+      // If no applications with emails, check if emails are already in public.users table
+      // Emails should be saved there during registration
       if (!applications || applications.length === 0) {
-        console.log('No emails found in applications, checking user registrations...');
+        console.log('No emails found in applications, checking public.users table...');
         
-        // Try to get emails by checking if users were created with emails during registration
-        // Since InsForge auth stores email, we can try to update users table with emails
-        // from the current user's auth context or from registration data
+        // Check if users already have emails in public.users table
+        const { data: usersWithEmails, error: usersError } = await insforge.database
+          .from('users')
+          .select('id, email')
+          .not('email', 'is', null)
+          .neq('email', '');
         
-        setMessage({ 
-          type: 'info', 
-          text: 'No emails found in applications. Emails should be saved during user registration. Checking registration data...' 
-        });
+        if (usersError) {
+          console.error('Error checking users table:', usersError);
+          setMessage({ 
+            type: 'error', 
+            text: `Error checking users table: ${usersError.message}` 
+          });
+          setSyncingEmails(false);
+          return;
+        }
         
-        // For now, inform the user that emails should be saved during registration
-        // The registration code should save email to users table
+        const usersWithEmailCount = usersWithEmails?.length || 0;
+        const totalUsers = allUsers?.length || 0;
+        
+        if (usersWithEmailCount === totalUsers && totalUsers > 0) {
+          setMessage({ 
+            type: 'success', 
+            text: `All ${totalUsers} users already have emails in the users table. No sync needed.` 
+          });
+        } else if (usersWithEmailCount > 0) {
+          setMessage({ 
+            type: 'info', 
+            text: `Found ${usersWithEmailCount} users with emails in users table. ${totalUsers - usersWithEmailCount} users are missing emails. Emails are stored in InsForge's managed auth table and should be synced during login.` 
+          });
+        } else {
+          setMessage({ 
+            type: 'warning', 
+            text: `No emails found in public.users table. Emails are stored in InsForge's managed auth table (visible in dashboard). They will be synced to public.users when users log in. For existing users, you may need to manually sync or wait for them to log in.` 
+          });
+        }
+        
         setSyncingEmails(false);
         return;
       }
