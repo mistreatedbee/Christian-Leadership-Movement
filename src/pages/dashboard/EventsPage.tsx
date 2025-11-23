@@ -14,6 +14,9 @@ interface Event {
   location: string | null;
   capacity: number | null;
   image_url: string | null;
+  has_registration_fee?: boolean;
+  registration_fee?: number;
+  images?: Array<{ url: string; key: string }>;
 }
 
 export function EventsPage() {
