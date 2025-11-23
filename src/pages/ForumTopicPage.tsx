@@ -121,13 +121,69 @@ export function ForumTopicPage() {
 
     try {
       setSubmitting(true);
-      await insforge.database
+      const { data: newReply, error: replyError } = await insforge.database
         .from('forum_replies')
         .insert({
           topic_id: id,
           user_id: user.id,
-          content: replyContent
-        });
+          content: replyContent.trim()
+        })
+        .select()
+        .single();
+
+      if (replyError) throw replyError;
+
+      // Notify topic creator and followers about new reply
+      if (topic) {
+        try {
+          // Get topic creator and all followers
+          const { data: followers } = await insforge.database
+            .from('forum_topic_follows')
+            .select('user_id')
+            .eq('topic_id', id);
+
+          const notifyUserIds = new Set<string>();
+          
+          // Add topic creator
+          if (topic.user_id !== user.id) {
+            notifyUserIds.add(topic.user_id);
+          }
+
+          // Add followers
+          followers?.forEach((f: any) => {
+            if (f.user_id !== user.id) {
+              notifyUserIds.add(f.user_id);
+            }
+          });
+
+          // Create notifications
+          if (notifyUserIds.size > 0) {
+            const notifications = Array.from(notifyUserIds).map(uid => ({
+              user_id: uid,
+              type: 'forum_reply',
+              title: `New Reply to "${topic.title}"`,
+              message: `${user.nickname || user.email} replied to your topic.`,
+              related_id: id,
+              link_url: `/forum/topic/${id}`,
+              read: false
+            }));
+
+            await insforge.database.from('notifications').insert(notifications);
+          }
+
+          // Auto-follow topic for the user who replied
+          await insforge.database
+            .from('forum_topic_follows')
+            .insert({
+              topic_id: id,
+              user_id: user.id
+            })
+            .onConflict('topic_id,user_id')
+            .ignore();
+        } catch (notifError) {
+          console.warn('Could not send notifications:', notifError);
+        }
+      }
 
       setReplyContent('');
       fetchReplies();

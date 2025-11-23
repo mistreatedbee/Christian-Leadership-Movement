@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, Trash2, Lock, Pin, PinOff, Search, Eye, X } from 'lucide-react';
+import { MessageSquare, Trash2, Lock, Pin, PinOff, Search, Eye, X, Plus } from 'lucide-react';
+import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 
@@ -49,6 +50,176 @@ interface ForumReply {
     id: string;
     title: string;
   };
+}
+
+function CategoryForm({ onSuccess }: { onSuccess: () => void }) {
+  const { user } = useUser();
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    slug: '',
+    icon: '',
+    order_index: 0
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .trim()
+      .replace(/[^\w\s-]/g, '')
+      .replace(/[\s_-]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  };
+
+  const handleNameChange = (name: string) => {
+    setFormData(prev => ({
+      ...prev,
+      name,
+      slug: prev.slug || generateSlug(name)
+    }));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user) return;
+
+    if (!formData.name.trim()) {
+      setError('Category name is required');
+      return;
+    }
+
+    if (!formData.slug.trim()) {
+      setError('Category slug is required');
+      return;
+    }
+
+    try {
+      setSubmitting(true);
+      setError(null);
+
+      const { error: insertError } = await insforge.database
+        .from('forum_categories')
+        .insert({
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          slug: formData.slug.trim(),
+          icon: formData.icon.trim() || null,
+          order_index: formData.order_index || 0,
+          is_active: true,
+          created_by: user.id
+        });
+
+      if (insertError) throw insertError;
+
+      // Reset form
+      setFormData({
+        name: '',
+        description: '',
+        slug: '',
+        icon: '',
+        order_index: 0
+      });
+
+      onSuccess();
+    } catch (err: any) {
+      console.error('Error creating category:', err);
+      setError(err.message || 'Failed to create category. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-navy-ink mb-2">
+            Category Name <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.name}
+            onChange={(e) => handleNameChange(e.target.value)}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+            placeholder="e.g., General Discussion"
+            required
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-navy-ink mb-2">
+            Slug <span className="text-red-500">*</span>
+          </label>
+          <input
+            type="text"
+            value={formData.slug}
+            onChange={(e) => setFormData({ ...formData, slug: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+            placeholder="e.g., general-discussion"
+            required
+          />
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-navy-ink mb-2">
+          Description
+        </label>
+        <textarea
+          value={formData.description}
+          onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+          rows={3}
+          placeholder="Brief description of this category..."
+        />
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-navy-ink mb-2">
+            Icon (optional)
+          </label>
+          <input
+            type="text"
+            value={formData.icon}
+            onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+            placeholder="e.g., MessageSquare"
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-navy-ink mb-2">
+            Order Index
+          </label>
+          <input
+            type="number"
+            value={formData.order_index}
+            onChange={(e) => setFormData({ ...formData, order_index: parseInt(e.target.value) || 0 })}
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+            min="0"
+          />
+        </div>
+      </div>
+
+      <Button
+        type="submit"
+        variant="primary"
+        disabled={submitting}
+      >
+        <Plus className="w-4 h-4 mr-2" />
+        {submitting ? 'Creating...' : 'Create Category'}
+      </Button>
+    </form>
+  );
 }
 
 export function ForumManagementPage() {
@@ -485,55 +656,64 @@ export function ForumManagementPage() {
 
       {/* Categories Tab */}
       {activeTab === 'categories' && (
-        <div className="bg-white rounded-card shadow-soft overflow-hidden">
-          <div className="divide-y">
-            {categories.map((category) => (
-              <div key={category.id} className="p-6">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="text-lg font-semibold text-navy-ink">{category.name}</h3>
-                      <span className={`px-2 py-1 text-xs rounded-full ${
-                        category.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {category.is_active ? 'Active' : 'Inactive'}
-                      </span>
+        <div className="space-y-6">
+          {/* Create Category Form */}
+          <div className="bg-white rounded-card shadow-soft p-6">
+            <h2 className="text-xl font-bold text-navy-ink mb-4">Create New Category</h2>
+            <CategoryForm onSuccess={fetchData} />
+          </div>
+
+          {/* Categories List */}
+          <div className="bg-white rounded-card shadow-soft overflow-hidden">
+            <div className="divide-y">
+              {categories.map((category) => (
+                <div key={category.id} className="p-6">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="text-lg font-semibold text-navy-ink">{category.name}</h3>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          category.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {category.is_active ? 'Active' : 'Inactive'}
+                        </span>
+                      </div>
+                      {category.description && (
+                        <p className="text-gray-600 mb-2">{category.description}</p>
+                      )}
+                      <div className="text-sm text-gray-500">
+                        Slug: {category.slug} • Order: {category.order_index}
+                      </div>
                     </div>
-                    {category.description && (
-                      <p className="text-gray-600 mb-2">{category.description}</p>
-                    )}
-                    <div className="text-sm text-gray-500">
-                      Slug: {category.slug} • Order: {category.order_index}
+                    <div className="flex gap-2 ml-4">
+                      <Button
+                        onClick={() => toggleCategoryActive(category.id, category.is_active)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {category.is_active ? 'Deactivate' : 'Activate'}
+                      </Button>
+                      <Button
+                        onClick={() => deleteCategory(category.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
-                  </div>
-                  <div className="flex gap-2 ml-4">
-                    <Button
-                      onClick={() => toggleCategoryActive(category.id, category.is_active)}
-                      variant="outline"
-                      size="sm"
-                    >
-                      {category.is_active ? 'Deactivate' : 'Activate'}
-                    </Button>
-                    <Button
-                      onClick={() => deleteCategory(category.id)}
-                      variant="outline"
-                      size="sm"
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-          {categories.length === 0 && (
-            <div className="p-12 text-center">
-              <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600">No categories found</p>
+              ))}
             </div>
-          )}
+            {categories.length === 0 && (
+              <div className="p-12 text-center">
+                <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-600">No categories found. Create one to get started!</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 

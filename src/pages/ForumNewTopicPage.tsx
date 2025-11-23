@@ -48,6 +48,8 @@ export function ForumNewTopicPage() {
       setCategories(data || []);
       if (data && data.length > 0 && !formData.category_id) {
         setFormData(prev => ({ ...prev, category_id: data[0].id }));
+      } else if (!data || data.length === 0) {
+        setError('No categories available. Please contact an administrator to create forum categories.');
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -98,6 +100,20 @@ export function ForumNewTopicPage() {
         .single();
 
       if (insertError) throw insertError;
+
+      // Auto-follow the topic for the creator
+      try {
+        await insforge.database
+          .from('forum_topic_follows')
+          .insert({
+            topic_id: data.id,
+            user_id: user.id
+          })
+          .onConflict('topic_id,user_id')
+          .ignore();
+      } catch (followError) {
+        console.warn('Could not auto-follow topic:', followError);
+      }
 
       // Navigate to the new topic
       navigate(`/forum/topic/${data.id}`);

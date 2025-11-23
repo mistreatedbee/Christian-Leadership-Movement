@@ -112,6 +112,8 @@ export function NotificationsPage() {
         return <BookOpen className="w-5 h-5" />;
       case 'group':
         return <Users className="w-5 h-5" />;
+      case 'forum_reply':
+        return <MessageSquare className="w-5 h-5" />;
       case 'application':
         return <FileText className="w-5 h-5" />;
       case 'payment':
@@ -136,6 +138,8 @@ export function NotificationsPage() {
         return 'border-amber-500 bg-amber-50';
       case 'group':
         return 'border-indigo-500 bg-indigo-50';
+      case 'forum_reply':
+        return 'border-teal-500 bg-teal-50';
       case 'application':
         return 'border-blue-500 bg-blue-50';
       case 'payment':
@@ -202,7 +206,7 @@ export function NotificationsPage() {
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
-                  {type === 'blog' ? 'Blog/News' : type === 'group' ? 'Groups' : type} ({count})
+                  {type === 'blog' ? 'Blog/News' : type === 'group' ? 'Groups' : type === 'forum_reply' ? 'Forum' : type} ({count})
                 </button>
               );
             })}
@@ -257,7 +261,7 @@ export function NotificationsPage() {
                             ? 'bg-gray-200 text-gray-600' 
                             : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {notification.type === 'blog' ? 'Blog/News' : notification.type}
+                          {notification.type === 'blog' ? 'Blog/News' : notification.type === 'forum_reply' ? 'Forum' : notification.type}
                         </span>
                       </div>
                       <p className={`mb-2 ${notification.read ? 'text-gray-600' : 'text-gray-700'}`}>
