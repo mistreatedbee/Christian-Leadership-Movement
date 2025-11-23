@@ -25,12 +25,15 @@ CREATE TABLE IF NOT EXISTS public.quizzes (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Add check constraint for quiz_type
--- Drop constraint first if it exists, then add it
-DROP CONSTRAINT IF EXISTS quizzes_quiz_type_check;
-ALTER TABLE public.quizzes
-ADD CONSTRAINT quizzes_quiz_type_check 
-CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
+-- Add check constraint for quiz_type (optional - can be skipped if constraint already exists)
+-- If you get an error that the constraint already exists, you can safely skip this section
+-- The constraint ensures quiz_type can only be one of the allowed values
+-- Uncomment the lines below if you want to add the constraint:
+-- ALTER TABLE public.quizzes
+-- DROP CONSTRAINT IF EXISTS quizzes_quiz_type_check;
+-- ALTER TABLE public.quizzes
+-- ADD CONSTRAINT quizzes_quiz_type_check 
+-- CHECK (quiz_type IN ('course', 'program', 'bible_school', 'general'));
 
 -- Create indexes for quizzes
 CREATE INDEX IF NOT EXISTS idx_quizzes_course_id ON public.quizzes(course_id);
@@ -56,13 +59,14 @@ CREATE TABLE IF NOT EXISTS public.quiz_questions (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Add check constraint for question_type
--- Drop constraint first if it exists, then add it
-ALTER TABLE public.quiz_questions
-DROP CONSTRAINT IF EXISTS quiz_questions_question_type_check;
-ALTER TABLE public.quiz_questions
-ADD CONSTRAINT quiz_questions_question_type_check 
-CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay'));
+-- Add check constraint for question_type (optional - can be skipped if constraint already exists)
+-- If you get an error that the constraint already exists, you can safely skip this section
+-- Uncomment the lines below if you want to add the constraint:
+-- ALTER TABLE public.quiz_questions
+-- DROP CONSTRAINT IF EXISTS quiz_questions_question_type_check;
+-- ALTER TABLE public.quiz_questions
+-- ADD CONSTRAINT quiz_questions_question_type_check 
+-- CHECK (question_type IN ('multiple_choice', 'true_false', 'short_answer', 'essay'));
 
 -- Create indexes for quiz_questions
 CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz_id ON public.quiz_questions(quiz_id);

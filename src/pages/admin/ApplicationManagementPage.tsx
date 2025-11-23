@@ -64,7 +64,7 @@ export function ApplicationManagementPage() {
     try {
       let query = insforge.database
         .from('applications')
-        .select('*, programs(title)')
+        .select('*, programs(title), form_data')
         .order('created_at', { ascending: false });
 
       if (filterStatus !== 'all') {
@@ -461,6 +461,39 @@ export function ApplicationManagementPage() {
         doc.setFontSize(10);
         yPos += urlLines.length * 5 + 3;
       });
+    }
+
+    // Additional Form Data - Include all fields from form_data JSONB
+    if (application.form_data && typeof application.form_data === 'object') {
+      const additionalData: Array<[string, any]> = [];
+      const displayedFields = new Set([
+        'full_name', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'title',
+        'id_number', 'nationality', 'email', 'phone', 'contact_number', 'date_of_birth',
+        'gender', 'marital_status', 'province', 'city', 'postal_code', 'physical_address',
+        'address', 'country', 'residential_status', 'home_language', 'population_group',
+        'disabilities', 'date_accepted_christ', 'is_baptized', 'baptism_date',
+        'attends_local_church', 'church_name', 'denomination', 'pastor_name',
+        'serves_in_ministry', 'ministry_service_description', 'why_join_bible_school',
+        'previous_leadership_experience', 'leadership_roles', 'calling_statement',
+        'leadership_ambitions', 'current_ministry_name', 'ministry_types',
+        'ministry_position', 'ministry_website', 'years_part_time', 'years_full_time',
+        'primary_income_source', 'primary_income_other', 'high_school',
+        'highest_ministry_qualification', 'highest_other_qualification', 'other_training',
+        'referee_name', 'reference_first_name', 'reference_last_name', 'referee_contact',
+        'reference_contact', 'reference_email', 'reference_title', 'relationship_to_referee',
+        'registration_option', 'signature', 'declaration_date'
+      ]);
+      
+      Object.entries(application.form_data).forEach(([key, value]) => {
+        if (!displayedFields.has(key.toLowerCase()) && value !== null && value !== undefined && value !== '') {
+          const displayValue = typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value);
+          additionalData.push([`${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:`, displayValue]);
+        }
+      });
+      
+      if (additionalData.length > 0) {
+        addSection('Additional Form Data', additionalData);
+      }
     }
 
     // Program Information
@@ -1136,6 +1169,46 @@ export function ApplicationManagementPage() {
                         <p className="font-medium">{new Date(selectedApplication.declaration_date).toLocaleDateString()}</p>
                       </div>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Additional Form Data - Show all fields from form_data JSONB if they exist */}
+              {selectedApplication.form_data && typeof selectedApplication.form_data === 'object' && (
+                <div>
+                  <h3 className="text-lg font-bold text-navy-ink mb-4">Additional Form Data</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    {Object.entries(selectedApplication.form_data).map(([key, value]: [string, any]) => {
+                      // Skip fields already displayed above
+                      const displayedFields = [
+                        'full_name', 'first_name', 'middle_name', 'last_name', 'preferred_name', 'title',
+                        'id_number', 'nationality', 'email', 'phone', 'contact_number', 'date_of_birth',
+                        'gender', 'marital_status', 'province', 'city', 'postal_code', 'physical_address',
+                        'address', 'country', 'residential_status', 'home_language', 'population_group',
+                        'disabilities', 'date_accepted_christ', 'is_baptized', 'baptism_date',
+                        'attends_local_church', 'church_name', 'denomination', 'pastor_name',
+                        'serves_in_ministry', 'ministry_service_description', 'why_join_bible_school',
+                        'previous_leadership_experience', 'leadership_roles', 'calling_statement',
+                        'leadership_ambitions', 'current_ministry_name', 'ministry_types',
+                        'ministry_position', 'ministry_website', 'years_part_time', 'years_full_time',
+                        'primary_income_source', 'primary_income_other', 'high_school',
+                        'highest_ministry_qualification', 'highest_other_qualification', 'other_training',
+                        'referee_name', 'reference_first_name', 'reference_last_name', 'referee_contact',
+                        'reference_contact', 'reference_email', 'reference_title', 'relationship_to_referee',
+                        'registration_option', 'signature', 'declaration_date'
+                      ];
+                      
+                      if (displayedFields.includes(key.toLowerCase()) || !value) return null;
+                      
+                      return (
+                        <div key={key}>
+                          <p className="text-sm text-gray-600">{key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</p>
+                          <p className="font-medium">
+                            {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                          </p>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
