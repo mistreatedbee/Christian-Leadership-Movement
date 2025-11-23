@@ -33,8 +33,8 @@ export function DashboardLayout() {
     path: '/dashboard/courses'
   }, {
     icon: Calendar,
-    label: 'Events',
-    path: '/dashboard/events'
+    label: 'Calendar',
+    path: '/dashboard/calendar'
   }, {
     icon: Bell,
     label: 'Notifications',
