@@ -77,14 +77,35 @@ export function LoginPage() {
           
           if (!profile) {
             try {
-              // Get email from users table or auth
-              const { data: userData } = await insforge.database
-                .from('users')
-                .select('email')
-                .eq('id', result.user.id)
-                .maybeSingle();
+              // CRITICAL: Get email from InsForge's auth (result.user.email) - this is the source of truth
+              // Then ensure it's synced to public.users table
+              const userEmail = result.user.email || null;
               
-              const userEmail = userData?.email || result.user.email || null;
+              // Ensure email is synced to public.users table
+              if (userEmail) {
+                const { data: existingUser } = await insforge.database
+                  .from('users')
+                  .select('email')
+                  .eq('id', result.user.id)
+                  .maybeSingle();
+                
+                // If user exists in public.users but email is missing, update it
+                if (existingUser && (!existingUser.email || existingUser.email !== userEmail)) {
+                  await insforge.database
+                    .from('users')
+                    .update({ email: userEmail })
+                    .eq('id', result.user.id);
+                } else if (!existingUser) {
+                  // If user doesn't exist in public.users, create it
+                  await insforge.database
+                    .from('users')
+                    .insert([{ 
+                      id: result.user.id, 
+                      email: userEmail,
+                      nickname: result.user.user_metadata?.nickname || null
+                    }]);
+                }
+              }
               
               const { error: insertError } = await insforge.database
                 .from('user_profiles')
