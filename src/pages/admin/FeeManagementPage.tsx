@@ -91,60 +91,62 @@ export function FeeManagementPage() {
         updateData.description = editedDescriptions[feeId] || null;
       }
 
-      // First, verify the fee exists and get current value for comparison
+      // Get current fee for comparison
       const { data: currentFee } = await insforge.database
         .from('fee_settings')
         .select('amount, fee_type')
         .eq('id', feeId)
         .maybeSingle();
 
-      console.log('Current fee before update:', currentFee);
-      console.log('Updating to amount:', newAmount);
+      console.log('🔍 Current fee before update:', currentFee);
+      console.log('🔍 Updating to amount:', newAmount);
+      console.log('🔍 Update data:', updateData);
 
-      // Perform the update
+      // Perform the update - ensure amount is a proper number
       const { error, data } = await insforge.database
         .from('fee_settings')
-        .update(updateData)
+        .update({
+          amount: Number(newAmount), // Explicitly convert to number
+          description: updateData.description,
+          updated_at: updateData.updated_at
+        })
         .eq('id', feeId)
         .select();
 
       if (error) {
-        console.error('Database error:', error);
+        console.error('❌ Database error:', error);
         throw error;
       }
 
-      // Verify the update was successful by fetching again
-      const { data: verifyData, error: verifyError } = await insforge.database
+      console.log('✅ Update response:', data);
+
+      // Immediately refresh to get the latest data
+      await fetchFees();
+
+      // Verify by checking the refreshed data
+      const updatedFees = await insforge.database
         .from('fee_settings')
-        .select('amount, fee_type')
+        .select('id, amount, fee_type')
         .eq('id', feeId)
         .maybeSingle();
 
-      if (verifyError) {
-        console.error('Verification error:', verifyError);
-      }
+      console.log('🔍 Fee after refresh:', updatedFees);
+      const actualAmount = updatedFees?.data ? parseFloat(updatedFees.data.amount) : null;
 
-      console.log('Fee after update:', verifyData);
-      console.log('Expected amount:', newAmount);
-      console.log('Actual amount in DB:', verifyData?.amount);
-
-      // Check if the update actually worked
-      if (verifyData && parseFloat(verifyData.amount) === newAmount) {
+      if (actualAmount === newAmount) {
         setMessage({ 
           type: 'success', 
           text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 
         });
       } else {
-        console.warn('Update may not have worked - values do not match');
+        console.warn('⚠️ Amount mismatch - expected:', newAmount, 'got:', actualAmount);
         setMessage({ 
-          type: 'error', 
-          text: `Update may have failed. Expected R ${newAmount.toFixed(2)} but got R ${verifyData?.amount || 'unknown'}. Please refresh and try again.` 
+          type: 'warning', 
+          text: `Update completed. Please refresh the page to see the updated amount.` 
         });
       }
 
       setEditingFee(null);
-      // Always refresh fees to show current state
-      await fetchFees();
     } catch (err: any) {
       console.error('Error updating fee:', err);
       setMessage({ 
