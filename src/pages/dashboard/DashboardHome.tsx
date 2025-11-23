@@ -161,10 +161,10 @@ export function DashboardHome() {
         ) : (
         <div className="space-y-4">
           {recentActivity.map(activity => (
-            <div 
-              key={activity.id} 
-              className="flex items-start space-x-4 p-4 bg-muted-gray rounded-card hover:bg-gray-200 transition-colors cursor-pointer"
-              onClick={() => activity.link && window.location.href = activity.link}
+            <Link
+              key={activity.id}
+              to={activity.link || '#'}
+              className="flex items-start space-x-4 p-4 bg-muted-gray rounded-card hover:bg-gray-200 transition-colors cursor-pointer block"
             >
               <div className={`w-2 h-2 rounded-full mt-2 ${
                 activity.type === 'blog' || activity.title?.toLowerCase().includes('news') || activity.title?.toLowerCase().includes('announcement')
@@ -175,7 +175,7 @@ export function DashboardHome() {
                 <p className="font-medium text-navy-ink">{activity.title}</p>
                 <p className="text-sm text-gray-600">{activity.date}</p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
         )}
