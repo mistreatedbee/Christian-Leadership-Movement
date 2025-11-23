@@ -532,7 +532,7 @@ export function ObjectivesManagementPage() {
             <h2 className="text-xl font-bold text-navy-ink mb-4">
               {editingObjective ? 'Edit Objective' : 'Add New Objective'}
             </h2>
-              <form onSubmit={handleSubmitObjective(onObjectiveSubmit)} className="space-y-4">
+            <form onSubmit={handleSubmitObjective(onObjectiveSubmit)} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-navy-ink mb-2">Title</label>
                   <input
@@ -678,9 +678,8 @@ export function ObjectivesManagementPage() {
                     </Button>
                   )}
                 </div>
-              </form>
-            </div>
-          )}
+            </form>
+          </div>
 
           {/* Objectives List */}
           <div className="bg-white rounded-card shadow-soft p-6">
