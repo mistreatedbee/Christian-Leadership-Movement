@@ -208,7 +208,8 @@ export function UserManagementPage() {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
-        email: userData?.email || profileData?.email || user.email || null,
+        // EMAIL PRIORITY: users.email > applications.email > user.email
+        email: userData?.email || user.email || null,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         name: userData?.name || userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
@@ -227,6 +228,15 @@ export function UserManagementPage() {
         postal_code: profileData?.postal_code || null,
         date_of_birth: profileData?.date_of_birth || null,
       };
+      
+      console.log('🔍 EMAIL DEBUG:', {
+        'userData?.email': userData?.email,
+        'user.email': user.email,
+        'profileData?.email': profileData?.email,
+        'enriched.email': enriched.email,
+        'userData object': userData,
+        'user object': user
+      });
 
       console.log('=== USER DATA DEBUG ===');
       console.log('UserData from users table:', userData);
@@ -287,6 +297,7 @@ export function UserManagementPage() {
         enriched = {
           ...enriched,
           // Personal Information - only use application data if registration data is missing
+          // EMAIL: Keep enriched.email if it exists, otherwise use application email
           email: enriched.email || combinedAppData.email || null,
           phone: enriched.phone || combinedAppData.phone || combinedAppData.contact_number || null,
           address: enriched.address || combinedAppData.physical_address || combinedAppData.address || null,
