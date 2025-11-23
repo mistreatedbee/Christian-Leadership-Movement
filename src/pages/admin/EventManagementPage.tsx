@@ -18,6 +18,10 @@ interface Event {
   has_registration_fee?: boolean;
   registration_fee?: number;
   images?: Array<{ url: string; key: string }>;
+  is_online?: boolean;
+  online_link?: string | null;
+  online_password?: string | null;
+  address?: string | null;
 }
 
 interface EventFormData {
@@ -29,6 +33,10 @@ interface EventFormData {
   capacity: string;
   has_registration_fee: boolean;
   registration_fee: string;
+  is_online: boolean;
+  online_link: string;
+  online_password: string;
+  address: string;
 }
 
 export function EventManagementPage() {
@@ -60,11 +68,16 @@ export function EventManagementPage() {
   } = useForm<EventFormData>({
     defaultValues: {
       has_registration_fee: false,
-      registration_fee: '0'
+      registration_fee: '0',
+      is_online: false,
+      online_link: '',
+      online_password: '',
+      address: ''
     }
   });
   
   const hasRegistrationFee = watch('has_registration_fee');
+  const isOnline = watch('is_online');
 
   useEffect(() => {
     fetchEvents();
@@ -123,6 +136,10 @@ export function EventManagementPage() {
     setExistingImages([]);
     setValue('has_registration_fee', false);
     setValue('registration_fee', '0');
+    setValue('is_online', false);
+    setValue('online_link', '');
+    setValue('online_password', '');
+    setValue('address', '');
     setShowForm(true);
   };
 
@@ -136,6 +153,10 @@ export function EventManagementPage() {
     setValue('capacity', event.capacity?.toString() || '');
     setValue('has_registration_fee', event.has_registration_fee || false);
     setValue('registration_fee', event.registration_fee?.toString() || '0');
+    setValue('is_online', event.is_online || false);
+    setValue('online_link', event.online_link || '');
+    setValue('online_password', event.online_password || '');
+    setValue('address', event.address || '');
     setEditingEvent(event);
     setImageFile(null);
     setImageFiles([]);
@@ -261,6 +282,10 @@ export function EventManagementPage() {
         has_registration_fee: data.has_registration_fee || false,
         registration_fee: data.has_registration_fee && data.registration_fee ? parseFloat(data.registration_fee) : 0.00,
         images: allImages.length > 0 ? allImages : null,
+        is_online: data.is_online || false,
+        online_link: data.is_online && data.online_link ? data.online_link : null,
+        online_password: data.is_online && data.online_password ? data.online_password : null,
+        address: !data.is_online && data.address ? data.address : null,
         created_by: user?.id
       };
 
@@ -434,15 +459,91 @@ export function EventManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Location *</label>
-                <input
-                  type="text"
-                  {...register('location', { required: 'Location is required' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  placeholder="e.g., Pretoria Conference Center or Online via Zoom"
-                />
-                {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location.message}</p>}
+                <label className="block text-sm font-medium text-navy-ink mb-2">Event Type *</label>
+                <div className="flex items-center space-x-4 mb-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      {...register('is_online', { valueAsNumber: false })}
+                      value="false"
+                      checked={!isOnline}
+                      onChange={() => setValue('is_online', false)}
+                      className="mr-2"
+                    />
+                    <span>In-Person Event</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      {...register('is_online', { valueAsNumber: false })}
+                      value="true"
+                      checked={isOnline}
+                      onChange={() => setValue('is_online', true)}
+                      className="mr-2"
+                    />
+                    <span>Online Event</span>
+                  </label>
+                </div>
               </div>
+
+              {isOnline ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Online Meeting Link *</label>
+                    <input
+                      type="url"
+                      {...register('online_link', { 
+                        required: isOnline ? 'Online meeting link is required' : false 
+                      })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="https://zoom.us/j/123456789 or https://meet.google.com/abc-defg-hij"
+                    />
+                    {errors.online_link && <p className="text-red-500 text-sm mt-1">{errors.online_link.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Meeting Password (Optional)</label>
+                    <input
+                      type="text"
+                      {...register('online_password')}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="Enter meeting password if required"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Location Label</label>
+                    <input
+                      type="text"
+                      {...register('location', { required: 'Location label is required' })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="e.g., Online via Zoom"
+                    />
+                    {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location.message}</p>}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Location Name *</label>
+                    <input
+                      type="text"
+                      {...register('location', { required: 'Location name is required' })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="e.g., Pretoria Conference Center"
+                    />
+                    {errors.location && <p className="text-red-500 text-sm mt-1">{errors.location.message}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Physical Address *</label>
+                    <textarea
+                      {...register('address', { required: !isOnline ? 'Address is required for in-person events' : false })}
+                      rows={3}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="123 Main Street, Pretoria, 0001"
+                    />
+                    {errors.address && <p className="text-red-500 text-sm mt-1">{errors.address.message}</p>}
+                  </div>
+                </>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-navy-ink mb-2">Capacity</label>
