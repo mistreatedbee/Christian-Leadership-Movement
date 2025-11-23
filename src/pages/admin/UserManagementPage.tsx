@@ -494,8 +494,9 @@ export function UserManagementPage() {
         // Start with profile data (registration) - this has phone, address, city, province, etc.
         ...(profileData || {}),
         // Override with users table data (registration) - this has email, nickname, name
-        // EMAIL PRIORITY: users.email (after update) > emailFromApps > user.email
-        email: (userData?.email || emailFromApps || user.email || null),
+        // EMAIL PRIORITY: userData.email > user.email (from list) > emailFromApps
+        // Use user.email from the list first since it was fetched with select('*') and should have email
+        email: (userData?.email || user.email || emailFromApps || null),
         // Store debug info
         _debug_userDataEmail: userData?.email,
         _debug_emailFromApps: emailFromApps,
