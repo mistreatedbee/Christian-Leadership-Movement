@@ -111,7 +111,12 @@ export function QuizManagementPage() {
         data.bible_school_context = null;
       } else if (formData.quiz_type === 'program') {
         data.program_id = formData.program_id || null;
-        data.course_id = null;
+        // If UP program is selected and a course is chosen, set course_id
+        if (formData.program_id && formData.course_id) {
+          data.course_id = formData.course_id;
+        } else {
+          data.course_id = null;
+        }
         data.bible_school_context = null;
       } else if (formData.quiz_type === 'bible_school') {
         data.bible_school_context = formData.bible_school_context || null;
