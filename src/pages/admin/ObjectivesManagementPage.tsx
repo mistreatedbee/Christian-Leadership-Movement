@@ -64,6 +64,7 @@ export function ObjectivesManagementPage() {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [objectiveImageFiles, setObjectiveImageFiles] = useState<File[]>([]);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
   const formRef = useRef<HTMLDivElement>(null);
 
   const { register: registerObjective, handleSubmit: handleSubmitObjective, reset: resetObjective, formState: { errors: errorsObjective } } = useForm<StrategicObjective & { short_description: string; full_description: string }>();
@@ -216,10 +217,13 @@ export function ObjectivesManagementPage() {
 
       setEditingObjective(null);
       setImageFile(null);
+      setObjectiveImageFiles([]);
       resetObjective();
       fetchObjectives();
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to save objective' });
+    } finally {
+      setSaving(false);
     }
   };
 
