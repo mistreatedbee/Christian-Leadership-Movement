@@ -271,12 +271,14 @@ export function UserManagementPage() {
 
       setUserApplications(applications || []);
 
-      // Combine data - EMAIL PRIORITY: users.email > user_profiles.email > user.email (from list)
-      // This matches the same logic used in fetchUsers
+      // Combine data
+      // CRITICAL: Email is stored in users table, NOT in user_profiles table
+      // Always fetch email from users.email (where it's actually saved)
       const enriched: any = {
         ...(profileData || {}),
-        // EMAIL: Use users.email first (from registration), then user_profiles.email, then user.email from list
-        email: userData?.email || profileData?.email || user.email || null,
+        // EMAIL: Get ONLY from users table (where emails are actually saved)
+        // Do NOT use user_profiles.email as it's not being saved there
+        email: userData?.email || user.email || null,
         nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
         bio: userData?.bio || profileData?.bio || user.bio || null,
