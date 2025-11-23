@@ -15,7 +15,8 @@ export function AdminDashboardHome() {
     bibleSchoolApplications: 0,
     membershipApplications: 0,
     pendingMentors: 0,
-    pendingPrayerRequests: 0
+    pendingPrayerRequests: 0,
+    pendingGroups: 0
   });
   const [recentApplications, setRecentApplications] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -36,7 +37,8 @@ export function AdminDashboardHome() {
           donationsRes, 
           paymentsRes,
           pendingMentorsRes,
-          prayerRequestsRes
+          prayerRequestsRes,
+          pendingGroupsRes
         ] = await Promise.allSettled([
           insforge.database.from('users').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }),
@@ -48,7 +50,8 @@ export function AdminDashboardHome() {
           insforge.database.from('donations').select('amount').eq('status', 'confirmed'),
           insforge.database.from('payments').select('amount').eq('status', 'confirmed'),
           insforge.database.from('mentors').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-          insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending')
+          insforge.database.from('prayer_requests').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+          insforge.database.from('groups').select('id', { count: 'exact', head: true }).eq('status', 'pending')
         ]);
 
         // Extract results from Promise.allSettled
@@ -71,6 +74,7 @@ export function AdminDashboardHome() {
         const paymentsResData = getResult(paymentsRes);
         const pendingMentorsResData = getResult(pendingMentorsRes);
         const prayerRequestsResData = getResult(prayerRequestsRes);
+        const pendingGroupsResData = getResult(pendingGroupsRes);
 
         setStats({
           totalUsers: usersResData?.count || 0,
@@ -82,7 +86,8 @@ export function AdminDashboardHome() {
           bibleSchoolApplications: bibleSchoolAppsResData?.count || 0,
           membershipApplications: membershipAppsResData?.count || 0,
           pendingMentors: pendingMentorsResData?.count || 0,
-          pendingPrayerRequests: prayerRequestsResData?.count || 0
+          pendingPrayerRequests: prayerRequestsResData?.count || 0,
+          pendingGroups: pendingGroupsResData?.count || 0
         });
 
         // Fetch all recent activities - handle join errors gracefully
@@ -387,7 +392,7 @@ export function AdminDashboardHome() {
       ) : (
         <>
           {/* Notifications Section */}
-          {(stats.pendingApplications > 0 || stats.pendingMentors > 0 || stats.pendingPrayerRequests > 0) && (
+          {(stats.pendingApplications > 0 || stats.pendingMentors > 0 || stats.pendingPrayerRequests > 0 || stats.pendingGroups > 0) && (
             <div className="bg-white p-6 rounded-card shadow-soft border-l-4 border-amber-500">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-3">
@@ -438,6 +443,22 @@ export function AdminDashboardHome() {
                       </div>
                     </div>
                     <Link to="/admin/prayer-requests">
+                      <Button variant="outline" size="sm">Review</Button>
+                    </Link>
+                  </div>
+                )}
+                {stats.pendingGroups > 0 && (
+                  <div className="flex items-center justify-between p-3 bg-amber-50 rounded-card">
+                    <div className="flex items-center space-x-3">
+                      <Users className="text-amber-600" size={20} />
+                      <div>
+                        <p className="font-medium text-navy-ink">
+                          {stats.pendingGroups} {stats.pendingGroups === 1 ? 'group' : 'groups'} pending approval
+                        </p>
+                        <p className="text-xs text-gray-600">Someone created a group and it's waiting for your review</p>
+                      </div>
+                    </div>
+                    <Link to="/admin/groups?status=pending">
                       <Button variant="outline" size="sm">Review</Button>
                     </Link>
                   </div>

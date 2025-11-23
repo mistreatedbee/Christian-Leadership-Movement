@@ -193,8 +193,11 @@ export function GroupsPage() {
         max_members: ''
       });
       setShowForm(false);
-      fetchGroups();
-      alert('Your group creation request has been submitted! It is currently pending review by administrators. You will be notified once it\'s approved or rejected.');
+      
+      // Immediately refresh groups so the newly created group appears
+      await fetchGroups();
+      
+      alert('✅ Your group has been created successfully! It is currently under review by administrators. You will be notified once it\'s approved or rejected. You can see it in "My Groups" section below.');
     } catch (error: any) {
       console.error('Error creating group:', error);
       alert(error.message || 'Error creating group. Please try again.');
@@ -368,8 +371,13 @@ export function GroupsPage() {
                       </span>
                     )}
                     {isMyGroup && isApproved && (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                        Approved
+                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full font-medium">
+                        ✅ Approved
+                      </span>
+                    )}
+                    {isMyGroup && !isPending && !isRejected && !isApproved && (
+                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
+                        {group.status || 'Pending'}
                       </span>
                     )}
                   </div>
@@ -377,16 +385,22 @@ export function GroupsPage() {
                     <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
                   )}
                   {isMyGroup && isPending && (
-                    <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+                      <p className="text-sm font-medium text-amber-900 mb-1">
+                        ⏳ Pending Review
+                      </p>
                       <p className="text-sm text-amber-800">
-                        ⏳ Your group creation request is pending review by administrators. It will be visible to others once approved.
+                        Your group has been created, but it's currently under review by the admin. Please wait for it to be approved or rejected. You will be notified once the status changes.
                       </p>
                     </div>
                   )}
                   {isMyGroup && isRejected && (
-                    <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+                    <div className="mb-4 p-3 bg-red-50 border-l-4 border-red-500 rounded-lg">
+                      <p className="text-sm font-medium text-red-900 mb-1">
+                        ❌ Rejected
+                      </p>
                       <p className="text-sm text-red-800">
-                        ❌ Your group creation request has been rejected. Please contact administrators for more information.
+                        Your group creation request has been rejected. Please contact administrators for more information.
                       </p>
                     </div>
                   )}
