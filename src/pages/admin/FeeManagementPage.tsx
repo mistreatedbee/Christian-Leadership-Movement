@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { DollarSign, Save, Edit, X } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { insforge } from '../../lib/insforge';
+import { auditActions } from '../../lib/auditLogger';
 
 interface FeeSetting {
   id: string;
