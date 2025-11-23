@@ -1,10 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Video, FileText, CheckCircle, Play, BookOpen, Clock, ArrowRight } from 'lucide-react';
+import { ArrowLeft, Video, FileText, CheckCircle, Play, BookOpen, Clock, ArrowRight, Download } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
-import { ArrowLeft, Play, Download, CheckCircle, Clock, FileText, Video } from 'lucide-react';
 
 interface Lesson {
   id: string;
