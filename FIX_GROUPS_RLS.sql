@@ -14,13 +14,13 @@ DROP POLICY IF EXISTS "Users create groups" ON public.groups;
 DROP POLICY IF EXISTS "Group leaders manage their groups" ON public.groups;
 DROP POLICY IF EXISTS "Admins manage groups" ON public.groups;
 
--- Public can read public groups
+-- Public can read public approved/active groups
 CREATE POLICY "Public can read public groups"
   ON public.groups
   FOR SELECT
-  USING (is_public = true);
+  USING (is_public = true AND status IN ('approved', 'active'));
 
--- Users can see groups they're members of (any visibility)
+-- Users can see groups they're members of (any visibility) or groups they created (any status)
 CREATE POLICY "Users see groups they're in"
   ON public.groups
   FOR SELECT
@@ -31,6 +31,7 @@ CREATE POLICY "Users see groups they're in"
       AND group_members.user_id = public.get_current_user_id()
     )
     OR created_by = public.get_current_user_id()
+    OR (is_public = true AND status IN ('approved', 'active'))
   );
 
 -- Users can create groups
