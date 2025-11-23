@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MessageSquare, Plus, Lock, Pin, LayoutDashboard } from 'lucide-react';
+import { MessageSquare, Plus, Lock, Pin, LayoutDashboard, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
@@ -35,10 +35,21 @@ export function ForumPage() {
   const [topics, setTopics] = useState<ForumTopic[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortBy, setSortBy] = useState<'recent' | 'views' | 'replies'>('recent');
 
   useEffect(() => {
     fetchData();
-  }, [selectedCategory]);
+  }, [selectedCategory, sortBy]);
+
+  // Debounce search
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchData();
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
 
   // Refresh data periodically to update view counts
   useEffect(() => {
@@ -47,7 +58,7 @@ export function ForumPage() {
     }, 30000); // Refresh every 30 seconds
 
     return () => clearInterval(interval);
-  }, [selectedCategory]);
+  }, [selectedCategory, sortBy, searchTerm]);
 
   const fetchData = async () => {
     try {

@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, MessageSquare, Pin, Lock, Send, Check } from 'lucide-react';
+import { ArrowLeft, MessageSquare, Pin, Lock, Send, Check, Heart, Bell, BellOff } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
@@ -43,6 +43,8 @@ interface ForumReply {
     email?: string;
     avatar_url?: string;
   };
+  like_count?: number;
+  is_liked?: boolean;
 }
 
 export function ForumTopicPage() {
@@ -54,13 +56,15 @@ export function ForumTopicPage() {
   const [loading, setLoading] = useState(true);
   const [replyContent, setReplyContent] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [isFollowing, setIsFollowing] = useState(false);
 
   useEffect(() => {
     if (id) {
       fetchTopic();
       fetchReplies();
+      checkFollowing();
     }
-  }, [id]);
+  }, [id, user]);
 
   const fetchTopic = async () => {
     if (!id) return;
@@ -249,6 +253,67 @@ export function ForumTopicPage() {
       fetchReplies();
     } catch (error) {
       console.error('Error marking solution:', error);
+    }
+  };
+
+  const toggleLike = async (replyId: string) => {
+    if (!user || !id) return;
+
+    try {
+      const reply = replies.find(r => r.id === replyId);
+      if (!reply) return;
+
+      if (reply.is_liked) {
+        // Unlike
+        await insforge.database
+          .from('forum_reply_likes')
+          .delete()
+          .eq('reply_id', replyId)
+          .eq('user_id', user.id);
+      } else {
+        // Like
+        await insforge.database
+          .from('forum_reply_likes')
+          .insert({
+            reply_id: replyId,
+            user_id: user.id
+          })
+          .onConflict('reply_id,user_id')
+          .ignore();
+      }
+
+      fetchReplies();
+    } catch (error) {
+      console.error('Error toggling like:', error);
+    }
+  };
+
+  const toggleFollow = async () => {
+    if (!user || !id) return;
+
+    try {
+      if (isFollowing) {
+        // Unfollow
+        await insforge.database
+          .from('forum_topic_follows')
+          .delete()
+          .eq('topic_id', id)
+          .eq('user_id', user.id);
+        setIsFollowing(false);
+      } else {
+        // Follow
+        await insforge.database
+          .from('forum_topic_follows')
+          .insert({
+            topic_id: id,
+            user_id: user.id
+          })
+          .onConflict('topic_id,user_id')
+          .ignore();
+        setIsFollowing(true);
+      }
+    } catch (error) {
+      console.error('Error toggling follow:', error);
     }
   };
 
