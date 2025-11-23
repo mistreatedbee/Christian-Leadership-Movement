@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, MapPin, Calendar, Users, X, Save, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, MapPin, Calendar, Users, X, Save, Upload, DollarSign, Eye, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
 import { insforge } from '../../lib/insforge';
+import { Link } from 'react-router-dom';
 
 interface Event {
   id: string;
@@ -14,6 +15,9 @@ interface Event {
   capacity: number | null;
   image_url: string | null;
   image_key: string | null;
+  has_registration_fee?: boolean;
+  registration_fee?: number;
+  images?: Array<{ url: string; key: string }>;
 }
 
 interface EventFormData {
@@ -23,6 +27,8 @@ interface EventFormData {
   event_time: string;
   location: string;
   capacity: string;
+  has_registration_fee: boolean;
+  registration_fee: string;
 }
 
 export function EventManagementPage() {
@@ -38,7 +44,11 @@ export function EventManagementPage() {
     thisMonth: 0
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [existingImages, setExistingImages] = useState<Array<{ url: string; key: string }>>([]);
   const [registrations, setRegistrations] = useState<Record<string, number>>({});
+  const [showRegistrations, setShowRegistrations] = useState<string | null>(null);
+  const [eventRegistrations, setEventRegistrations] = useState<any[]>([]);
 
   const {
     register,
@@ -101,6 +111,10 @@ export function EventManagementPage() {
     reset();
     setEditingEvent(null);
     setImageFile(null);
+    setImageFiles([]);
+    setExistingImages([]);
+    setValue('has_registration_fee', false);
+    setValue('registration_fee', '0');
     setShowForm(true);
   };
 
@@ -112,9 +126,34 @@ export function EventManagementPage() {
     setValue('event_time', eventDate.toTimeString().slice(0, 5));
     setValue('location', event.location || '');
     setValue('capacity', event.capacity?.toString() || '');
+    setValue('has_registration_fee', event.has_registration_fee || false);
+    setValue('registration_fee', event.registration_fee?.toString() || '0');
     setEditingEvent(event);
     setImageFile(null);
+    setImageFiles([]);
+    setExistingImages(event.images || []);
     setShowForm(true);
+  };
+
+  const handleViewRegistrations = async (eventId: string) => {
+    try {
+      const { data, error } = await insforge.database
+        .from('event_registrations')
+        .select(`
+          *,
+          users(id, nickname, email),
+          payments(id, amount, status, payment_method)
+        `)
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setEventRegistrations(data || []);
+      setShowRegistrations(eventId);
+    } catch (err) {
+      console.error('Error fetching registrations:', err);
+      alert('Failed to load registrations');
+    }
   };
 
   const handleDelete = async (eventId: string) => {
@@ -150,8 +189,9 @@ export function EventManagementPage() {
     try {
       let imageUrl = editingEvent?.image_url || null;
       let imageKey = editingEvent?.image_key || null;
+      let allImages: Array<{ url: string; key: string }> = [...existingImages];
 
-      // Upload image if provided
+      // Upload single main image if provided (for backward compatibility)
       if (imageFile) {
         const { data: uploadData, error: uploadError } = await insforge.storage
           .from('gallery')
@@ -164,13 +204,38 @@ export function EventManagementPage() {
         imageUrl = uploadData.url;
         imageKey = uploadData.key;
 
+        // Add to images array if not already there
+        if (!allImages.some(img => img.url === imageUrl)) {
+          allImages.push({ url: imageUrl, key: imageKey });
+        }
+
         // Delete old image if editing
-        if (editingEvent?.image_key) {
+        if (editingEvent?.image_key && editingEvent.image_key !== imageKey) {
           try {
             await insforge.storage.from('gallery').remove(editingEvent.image_key);
           } catch (removeErr) {
             console.warn('Could not remove old image:', removeErr);
           }
+        }
+      }
+
+      // Upload multiple images
+      for (const file of imageFiles) {
+        try {
+          const { data: uploadData, error: uploadError } = await insforge.storage
+            .from('gallery')
+            .upload(`events/${Date.now()}_${file.name}`, file);
+
+          if (uploadError) {
+            console.error('Image upload error:', uploadError);
+            continue; // Skip failed uploads but continue with others
+          }
+
+          if (uploadData && !allImages.some(img => img.url === uploadData.url)) {
+            allImages.push({ url: uploadData.url, key: uploadData.key });
+          }
+        } catch (err) {
+          console.error('Error uploading image:', err);
         }
       }
 
@@ -183,8 +248,11 @@ export function EventManagementPage() {
         event_date: eventDateTime.toISOString(),
         location: data.location || null,
         capacity: data.capacity ? parseInt(data.capacity) : null,
-        image_url: imageUrl,
-        image_key: imageKey,
+        image_url: imageUrl, // Keep for backward compatibility
+        image_key: imageKey, // Keep for backward compatibility
+        has_registration_fee: data.has_registration_fee || false,
+        registration_fee: data.has_registration_fee && data.registration_fee ? parseFloat(data.registration_fee) : 0.00,
+        images: allImages.length > 0 ? allImages : null,
         created_by: user?.id
       };
 
@@ -278,6 +346,8 @@ export function EventManagementPage() {
         setShowForm(false);
         reset();
         setImageFile(null);
+        setImageFiles([]);
+        setExistingImages([]);
         fetchEvents();
         alert('Event saved successfully!');
       } else {
@@ -377,13 +447,80 @@ export function EventManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Event Image</label>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Main Event Image (Optional)</label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => setImageFile(e.target.files?.[0] || null)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                 />
+                {editingEvent?.image_url && !imageFile && (
+                  <p className="text-sm text-gray-500 mt-1">Current: {editingEvent.image_url.split('/').pop()}</p>
+                )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Additional Event Images (Optional)</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => setImageFiles(Array.from(e.target.files || []))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+                {imageFiles.length > 0 && (
+                  <p className="text-sm text-gray-500 mt-1">{imageFiles.length} image(s) selected</p>
+                )}
+                {existingImages.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-600 mb-2">Existing images:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {existingImages.map((img, idx) => (
+                        <div key={idx} className="relative">
+                          <img src={img.url} alt={`Event image ${idx + 1}`} className="w-20 h-20 object-cover rounded" />
+                          <button
+                            type="button"
+                            onClick={() => setExistingImages(existingImages.filter((_, i) => i !== idx))}
+                            className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="border-t pt-4">
+                <div className="flex items-center mb-4">
+                  <input
+                    type="checkbox"
+                    id="has_registration_fee"
+                    {...register('has_registration_fee')}
+                    className="mr-2"
+                  />
+                  <label htmlFor="has_registration_fee" className="text-sm font-medium text-navy-ink">
+                    This event requires a registration fee
+                  </label>
+                </div>
+                {hasRegistrationFee && (
+                  <div>
+                    <label className="block text-sm font-medium text-navy-ink mb-2">Registration Fee (ZAR) *</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      {...register('registration_fee', { 
+                        required: hasRegistrationFee ? 'Registration fee is required' : false,
+                        min: { value: 0, message: 'Fee must be 0 or greater' }
+                      })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                      placeholder="0.00"
+                    />
+                    {errors.registration_fee && <p className="text-red-500 text-sm mt-1">{errors.registration_fee.message}</p>}
+                  </div>
+                )}
               </div>
 
               <div className="flex space-x-4">
@@ -487,10 +624,13 @@ export function EventManagementPage() {
                     )}
               </div>
               <div className="flex space-x-2 ml-4">
-                    <Button variant="outline" size="sm" onClick={() => handleEdit(event)}>
+                    <Button variant="outline" size="sm" onClick={() => handleViewRegistrations(event.id)} title="View Registrations">
+                  <Users size={16} />
+                </Button>
+                    <Button variant="outline" size="sm" onClick={() => handleEdit(event)} title="Edit">
                   <Edit size={16} />
                 </Button>
-                    <Button variant="outline" size="sm" onClick={() => handleDelete(event.id)}>
+                    <Button variant="outline" size="sm" onClick={() => handleDelete(event.id)} title="Delete">
                   <Trash2 size={16} />
                 </Button>
               </div>
@@ -499,6 +639,87 @@ export function EventManagementPage() {
             );
           })}
       </div>
+      )}
+
+      {/* Registrations Modal */}
+      {showRegistrations && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-card shadow-soft p-8 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-navy-ink">Event Registrations</h2>
+              <button onClick={() => setShowRegistrations(null)} className="text-gray-400 hover:text-gray-600">
+                <X size={24} />
+              </button>
+            </div>
+
+            {eventRegistrations.length === 0 ? (
+              <p className="text-gray-600 text-center py-8">No registrations yet</p>
+            ) : (
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="bg-blue-50 p-4 rounded-card">
+                    <p className="text-sm text-gray-600">Total Registrations</p>
+                    <p className="text-2xl font-bold text-navy-ink">{eventRegistrations.length}</p>
+                  </div>
+                  <div className="bg-green-50 p-4 rounded-card">
+                    <p className="text-sm text-gray-600">Paid</p>
+                    <p className="text-2xl font-bold text-green-600">
+                      {eventRegistrations.filter((r: any) => r.payment_status === 'paid').length}
+                    </p>
+                  </div>
+                  <div className="bg-amber-50 p-4 rounded-card">
+                    <p className="text-sm text-gray-600">Pending Payment</p>
+                    <p className="text-2xl font-bold text-amber-600">
+                      {eventRegistrations.filter((r: any) => r.payment_status === 'pending').length}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-muted-gray">
+                      <tr>
+                        <th className="text-left py-3 px-4">Name</th>
+                        <th className="text-left py-3 px-4">Email</th>
+                        <th className="text-left py-3 px-4">Registration Date</th>
+                        <th className="text-left py-3 px-4">Payment Status</th>
+                        <th className="text-left py-3 px-4">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {eventRegistrations.map((reg: any) => {
+                        const regData = reg.registration_data || {};
+                        return (
+                          <tr key={reg.id} className="border-b">
+                            <td className="py-3 px-4">
+                              {regData.firstName && regData.lastName 
+                                ? `${regData.firstName} ${regData.lastName}`
+                                : reg.users?.nickname || reg.users?.email || 'N/A'}
+                            </td>
+                            <td className="py-3 px-4">{regData.email || reg.users?.email || 'N/A'}</td>
+                            <td className="py-3 px-4">{new Date(reg.created_at).toLocaleDateString()}</td>
+                            <td className="py-3 px-4">
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                reg.payment_status === 'paid' ? 'bg-green-100 text-green-800' :
+                                reg.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                                'bg-gray-100 text-gray-800'
+                              }`}>
+                                {reg.payment_status || 'N/A'}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4">
+                              {reg.payments ? `R ${parseFloat(reg.payments.amount).toFixed(2)}` : 'N/A'}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>;
 }
