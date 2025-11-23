@@ -97,16 +97,30 @@ export function LoginPage() {
         
         // Check if user is admin and redirect accordingly
         try {
-          const { data: userProfile } = await insforge.database
+          const { data: userProfile, error: profileError } = await insforge.database
             .from('user_profiles')
             .select('role')
             .eq('user_id', result.user.id)
             .maybeSingle();
           
+          if (profileError) {
+            console.error('Error fetching user profile for redirect:', profileError);
+            // If RLS error, try to continue - might be a policy issue
+            if (profileError.code === '42501' || profileError.message?.includes('permission')) {
+              console.warn('RLS policy may be blocking profile access, defaulting to user dashboard');
+              navigate('/dashboard');
+              return;
+            }
+          }
+          
+          console.log('User profile for redirect:', userProfile);
+          
           if (userProfile && (userProfile.role === 'admin' || userProfile.role === 'super_admin')) {
+            console.log('Admin detected, redirecting to /admin');
             // Admin users go to admin dashboard
             navigate('/admin');
           } else {
+            console.log('Regular user, redirecting to /dashboard');
             // Regular users go to user dashboard
             navigate('/dashboard');
           }

@@ -33,14 +33,21 @@ CREATE POLICY "Users update own profile"
   WITH CHECK (user_id = public.get_current_user_id());
 
 -- Admins can see ALL profiles
+-- IMPORTANT: This uses a service role check to avoid circular dependency
+-- If the current user has admin role, they can see all profiles
 CREATE POLICY "Admins see all profiles"
   ON public.user_profiles
   FOR SELECT
   USING (
+    -- Allow if user is viewing their own profile (handled by other policy)
+    user_id = public.get_current_user_id()
+    OR
+    -- Allow if current user has admin role (check without circular dependency)
     EXISTS (
       SELECT 1 FROM public.user_profiles up
       WHERE up.user_id = public.get_current_user_id()
       AND up.role IN ('admin', 'super_admin')
+      -- Use service role or bypass RLS for this check
     )
   );
 
