@@ -4,7 +4,7 @@ import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
-import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as LinkIcon, Download, ExternalLink } from 'lucide-react';
+import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as LinkIcon, Download, ExternalLink, CheckCircle } from 'lucide-react';
 import { getStorageUrl } from '../lib/connection';
 
 type TabType = 'studies' | 'classes' | 'meetings' | 'resources';
@@ -151,8 +151,167 @@ export function BibleSchoolPage() {
       <TopNav />
       <main className="flex-grow">
         <div className="container mx-auto px-4 py-8">
+          {/* Header Section */}
+          <div className="bg-gradient-to-r from-navy-ink to-brand-dark-blue text-white rounded-card shadow-soft p-8 mb-8">
+            <h1 className="text-4xl font-bold mb-2">Bible School</h1>
+            <p className="text-lg text-blue-100 mb-4">
+              Comprehensive theological education and leadership training
+            </p>
+            <p className="text-blue-50">
+              Transform your calling into effective ministry through comprehensive theological education and practical leadership training.
+            </p>
+          </div>
+
+          {/* What You'll Gain Section */}
+          <div className="bg-white rounded-card shadow-soft p-8 mb-8">
+            <h2 className="text-3xl font-bold text-navy-ink mb-6">What You'll Gain</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-2">📖 Comprehensive Biblical Education</h3>
+                <p className="text-gray-600 mb-2">
+                  In-depth study of Old and New Testaments, systematic theology, church history, biblical interpretation, and hermeneutics.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Complete Bible survey and exegesis</li>
+                  <li>• Theological foundations and doctrines</li>
+                  <li>• Church history and tradition</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-gold pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-2">👥 Practical Ministry Skills</h3>
+                <p className="text-gray-600 mb-2">
+                  Hands-on training in pastoral care, preaching, teaching, counseling, worship leadership, and community outreach.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Sermon preparation and delivery</li>
+                  <li>• Pastoral counseling techniques</li>
+                  <li>• Worship and service planning</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-green-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-2">🏆 Recognized Certification</h3>
+                <p className="text-gray-600 mb-2">
+                  Earn a certificate of completion that validates your theological education and enhances your ministry credentials.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• Official CLM Bible School certificate</li>
+                  <li>• Enhanced ministry credibility</li>
+                  <li>• Recognition in Christian leadership circles</li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-purple-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-2">🤝 Mentorship & Support</h3>
+                <p className="text-gray-600 mb-2">
+                  Access to experienced pastors and leaders who provide guidance, answer questions, and support your growth.
+                </p>
+                <ul className="text-sm text-gray-600 space-y-1">
+                  <li>• One-on-one mentorship sessions</li>
+                  <li>• Regular check-ins and feedback</li>
+                  <li>• Ongoing support after graduation</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Resources & Materials Section */}
+          <div className="bg-white rounded-card shadow-soft p-8 mb-8">
+            <h2 className="text-3xl font-bold text-navy-ink mb-6">Resources & Materials You'll Receive</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="border-l-4 border-blue-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-3">📚 Study Materials</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Comprehensive course textbooks and study guides</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Digital library access with theological resources</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Biblical commentaries and reference materials</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Study notes and lecture materials</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-gold pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-3">🎥 Video & Audio Content</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Recorded lectures and teaching sessions</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Video demonstrations of ministry practices</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Audio sermons and teaching series</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Interactive online learning modules</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-green-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-3">📝 Practical Tools</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Sermon preparation templates and guides</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Ministry planning worksheets and checklists</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Counseling resources and frameworks</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Leadership assessment tools</span>
+                  </li>
+                </ul>
+              </div>
+
+              <div className="border-l-4 border-purple-500 pl-4">
+                <h3 className="text-xl font-bold text-navy-ink mb-3">👥 Community Access</h3>
+                <ul className="space-y-2 text-gray-600">
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Access to student forums and discussion groups</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Networking opportunities with fellow students</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Access to alumni network after graduation</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0 mt-1" />
+                    <span>Regular webinars and Q&A sessions</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
           <div className="mb-8">
-            <h1 className="text-4xl font-bold text-navy-ink mb-2">Bible School</h1>
+            <h2 className="text-3xl font-bold text-navy-ink mb-2">Bible School Activities</h2>
             <p className="text-gray-600">Join our online Bible studies, classes, and meetings</p>
           </div>
 

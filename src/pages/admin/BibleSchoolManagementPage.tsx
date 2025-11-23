@@ -119,6 +119,7 @@ export function BibleSchoolManagementPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
+      // Admins can see ALL items regardless of status or public flag
       if (activeTab === 'studies') {
         const { data } = await insforge.database
           .from('bible_school_studies')
@@ -138,6 +139,7 @@ export function BibleSchoolManagementPage() {
           .order('scheduled_date', { ascending: false });
         setMeetings(data || []);
       } else if (activeTab === 'resources') {
+        // Admins see ALL resources (public and private)
         const { data } = await insforge.database
           .from('bible_school_resources')
           .select('*')
@@ -439,29 +441,58 @@ export function BibleSchoolManagementPage() {
               {resources.length === 0 ? (
                 <p className="text-gray-500 text-center py-8">No resources found. Create one to get started.</p>
               ) : (
-                resources.map(resource => (
-                  <div key={resource.id} className="border border-gray-200 rounded-lg p-4 flex justify-between items-start">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-navy-ink">{resource.title}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{resource.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
-                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-xs">{resource.resource_type}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {resources.map(resource => (
+                    <div key={resource.id} className="border border-gray-200 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h3 className="font-semibold text-navy-ink">{resource.title}</h3>
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resources')}>
+                            <Edit size={16} />
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDelete(resource.id, 'resources')}>
+                            <Trash2 size={16} />
+                          </Button>
+                        </div>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">{resource.description}</p>
+                      <div className="flex items-center gap-2 flex-wrap text-sm">
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          resource.resource_type === 'book' ? 'bg-blue-100 text-blue-800' :
+                          resource.resource_type === 'notes' ? 'bg-green-100 text-green-800' :
+                          resource.resource_type === 'test' ? 'bg-yellow-100 text-yellow-800' :
+                          resource.resource_type === 'video' ? 'bg-red-100 text-red-800' :
+                          resource.resource_type === 'audio' ? 'bg-purple-100 text-purple-800' :
+                          resource.resource_type === 'document' ? 'bg-gray-100 text-gray-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {resource.resource_type}
+                        </span>
                         {resource.category && (
                           <span className="px-2 py-1 bg-gray-100 rounded text-xs">{resource.category}</span>
                         )}
-                        <span className="text-xs">Downloads: {resource.download_count}</span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          resource.is_public ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                        }`}>
+                          {resource.is_public ? 'Public' : 'Private'}
+                        </span>
+                        <span className="text-xs text-gray-500">Downloads: {resource.download_count || 0}</span>
                       </div>
+                      {(resource.file_url || resource.external_link) && (
+                        <div className="mt-2">
+                          <a
+                            href={resource.external_link || resource.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-sm text-blue-600 hover:underline"
+                          >
+                            View Resource →
+                          </a>
+                        </div>
+                      )}
                     </div>
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(resource, 'resources')}>
-                        <Edit size={16} />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(resource.id, 'resources')}>
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                  ))}
+                </div>
               )}
             </div>
           )}

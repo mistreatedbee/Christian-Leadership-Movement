@@ -134,6 +134,10 @@ export function AdminDashboardLayout() {
     label: 'Events',
     path: '/admin/events'
   }, {
+    icon: BookOpen,
+    label: 'Bible School',
+    path: '/admin/bible-school'
+  }, {
     icon: Award,
     label: 'Certificates',
     path: '/admin/certificates'
