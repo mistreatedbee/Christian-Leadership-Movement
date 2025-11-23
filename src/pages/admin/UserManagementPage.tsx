@@ -91,6 +91,18 @@ export function UserManagementPage() {
         // Get email from users table, or fallback to applications
         const userEmail = user.email || emailMap.get(user.id) || null;
         
+        // If email is missing but we have it from applications, try to update the users table (async, non-blocking)
+        if (!user.email && emailMap.has(user.id)) {
+          const appEmail = emailMap.get(user.id);
+          // Silently try to update - don't block the UI
+          insforge.database
+            .from('users')
+            .update({ email: appEmail })
+            .eq('id', user.id)
+            .then(() => console.log(`✅ Updated email for user ${user.id}`))
+            .catch(err => console.error(`❌ Failed to update email for user ${user.id}:`, err));
+        }
+        
         return {
           id: profile?.id || user.id,
           user_id: user.id,
