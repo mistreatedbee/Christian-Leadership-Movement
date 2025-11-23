@@ -17,6 +17,7 @@ export function FeeManagementPage() {
   const [loading, setLoading] = useState(true);
   const [editingFee, setEditingFee] = useState<string | null>(null);
   const [editedAmounts, setEditedAmounts] = useState<Record<string, string>>({});
+  const [editedDescriptions, setEditedDescriptions] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -35,12 +36,15 @@ export function FeeManagementPage() {
       if (error) throw error;
       setFees(data || []);
 
-      // Initialize edited amounts
+      // Initialize edited amounts and descriptions
       const amounts: Record<string, string> = {};
+      const descriptions: Record<string, string> = {};
       data?.forEach((fee: FeeSetting) => {
         amounts[fee.id] = fee.amount.toString();
+        descriptions[fee.id] = fee.description || '';
       });
       setEditedAmounts(amounts);
+      setEditedDescriptions(descriptions);
     } catch (err) {
       console.error('Error fetching fees:', err);
       setMessage({ type: 'error', text: 'Failed to load fee settings' });
@@ -55,18 +59,21 @@ export function FeeManagementPage() {
 
   const handleCancel = () => {
     setEditingFee(null);
-    // Reset edited amounts to original values
+    // Reset edited amounts and descriptions to original values
     const amounts: Record<string, string> = {};
+    const descriptions: Record<string, string> = {};
     fees.forEach(fee => {
       amounts[fee.id] = fee.amount.toString();
+      descriptions[fee.id] = fee.description || '';
     });
     setEditedAmounts(amounts);
+    setEditedDescriptions(descriptions);
   };
 
   const handleSave = async (feeId: string) => {
     const newAmount = parseFloat(editedAmounts[feeId]);
     if (isNaN(newAmount) || newAmount < 0) {
-      setMessage({ type: 'error', text: 'Please enter a valid amount' });
+      setMessage({ type: 'error', text: 'Please enter a valid amount (must be 0 or greater)' });
       return;
     }
 
@@ -74,21 +81,46 @@ export function FeeManagementPage() {
     setMessage(null);
 
     try {
-      const { error } = await insforge.database
+      const updateData: any = {
+        amount: newAmount,
+        updated_at: new Date().toISOString()
+      };
+
+      // Also update description if it was edited
+      if (editedDescriptions[feeId] !== undefined) {
+        updateData.description = editedDescriptions[feeId] || null;
+      }
+
+      const { error, data } = await insforge.database
         .from('fee_settings')
-        .update({
-          amount: newAmount,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', feeId);
+        .update(updateData)
+        .eq('id', feeId)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database error:', error);
+        throw error;
+      }
 
-      setMessage({ type: 'success', text: 'Fee updated successfully' });
-      setEditingFee(null);
-      fetchFees();
+      // Verify the update was successful
+      if (data) {
+        setMessage({ 
+          type: 'success', 
+          text: `Fee updated successfully! New amount: R ${newAmount.toFixed(2)}. Changes will apply to new applications.` 
+        });
+        setEditingFee(null);
+        // Refresh fees to show updated values
+        await fetchFees();
+      } else {
+        throw new Error('Update completed but no data returned');
+      }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Failed to update fee' });
+      console.error('Error updating fee:', err);
+      setMessage({ 
+        type: 'error', 
+        text: err.message || 'Failed to update fee. Please try again.' 
+      });
     } finally {
       setSaving(null);
     }
@@ -176,8 +208,23 @@ export function FeeManagementPage() {
                         </span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-600">
-                      {fee.description || 'N/A'}
+                    <td className="px-6 py-4">
+                      {editingFee === fee.id ? (
+                        <input
+                          type="text"
+                          value={editedDescriptions[fee.id] || ''}
+                          onChange={(e) => setEditedDescriptions(prev => ({
+                            ...prev,
+                            [fee.id]: e.target.value
+                          }))}
+                          placeholder="Enter description"
+                          className="w-full px-3 py-1 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                        />
+                      ) : (
+                        <span className="text-gray-600">
+                          {fee.description || 'N/A'}
+                        </span>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {editingFee === fee.id ? (
