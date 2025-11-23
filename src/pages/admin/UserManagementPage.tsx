@@ -878,6 +878,14 @@ export function UserManagementPage() {
           .eq('id', userId);
       }
 
+      // Log audit event
+      if (currentUser) {
+        auditActions.userUpdated(userId, {
+          updated_by: currentUser.id,
+          changes: editForm,
+        });
+      }
+
       setMessage({ type: 'success', text: 'User updated successfully!' });
       setEditingUser(null);
       setEditForm({});
@@ -899,11 +907,23 @@ export function UserManagementPage() {
     }
 
     try {
+      // Get user details before deleting for audit log
+      const user = users.find(u => u.user_id === userId);
+      
       // Delete user profile first
       await insforge.database
         .from('user_profiles')
         .delete()
         .eq('user_id', userId);
+
+      // Log audit event
+      if (currentUser) {
+        auditActions.userDeleted(userId, {
+          deleted_user_email: user?.email || 'Unknown',
+          deleted_user_nickname: user?.nickname || 'Unknown',
+          deleted_by: currentUser.id,
+        });
+      }
 
       // User record will be cascade deleted from auth.users
       setMessage({ type: 'success', text: 'User deleted successfully!' });
