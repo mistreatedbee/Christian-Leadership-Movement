@@ -118,24 +118,34 @@ export function AdminDashboardHome() {
           }
         };
 
+        // Fetch recent activities with proper error handling
+        const fetchRecentUsers = async () => {
+          try {
+            const result = await insforge.database
+              .from('users')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(10);
+            return result;
+          } catch (err) {
+            console.error('Error fetching recent users:', err);
+            return { data: [], error: null };
+          }
+        };
+
         const [
           recentApps,
           recentMentors,
           recentUsers,
           recentGroups,
           recentPrayerRequests
-        ] = await Promise.all([
-          fetchWithFallback('applications', '*, programs(title), users(nickname, email)', '*').catch(() => ({ data: [], error: null })),
-          fetchWithFallback('mentors', '*, users(nickname, email), mentorship_programs(name)', '*').catch(() => ({ data: [], error: null })),
-          insforge.database
-            .from('users')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(10)
-            .catch(() => ({ data: [], error: null })),
-          fetchWithFallback('groups', '*, users(nickname, email)', '*').catch(() => ({ data: [], error: null })),
-          fetchWithFallback('prayer_requests', '*, users(nickname, email)', '*').catch(() => ({ data: [], error: null }))
-        ]);
+        ] = await Promise.allSettled([
+          fetchWithFallback('applications', '*, programs(title), users(nickname, email)', '*'),
+          fetchWithFallback('mentors', '*, users(nickname, email), mentorship_programs(name)', '*'),
+          fetchRecentUsers(),
+          fetchWithFallback('groups', '*, users(nickname, email)', '*'),
+          fetchWithFallback('prayer_requests', '*, users(nickname, email)', '*')
+        ]).then(results => results.map(r => r.status === 'fulfilled' ? r.value : { data: [], error: null }));
 
         // Combine and sort all recent activity
         const allRecentActivity: any[] = [];
