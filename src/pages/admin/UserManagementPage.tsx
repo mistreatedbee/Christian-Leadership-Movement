@@ -58,103 +58,42 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // First, try to sync emails from auth.users (if function exists)
-      try {
-        await insforge.database.rpc('sync_user_email');
-        console.log('✅ Email sync function called');
-      } catch (syncError: any) {
-        // Function might not exist yet, that's okay
-        if (!syncError.message?.includes('function') && !syncError.message?.includes('does not exist')) {
-          console.warn('Email sync warning:', syncError);
-        }
-      }
-      
-      // Fetch ALL users from users table (including those who just registered)
-      // Use select('*') to get all columns - handles case where email column might not exist
+      // SIMPLIFIED LOGIC: Same as Application Management - fetch all columns including email
+      // Use select('*') to get all columns - RLS policies should allow admins to see email
       const { data: allUsers, error: usersError } = await insforge.database
         .from('users')
         .select('*')
         .order('created_at', { ascending: false });
-      
-      // DEBUG: Log what we actually got from the database
-      if (allUsers && allUsers.length > 0) {
-        console.log('🔍 FIRST USER FROM DATABASE (RAW):', JSON.stringify(allUsers[0], null, 2));
-        console.log('🔍 FIRST USER KEYS:', Object.keys(allUsers[0]));
-        console.log('🔍 FIRST USER EMAIL:', allUsers[0].email);
-        console.log('🔍 FIRST USER EMAIL TYPE:', typeof allUsers[0].email);
-        console.log('🔍 FIRST USER EMAIL === null?', allUsers[0].email === null);
-        console.log('🔍 FIRST USER EMAIL === undefined?', allUsers[0].email === undefined);
-        console.log('🔍 FIRST USER HAS EMAIL KEY?', 'email' in allUsers[0]);
-        console.log('🔍 FIRST USER ALL VALUES:', Object.entries(allUsers[0]));
-        
-        // Check if email column is being filtered by RLS
-        if (!('email' in allUsers[0])) {
-          console.error('❌ EMAIL COLUMN NOT IN RESULT - RLS MAY BE BLOCKING IT!');
-        } else if (allUsers[0].email === null || allUsers[0].email === undefined) {
-          console.warn('⚠️ EMAIL COLUMN EXISTS BUT VALUE IS NULL/UNDEFINED');
-        }
-      }
 
       if (usersError) {
-        console.error('❌ Error fetching users:', usersError);
-        console.error('RLS Error details:', {
-          message: usersError.message,
-          code: usersError.code,
-          details: usersError.details,
-          hint: usersError.hint
-        });
+        console.error('Error fetching users:', usersError);
         throw usersError;
       }
 
-      console.log('✅ Fetched users:', allUsers?.length || 0, 'users');
-      console.log('🔍 Sample user data (first 3):', allUsers?.slice(0, 3).map((u: any) => ({
-        id: u.id,
-        email: u.email,
-        nickname: u.nickname
-      })));
-
-      // Fetch all user profiles
+      // Fetch all user profiles (includes email if saved during registration)
       const { data: profiles, error: profilesError } = await insforge.database
         .from('user_profiles')
         .select('*');
 
       if (profilesError) {
-        console.error('❌ Error fetching profiles:', profilesError);
+        console.error('Error fetching profiles:', profilesError);
         throw profilesError;
       }
 
-      console.log('✅ Fetched profiles:', profiles?.length || 0, 'profiles');
-      console.log('Sample profile:', profiles?.[0]);
-
-      // EMAIL PRIORITY: users.email (from registration) > user_profiles (if it has email) > applications (last resort)
-      // Don't fetch from applications here - it causes 400 errors and emails should be in users table from registration
-      // Only use applications as absolute last resort in handleViewDetails if email is still missing
-
-      // Combine users with their profiles
+      // Combine users with their profiles - EMAIL PRIORITY: users.email > user_profiles.email
+      // This matches the same logic used in Application Management
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
-        // EMAIL PRIORITY: user_profiles.email (from registration) > users.email (fallback)
-        // Email is now saved in user_profiles during registration, so admins can access it with same RLS logic
-        const userEmail = profile?.email || user.email || null;
         
-        // Email should already be in users table from registration
-        // If it's missing, it's a data issue, not something we should fix by syncing from applications
+        // EMAIL: Use users.email first (from registration), then user_profiles.email as fallback
+        // This ensures we get the email that was saved during registration
+        const userEmail = user.email || profile?.email || null;
         
-        // CRITICAL: Log the raw user object to see what fields are actually available
-        if (user.id === allUsers?.[0]?.id) {
-          console.log('🔍 RAW USER OBJECT FROM DATABASE:', user);
-          console.log('🔍 USER OBJECT KEYS:', Object.keys(user));
-          console.log('🔍 USER.EMAIL VALUE:', user.email);
-          console.log('🔍 USER.EMAIL TYPE:', typeof user.email);
-          console.log('🔍 USER.EMAIL === null?', user.email === null);
-          console.log('🔍 USER.EMAIL === undefined?', user.email === undefined);
-        }
-        
-        const userData = {
+        return {
           id: profile?.id || user.id,
           user_id: user.id,
           nickname: user.nickname || null,
-          email: userEmail || user.email || null, // Use user.email directly as fallback
+          email: userEmail, // CRITICAL: Email from users table (registration) or user_profiles
           phone: profile?.phone || null,
           city: profile?.city || null,
           province: profile?.province || null,
@@ -167,29 +106,8 @@ export function UserManagementPage() {
           avatar_url: user.avatar_url || null,
           bio: user.bio || null
         };
-        
-        // Debug log for first user
-        if (user.id === allUsers?.[0]?.id) {
-          console.log('🔍 Sample user data:', {
-            user_id: user.id,
-            raw_user_email: user.email,
-            userEmail_from_map: userEmail,
-            final_email: userData.email,
-            profile_phone: profile?.phone,
-            profile_address: profile?.address,
-            profile_city: profile?.city,
-            profile_province: profile?.province,
-            profile_postal_code: profile?.postal_code,
-            profile_date_of_birth: profile?.date_of_birth,
-            final_userData: userData
-          });
-        }
-        
-        return userData;
       });
 
-      console.log('✅ Combined users data:', usersData.length, 'users');
-      console.log('Sample combined user:', usersData[0]);
       setUsers(usersData);
     } catch (err: any) {
       console.error('Error fetching users:', err);
@@ -1298,21 +1216,8 @@ export function UserManagementPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
-                    <p className="font-medium break-all">
+                    <p className="font-medium break-all text-blue-600">
                       {enrichedUserData?.email || selectedUser.email || 'N/A'}
-                      {!enrichedUserData?.email && !selectedUser.email && (
-                        <span className="text-xs text-red-600 ml-2 block mt-1">
-                          ⚠️ Email not found in database. 
-                          <br />
-                          Debug: userData.email={enrichedUserData?._debug_userDataEmail || 'N/A'}, 
-                          emailFromApps={enrichedUserData?._debug_emailFromApps || 'N/A'},
-                          user.email={selectedUser.email || 'N/A'},
-                          finalEmail={enrichedUserData?._debug_finalEmail || 'N/A'}
-                        </span>
-                      )}
-                      {enrichedUserData?.email && enrichedUserData?._debug_emailFromApps && enrichedUserData?.email === enrichedUserData?._debug_emailFromApps && (
-                        <span className="text-xs text-green-600 ml-2">(from application)</span>
-                      )}
                     </p>
                   </div>
                   <div>
