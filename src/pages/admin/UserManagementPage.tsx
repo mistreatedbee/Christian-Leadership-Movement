@@ -186,6 +186,15 @@ export function UserManagementPage() {
         .not('user_id', 'is', null);
       
       if (appsError) {
+        // Check if error is because email column doesn't exist
+        if (appsError.message?.includes('column') && appsError.message?.includes('email') && appsError.message?.includes('does not exist')) {
+          setMessage({ 
+            type: 'error', 
+            text: 'Email column does not exist in applications table. Please run ADD_EMAIL_TO_APPLICATIONS.sql first, or add the email column manually in InsForge Dashboard: Database > Tables > applications > Add Column (name: email, type: TEXT, nullable: YES)' 
+          });
+          setSyncingEmails(false);
+          return;
+        }
         throw new Error(`Failed to fetch applications: ${appsError.message}`);
       }
       
