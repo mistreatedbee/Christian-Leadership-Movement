@@ -77,12 +77,21 @@ export function UserManagementPage() {
       
       // DEBUG: Log what we actually got from the database
       if (allUsers && allUsers.length > 0) {
-        console.log('🔍 FIRST USER FROM DATABASE:', allUsers[0]);
+        console.log('🔍 FIRST USER FROM DATABASE (RAW):', JSON.stringify(allUsers[0], null, 2));
         console.log('🔍 FIRST USER KEYS:', Object.keys(allUsers[0]));
         console.log('🔍 FIRST USER EMAIL:', allUsers[0].email);
         console.log('🔍 FIRST USER EMAIL TYPE:', typeof allUsers[0].email);
         console.log('🔍 FIRST USER EMAIL === null?', allUsers[0].email === null);
         console.log('🔍 FIRST USER EMAIL === undefined?', allUsers[0].email === undefined);
+        console.log('🔍 FIRST USER HAS EMAIL KEY?', 'email' in allUsers[0]);
+        console.log('🔍 FIRST USER ALL VALUES:', Object.entries(allUsers[0]));
+        
+        // Check if email column is being filtered by RLS
+        if (!('email' in allUsers[0])) {
+          console.error('❌ EMAIL COLUMN NOT IN RESULT - RLS MAY BE BLOCKING IT!');
+        } else if (allUsers[0].email === null || allUsers[0].email === undefined) {
+          console.warn('⚠️ EMAIL COLUMN EXISTS BUT VALUE IS NULL/UNDEFINED');
+        }
       }
 
       if (usersError) {
@@ -343,18 +352,27 @@ export function UserManagementPage() {
         userData = result.data;
         userError = result.error;
         
-        console.log('🔍 User data from users table (individual query):', userData);
+        console.log('🔍 User data from users table (individual query, RAW):', JSON.stringify(userData, null, 2));
         console.log('🔍 Available keys:', userData ? Object.keys(userData) : 'null');
         console.log('🔍 Email field exists?', userData ? ('email' in userData) : false);
         console.log('🔍 Email value:', userData?.email);
         console.log('🔍 Email value type:', typeof userData?.email);
         console.log('🔍 Email === null?', userData?.email === null);
         console.log('🔍 Email === undefined?', userData?.email === undefined);
+        console.log('🔍 User data ALL VALUES:', userData ? Object.entries(userData) : 'null');
+        
+        // Check if email column is being filtered by RLS
+        if (userData && !('email' in userData)) {
+          console.error('❌ EMAIL COLUMN NOT IN INDIVIDUAL QUERY RESULT - RLS MAY BE BLOCKING IT!');
+        } else if (userData && (userData.email === null || userData.email === undefined)) {
+          console.warn('⚠️ EMAIL COLUMN EXISTS IN INDIVIDUAL QUERY BUT VALUE IS NULL/UNDEFINED');
+        }
         
         // Also check the user object from the list
-        console.log('🔍 User object from list:', user);
+        console.log('🔍 User object from list (RAW):', JSON.stringify(user, null, 2));
         console.log('🔍 User.email from list:', user.email);
         console.log('🔍 User object keys:', Object.keys(user));
+        console.log('🔍 User object ALL VALUES:', Object.entries(user));
         
         // If email column doesn't exist, userData.email will be undefined
         // In that case, we'll need to get email from another source
