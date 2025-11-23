@@ -70,24 +70,38 @@ export function PrayerRequestsPage() {
         .single();
 
       // Create notification for admins
-      const { data: admins } = await insforge.database
-        .from('user_profiles')
-        .select('user_id')
-        .in('role', ['admin', 'super_admin']);
+      try {
+        const { data: admins, error: adminError } = await insforge.database
+          .from('user_profiles')
+          .select('user_id')
+          .in('role', ['admin', 'super_admin']);
 
-      if (admins && admins.length > 0 && prayerRequest) {
-        const notifications = admins.map((admin: any) => ({
-          user_id: admin.user_id,
-          type: 'system',
-          title: 'New Prayer Request',
-          message: `A new prayer request "${formData.title}" has been submitted${formData.is_anonymous ? ' (anonymous)' : ''}`,
-          related_id: prayerRequest.id,
-          read: false
-        }));
+        if (adminError) {
+          console.error('Error fetching admins for notification:', adminError);
+        } else if (admins && admins.length > 0 && prayerRequest) {
+          const notifications = admins.map((admin: any) => ({
+            user_id: admin.user_id,
+            type: 'prayer_request',
+            title: 'New Prayer Request',
+            message: `A new prayer request "${formData.title}" has been submitted${formData.is_anonymous ? ' (anonymous)' : ''}. Please review and approve.`,
+            related_id: prayerRequest.id,
+            link_url: '/admin/prayer-requests',
+            read: false
+          }));
 
-        await insforge.database
-          .from('notifications')
-          .insert(notifications);
+          const { error: notifError } = await insforge.database
+            .from('notifications')
+            .insert(notifications);
+
+          if (notifError) {
+            console.error('Error creating admin notifications:', notifError);
+          } else {
+            console.log(`✅ Notifications sent to ${admins.length} admins for prayer request: ${formData.title}`);
+          }
+        }
+      } catch (notifErr) {
+        console.error('Error sending admin notifications:', notifErr);
+        // Don't fail the prayer request submission if notification fails
       }
 
       setFormData({ title: '', request: '', is_public: true, is_anonymous: false });

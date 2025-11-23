@@ -19,6 +19,9 @@ export function TopNav() {
     if (user && isLoaded) {
       checkAdminAccess(user.id).then(setIsAdmin);
       fetchUnreadNotifications();
+      // Refresh notifications every 30 seconds
+      const interval = setInterval(fetchUnreadNotifications, 30000);
+      return () => clearInterval(interval);
     } else {
       setIsAdmin(false);
       setUnreadNotifications(0);
@@ -35,8 +38,14 @@ export function TopNav() {
         .eq('user_id', user.id)
         .eq('read', false);
 
-      if (!error && data) {
+      if (error) {
+        console.error('Error fetching notifications:', error);
+        return;
+      }
+
+      if (data) {
         setUnreadNotifications(data.length);
+        console.log(`📬 Unread notifications: ${data.length}`);
       }
     } catch (err) {
       console.error('Error fetching notifications:', err);

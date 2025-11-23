@@ -124,6 +124,7 @@ export function PrayerRequestsManagementPage() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
           >
             <option value="all">All Status</option>
+            <option value="pending">Pending Review</option>
             <option value="active">Active</option>
             <option value="answered">Answered</option>
             <option value="archived">Archived</option>
@@ -154,6 +155,7 @@ export function PrayerRequestsManagementPage() {
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       request.status === 'active' ? 'bg-green-100 text-green-800' :
                       request.status === 'answered' ? 'bg-blue-100 text-blue-800' :
+                      request.status === 'pending' ? 'bg-amber-100 text-amber-800' :
                       'bg-gray-100 text-gray-800'
                     }`}>
                       {request.status}
@@ -170,7 +172,17 @@ export function PrayerRequestsManagementPage() {
                   </td>
                   <td className="py-4 px-6">
                     <div className="flex gap-2">
-                      {request.status !== 'answered' && (
+                      {request.status === 'pending' && (
+                        <Button
+                          onClick={() => updateStatus(request.id, 'active')}
+                          variant="primary"
+                          size="sm"
+                          title="Approve & Activate"
+                        >
+                          <Check className="w-4 h-4" />
+                        </Button>
+                      )}
+                      {request.status !== 'answered' && request.status !== 'pending' && (
                         <Button
                           onClick={() => updateStatus(request.id, 'answered')}
                           variant="outline"

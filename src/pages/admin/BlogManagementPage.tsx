@@ -234,18 +234,33 @@ export function BlogManagementPage() {
 
       // Insert notifications in batches to avoid overwhelming the database
       const batchSize = 100;
+      let totalInserted = 0;
       for (let i = 0; i < notifications.length; i += batchSize) {
         const batch = notifications.slice(i, i + batchSize);
-        const { error: notifError } = await insforge.database
+        const { data: inserted, error: notifError } = await insforge.database
           .from('notifications')
-          .insert(batch);
+          .insert(batch)
+          .select();
 
         if (notifError) {
-          console.error(`Error creating notifications batch ${i / batchSize + 1}:`, notifError);
+          console.error(`❌ Error creating notifications batch ${i / batchSize + 1}:`, notifError);
+          console.error('❌ Batch details:', {
+            batchSize: batch.length,
+            startIndex: i,
+            error: notifError.message,
+            code: notifError.code
+          });
+        } else {
+          totalInserted += inserted?.length || 0;
+          console.log(`✅ Inserted batch ${i / batchSize + 1}: ${inserted?.length || 0} notifications`);
         }
       }
 
-      console.log(`✅ Notifications sent to ${allUsers.length} users for post: ${post.title}`);
+      console.log(`✅ Total notifications sent: ${totalInserted} out of ${allUsers.length} users for post: ${post.title}`);
+      
+      if (totalInserted === 0) {
+        console.warn('⚠️ No notifications were inserted. Check RLS policies on notifications table.');
+      }
     } catch (error) {
       console.error('Error sending notifications:', error);
       // Don't throw - notification failure shouldn't prevent post from being saved
