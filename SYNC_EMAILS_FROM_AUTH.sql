@@ -1,9 +1,30 @@
 -- Sync emails to public.users table
 -- This script works with InsForge's auth system
--- Note: InsForge may not expose auth.users directly, so we'll use alternative methods
+-- First, ensure the applications table has an email column
 
 -- =====================================================
--- METHOD 1: Sync emails from applications table
+-- STEP 1: Add email column to applications table if it doesn't exist
+-- =====================================================
+
+DO $$
+BEGIN
+  -- Check if email column exists, if not add it
+  IF NOT EXISTS (
+    SELECT 1 
+    FROM information_schema.columns 
+    WHERE table_schema = 'public' 
+      AND table_name = 'applications' 
+      AND column_name = 'email'
+  ) THEN
+    ALTER TABLE public.applications ADD COLUMN email TEXT;
+    RAISE NOTICE 'Added email column to applications table';
+  ELSE
+    RAISE NOTICE 'Email column already exists in applications table';
+  END IF;
+END $$;
+
+-- =====================================================
+-- STEP 2: Sync emails from applications table
 -- =====================================================
 
 -- Create a function to sync emails from applications to users table
@@ -36,7 +57,7 @@ END;
 $$;
 
 -- =====================================================
--- METHOD 2: Admin function to sync all emails
+-- STEP 3: Admin function to sync all emails
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.admin_sync_all_emails()
@@ -83,7 +104,7 @@ END;
 $$;
 
 -- =====================================================
--- METHOD 3: Trigger to auto-sync email on user insert
+-- STEP 4: Trigger to auto-sync email on user insert
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.sync_email_on_user_insert()
@@ -116,7 +137,7 @@ CREATE TRIGGER sync_email_on_user_insert_trigger
   EXECUTE FUNCTION public.sync_email_on_user_insert();
 
 -- =====================================================
--- METHOD 4: Function to get email for a specific user
+-- STEP 5: Function to get email for a specific user
 -- =====================================================
 
 CREATE OR REPLACE FUNCTION public.get_user_email(user_uuid UUID)
