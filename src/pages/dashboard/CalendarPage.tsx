@@ -10,7 +10,7 @@ interface CalendarEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'event' | 'study' | 'class' | 'meeting' | 'course';
+  type: 'event' | 'study' | 'class' | 'meeting' | 'course' | 'quiz';
   location?: string | null;
   is_online?: boolean;
   online_link?: string | null;
@@ -153,7 +153,7 @@ export function CalendarPage() {
       try {
         const { data: lessonsData } = await insforge.database
           .from('course_lessons')
-          .select('id, title, scheduled_date, courses(id, title)')
+          .select('id, title, scheduled_date, meeting_link, courses(id, title)')
           .not('scheduled_date', 'is', null)
           .gte('scheduled_date', startDate)
           .lte('scheduled_date', endDate);
@@ -165,12 +165,39 @@ export function CalendarPage() {
               title: `${lesson.courses?.title || 'Course'}: ${lesson.title}`,
               date: new Date(lesson.scheduled_date),
               type: 'course',
-              link: `/courses/${lesson.courses?.id}`
+              is_online: !!lesson.meeting_link,
+              online_link: lesson.meeting_link,
+              link: `/dashboard/courses/${lesson.courses?.id}/lessons/${lesson.id}`
             });
           }
         });
       } catch (err) {
         console.error('Error fetching course lessons:', err);
+      }
+
+      // Fetch active quizzes (if they have due dates or are scheduled)
+      try {
+        const { data: quizzesData } = await insforge.database
+          .from('quizzes')
+          .select('id, title, created_at, course_id, program_id, bible_school_context')
+          .eq('is_active', true)
+          .gte('created_at', startDate)
+          .lte('created_at', endDate);
+
+        quizzesData?.forEach((quiz: any) => {
+          // Show quizzes created in this month as upcoming assessments
+          allEvents.push({
+            id: quiz.id,
+            title: `Quiz: ${quiz.title}`,
+            date: new Date(quiz.created_at),
+            type: 'quiz' as any,
+            link: quiz.course_id 
+              ? `/dashboard/courses/${quiz.course_id}/quizzes/${quiz.id}/take`
+              : '/dashboard/courses'
+          });
+        });
+      } catch (err) {
+        console.error('Error fetching quizzes:', err);
       }
 
       // Sort events by date
@@ -238,6 +265,8 @@ export function CalendarPage() {
         return <Video size={14} className="text-orange-500" />;
       case 'course':
         return <FileText size={14} className="text-teal-500" />;
+      case 'quiz':
+        return <FileText size={14} className="text-red-500" />;
       default:
         return <Calendar size={14} />;
     }
@@ -255,6 +284,8 @@ export function CalendarPage() {
         return 'bg-orange-100 text-orange-800 border-orange-200';
       case 'course':
         return 'bg-teal-100 text-teal-800 border-teal-200';
+      case 'quiz':
+        return 'bg-red-100 text-red-800 border-red-200';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }

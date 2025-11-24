@@ -7,11 +7,12 @@ interface CalendarEvent {
   id: string;
   title: string;
   date: Date;
-  type: 'event' | 'study' | 'class' | 'meeting' | 'course';
+  type: 'event' | 'study' | 'class' | 'meeting' | 'course' | 'quiz';
   location?: string | null;
   is_online?: boolean;
   online_link?: string | null;
   link?: string;
+  description?: string | null;
 }
 
 export function CalendarSection() {
@@ -90,7 +91,7 @@ export function CalendarSection() {
       try {
         const { data: classesData } = await insforge.database
           .from('bible_school_classes')
-          .select('id, title, scheduled_date, location, is_online, meeting_link')
+          .select('id, title, scheduled_date, location, is_online, meeting_link, description')
           .eq('status', 'scheduled')
           .gte('scheduled_date', startDate)
           .lte('scheduled_date', endDate)
@@ -106,6 +107,7 @@ export function CalendarSection() {
               location: classItem.location,
               is_online: classItem.is_online,
               online_link: classItem.meeting_link,
+              description: classItem.description,
               link: '/bible-school'
             });
           }
@@ -114,6 +116,89 @@ export function CalendarSection() {
         console.error('Error fetching Bible classes:', err);
       }
 
+      // Fetch Bible meetings
+      try {
+        const { data: meetingsData } = await insforge.database
+          .from('bible_school_meetings')
+          .select('id, title, scheduled_date, location, is_online, meeting_link, description')
+          .eq('status', 'scheduled')
+          .gte('scheduled_date', startDate)
+          .lte('scheduled_date', endDate)
+          .limit(5);
+
+        meetingsData?.forEach((meeting: any) => {
+          if (meeting.scheduled_date) {
+            allEvents.push({
+              id: meeting.id,
+              title: meeting.title,
+              date: new Date(meeting.scheduled_date),
+              type: 'meeting',
+              location: meeting.location,
+              is_online: meeting.is_online,
+              online_link: meeting.meeting_link,
+              description: meeting.description,
+              link: '/bible-school'
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Error fetching Bible meetings:', err);
+      }
+
+      // Fetch courses (if they have scheduled lessons)
+      try {
+        const { data: lessonsData } = await insforge.database
+          .from('course_lessons')
+          .select('id, title, scheduled_date, meeting_link, courses(id, title)')
+          .not('scheduled_date', 'is', null)
+          .gte('scheduled_date', startDate)
+          .lte('scheduled_date', endDate)
+          .limit(5);
+
+        lessonsData?.forEach((lesson: any) => {
+          if (lesson.scheduled_date) {
+            allEvents.push({
+              id: lesson.id,
+              title: `${lesson.courses?.title || 'Course'}: ${lesson.title}`,
+              date: new Date(lesson.scheduled_date),
+              type: 'course',
+              is_online: !!lesson.meeting_link,
+              online_link: lesson.meeting_link,
+              link: `/courses/${lesson.courses?.id}`
+            });
+          }
+        });
+      } catch (err) {
+        console.error('Error fetching course lessons:', err);
+      }
+
+      // Fetch active quizzes
+      try {
+        const { data: quizzesData } = await insforge.database
+          .from('quizzes')
+          .select('id, title, created_at, course_id')
+          .eq('is_active', true)
+          .gte('created_at', startDate)
+          .lte('created_at', endDate)
+          .limit(5);
+
+        quizzesData?.forEach((quiz: any) => {
+          allEvents.push({
+            id: quiz.id,
+            title: `Quiz: ${quiz.title}`,
+            date: new Date(quiz.created_at),
+            type: 'quiz',
+            link: quiz.course_id 
+              ? `/dashboard/courses/${quiz.course_id}/quizzes/${quiz.id}/take`
+              : '/dashboard/courses'
+          });
+        });
+      } catch (err) {
+        console.error('Error fetching quizzes:', err);
+      }
+
+      // Sort events by date
+      allEvents.sort((a, b) => a.date.getTime() - b.date.getTime());
       setEvents(allEvents);
     } catch (error) {
       console.error('Error fetching calendar events:', error);
@@ -157,6 +242,7 @@ export function CalendarSection() {
       case 'class': return 'bg-green-500';
       case 'meeting': return 'bg-amber-500';
       case 'course': return 'bg-indigo-500';
+      case 'quiz': return 'bg-red-500';
       default: return 'bg-gray-500';
     }
   };
@@ -168,6 +254,7 @@ export function CalendarSection() {
       case 'class': return 'Class';
       case 'meeting': return 'Meeting';
       case 'course': return 'Course';
+      case 'quiz': return 'Quiz';
       default: return 'Event';
     }
   };
