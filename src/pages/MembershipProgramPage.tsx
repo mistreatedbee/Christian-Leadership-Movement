@@ -69,6 +69,83 @@ export function MembershipProgramPage() {
     }
   };
 
+  const fetchResources = async () => {
+    try {
+      const { data, error } = await insforge.database
+        .from('membership_resources')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setResources(data || []);
+    } catch (err) {
+      console.error('Error fetching membership resources:', err);
+    }
+  };
+
+  const fetchQuizzes = async () => {
+    try {
+      if (!program) return;
+      
+      const { data, error } = await insforge.database
+        .from('quizzes')
+        .select('*')
+        .eq('quiz_type', 'program')
+        .eq('program_id', program.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setQuizzes(data || []);
+    } catch (err) {
+      console.error('Error fetching quizzes:', err);
+    }
+  };
+
+  const handleDownloadResource = async (resource: any) => {
+    try {
+      let downloadUrl: string | null = null;
+
+      if (resource.external_link && resource.external_link.trim() !== '') {
+        downloadUrl = resource.external_link.trim();
+      } else if (resource.file_url && resource.file_url.trim() !== '') {
+        const fileUrl = resource.file_url.trim();
+        if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+          downloadUrl = fileUrl;
+        } else {
+          const fileKey = (resource.file_key && resource.file_key.trim() !== '') 
+            ? resource.file_key.trim() 
+            : fileUrl;
+          
+          if (fileKey) {
+            downloadUrl = getStorageUrl('resources', fileKey);
+          }
+        }
+      }
+
+      if (!downloadUrl) {
+        alert(`Download URL not available for "${resource.title}". Please ensure a file is uploaded or an external link is provided.`);
+        return;
+      }
+
+      // Increment download count
+      try {
+        await insforge.database
+          .from('membership_resources')
+          .update({ download_count: (resource.download_count || 0) + 1 })
+          .eq('id', resource.id);
+      } catch (err) {
+        console.error('Error updating download count:', err);
+      }
+
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading resource:', error);
+      alert('Failed to download resource. Please try again.');
+    }
+  };
+
   const handleApply = () => {
     if (!user) {
       navigate('/login?redirect=/apply?type=membership');

@@ -101,9 +101,30 @@ export function BibleSchoolPage() {
           .select('*')
           .order('created_at', { ascending: false });
         
-        // Non-admins only see public resources
+        // Check if user has paid Bible School application
+        let hasBibleSchoolAccess = false;
+        if (user && !isAdmin) {
+          const { data: bibleSchoolApp } = await insforge.database
+            .from('applications')
+            .select('id')
+            .eq('user_id', user.id)
+            .eq('program_type', 'bible_school')
+            .eq('status', 'approved')
+            .eq('payment_status', 'confirmed')
+            .maybeSingle();
+          
+          hasBibleSchoolAccess = !!bibleSchoolApp;
+        }
+        
+        // Non-admins only see public resources OR if they have paid access
         if (!isAdmin) {
-          query = query.eq('is_public', true);
+          if (hasBibleSchoolAccess) {
+            // Users with paid access see all resources (public and private)
+            // No filter needed
+          } else {
+            // Users without paid access only see public resources
+            query = query.eq('is_public', true);
+          }
         }
         
         const { data } = await query;

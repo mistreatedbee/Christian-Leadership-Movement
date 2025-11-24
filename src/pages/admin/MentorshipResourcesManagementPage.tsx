@@ -466,7 +466,7 @@ export function MentorshipResourcesManagementPage() {
                 </label>
                 <input
                   type="file"
-                  accept={watch('resource_type') === 'video' ? 'video/*' : watch('resource_type') === 'audio' ? 'audio/*' : 'application/pdf,.doc,.docx,.txt'}
+                  accept={watch('resource_type') === 'video' ? 'video/*' : watch('resource_type') === 'audio' ? 'audio/*' : 'application/pdf,.doc,.docx,.txt,.pptx,.ppt,.xlsx,.xls,.zip'}
                   onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                 />

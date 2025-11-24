@@ -116,6 +116,11 @@ export function BibleSchoolManagementPage() {
     fetchData();
   }, [activeTab]);
 
+  // Also fetch when component mounts
+  useEffect(() => {
+    fetchData();
+  }, []);
+
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -819,7 +824,7 @@ export function BibleSchoolManagementPage() {
                       type="file"
                       onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                      accept=".pdf,.doc,.docx,.txt,.mp4,.mp3,.avi,.mov,.wav,.zip,.jpg,.jpeg,.png,.gif"
+                      accept=".pdf,.doc,.docx,.txt,.pptx,.ppt,.xlsx,.xls,.mp4,.mp3,.avi,.mov,.wav,.zip,.jpg,.jpeg,.png,.gif"
                     />
                     {editingItem?.file_url && (
                       <p className="text-sm text-gray-600 mt-1">

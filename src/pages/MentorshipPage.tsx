@@ -141,10 +141,62 @@ export function MentorshipPage() {
         
         setQuizzes(quizzesData || []);
       }
+
+      // Fetch mentorship resources
+      const { data: resourcesData } = await insforge.database
+        .from('mentorship_resources')
+        .select('*')
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false });
+      
+      setResources(resourcesData || []);
     } catch (error) {
       console.error('Error fetching mentorship data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadResource = async (resource: any) => {
+    try {
+      let downloadUrl: string | null = null;
+
+      if (resource.external_link && resource.external_link.trim() !== '') {
+        downloadUrl = resource.external_link.trim();
+      } else if (resource.file_url && resource.file_url.trim() !== '') {
+        const fileUrl = resource.file_url.trim();
+        if (fileUrl.startsWith('http://') || fileUrl.startsWith('https://')) {
+          downloadUrl = fileUrl;
+        } else {
+          const fileKey = (resource.file_key && resource.file_key.trim() !== '') 
+            ? resource.file_key.trim() 
+            : fileUrl;
+          
+          if (fileKey) {
+            downloadUrl = getStorageUrl('resources', fileKey);
+          }
+        }
+      }
+
+      if (!downloadUrl) {
+        alert(`Download URL not available for "${resource.title}". Please ensure a file is uploaded or an external link is provided.`);
+        return;
+      }
+
+      // Increment download count
+      try {
+        await insforge.database
+          .from('mentorship_resources')
+          .update({ download_count: (resource.download_count || 0) + 1 })
+          .eq('id', resource.id);
+      } catch (err) {
+        console.error('Error updating download count:', err);
+      }
+
+      window.open(downloadUrl, '_blank');
+    } catch (error) {
+      console.error('Error downloading resource:', error);
+      alert('Failed to download resource. Please try again.');
     }
   };
 
@@ -619,6 +671,50 @@ export function MentorshipPage() {
                       Take Quiz <ArrowRight className="ml-2" size={16} />
                     </Button>
                   </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mentorship Resources Section */}
+      {resources.length > 0 && (
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-card shadow-soft p-8 mb-8">
+            <h2 className="text-3xl font-bold text-navy-ink mb-6 flex items-center gap-2">
+              <FileText className="w-8 h-8 text-gold" />
+              Mentorship Resources
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Access valuable resources to support your mentorship journey.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {resources.map(resource => (
+                <div key={resource.id} className="bg-muted-gray p-4 rounded-lg shadow-sm">
+                  <h3 className="font-semibold text-navy-ink mb-2">{resource.title}</h3>
+                  <p className="text-sm text-gray-600 mb-3">{resource.description}</p>
+                  <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 mb-3">
+                    <span className="px-2 py-1 bg-gray-100 rounded">{resource.resource_type}</span>
+                    {resource.is_featured && (
+                      <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Featured</span>
+                    )}
+                    <span className={`px-2 py-1 rounded ${
+                      resource.is_public ? 'bg-green-100 text-green-800' : 'bg-orange-100 text-orange-800'
+                    }`}>
+                      {resource.is_public ? 'Public' : 'Private'}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleDownloadResource(resource)}
+                    disabled={!resource.file_url && !resource.external_link}
+                    className="w-full"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download
+                  </Button>
                 </div>
               ))}
             </div>

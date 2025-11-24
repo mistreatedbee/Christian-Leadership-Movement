@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate, Outlet } from 'react-router-dom';
-import { Home, User, BookOpen, Calendar, Award, FileText, Settings, LogOut, Menu, X, Bell, Mail, Users, CheckSquare, Shield } from 'lucide-react';
+import { Home, User, BookOpen, Calendar, Award, FileText, Settings, LogOut, Menu, X, Bell, Mail, Users, CheckSquare, Shield, UserCheck } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { useAuth } from '@insforge/react';
 
@@ -35,6 +35,14 @@ export function DashboardLayout() {
     icon: BookOpen,
     label: 'Bible School',
     path: '/bible-school'
+  }, {
+    icon: Users,
+    label: 'Membership',
+    path: '/membership'
+  }, {
+    icon: UserCheck,
+    label: 'Mentorship',
+    path: '/mentorship'
   }, {
     icon: Calendar,
     label: 'Calendar',

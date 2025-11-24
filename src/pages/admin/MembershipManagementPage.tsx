@@ -394,7 +394,7 @@ export function MembershipManagementPage() {
                 </label>
                 <input
                   type="file"
-                  accept={watch('resource_type') === 'video' ? 'video/*' : watch('resource_type') === 'audio' ? 'audio/*' : 'application/pdf,.doc,.docx,.txt'}
+                  accept={watch('resource_type') === 'video' ? 'video/*' : watch('resource_type') === 'audio' ? 'audio/*' : 'application/pdf,.doc,.docx,.txt,.pptx,.ppt,.xlsx,.xls,.zip'}
                   onChange={(e) => setResourceFile(e.target.files?.[0] || null)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                 />
@@ -403,6 +403,9 @@ export function MembershipManagementPage() {
                     Current file: <a href={editingResource.file_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a>
                   </p>
                 )}
+                <p className="text-xs text-gray-500 mt-1">
+                  Supported: PDF, DOC, DOCX, TXT, PPTX, PPT (slides), XLSX, XLS (spreadsheets), ZIP, videos, audio, images
+                </p>
               </div>
 
               <div>
