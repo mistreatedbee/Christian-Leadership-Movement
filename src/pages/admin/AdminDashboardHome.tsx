@@ -80,15 +80,26 @@ export function AdminDashboardHome() {
         const prayerRequestsResData = getResult(prayerRequestsRes);
         const pendingGroupsResData = getResult(pendingGroupsRes);
 
+        const pendingCount = pendingAppsResData?.count || 0;
+        const bibleSchoolCount = bibleSchoolAppsResData?.count || 0;
+        const membershipCount = membershipAppsResData?.count || 0;
+        
+        console.log(`📊 Admin Dashboard Stats:`, {
+          pendingApplications: pendingCount,
+          bibleSchoolApplications: bibleSchoolCount,
+          membershipApplications: membershipCount,
+          totalApplications: allApplicationsResData?.count || 0
+        });
+        
         setStats({
           totalUsers: usersResData?.count || 0,
-          pendingApplications: pendingAppsResData?.count || 0,
+          pendingApplications: pendingCount,
           activeCourses: coursesResData?.count || 0,
           upcomingEvents: eventsResData?.count || 0,
           totalDonations: donationsResData?.data?.reduce((sum: number, d: any) => sum + parseFloat(d.amount || 0), 0) || 0,
           totalPayments: paymentsResData?.data?.reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0) || 0,
-          bibleSchoolApplications: bibleSchoolAppsResData?.count || 0,
-          membershipApplications: membershipAppsResData?.count || 0,
+          bibleSchoolApplications: bibleSchoolCount,
+          membershipApplications: membershipCount,
           pendingMentors: pendingMentorsResData?.count || 0,
           pendingPrayerRequests: prayerRequestsResData?.count || 0,
           pendingGroups: pendingGroupsResData?.count || 0
@@ -149,9 +160,8 @@ export function AdminDashboardHome() {
           recentGroups,
           recentPrayerRequests
         ] = await Promise.allSettled([
-          // Don't join with users.email - email column doesn't exist in users table
-          // Email is in user_profiles table instead
-          fetchWithFallback('applications', '*, programs(title), users(nickname)', '*'),
+          // Fetch applications with form_data - don't join with users table as it might cause issues
+          fetchWithFallback('applications', '*, form_data', '*'),
           fetchWithFallback('mentors', '*, users(nickname), mentorship_programs(name)', '*'),
           fetchRecentUsers(),
           fetchWithFallback('groups', '*, users(nickname)', '*'),
@@ -161,22 +171,27 @@ export function AdminDashboardHome() {
         // Combine and sort all recent activity
         const allRecentActivity: any[] = [];
 
-        // Add regular applications
+        // Add regular applications - read from form_data if columns don't exist
         if (recentApps?.data && Array.isArray(recentApps.data)) {
           recentApps.data.forEach((app: any) => {
+            const formData = app.form_data || {};
+            const fullName = app.full_name || formData.fullName || formData.firstName + ' ' + formData.lastName || app.users?.nickname || 'Unknown';
+            const email = app.email || formData.email || app.users?.email || '';
+            const phone = app.phone || app.contact_number || formData.contactNumber || formData.phone || '';
+            
             allRecentActivity.push({
               id: app.id,
               type: 'application',
-              name: app.full_name || app.users?.nickname || app.users?.email || 'Unknown',
-              email: app.email || app.users?.email,
-              phone: app.phone || app.contact_number,
-              program: app.programs?.title || app.program_type,
+              name: fullName,
+              email: email,
+              phone: phone,
+              program: app.programs?.title || app.program_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Application',
               programType: app.program_type,
               date: app.created_at,
               status: app.status,
               paymentStatus: app.payment_status,
-              idNumber: app.id_number,
-              address: app.physical_address || app.address,
+              idNumber: app.id_number || formData.idNumber,
+              address: app.physical_address || app.address || formData.physicalAddress,
               userId: app.user_id
             });
           });

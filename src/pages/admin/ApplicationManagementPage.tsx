@@ -62,9 +62,10 @@ export function ApplicationManagementPage() {
   const fetchApplications = async () => {
     setLoading(true);
     try {
+      // Fetch all applications - admins should see all
       let query = insforge.database
         .from('applications')
-        .select('*, programs(title), form_data')
+        .select('*, form_data')
         .order('created_at', { ascending: false });
 
       if (filterStatus !== 'all') {
@@ -72,7 +73,35 @@ export function ApplicationManagementPage() {
       }
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching applications:', error);
+        // Try without form_data if that's causing issues
+        const fallbackQuery = insforge.database
+          .from('applications')
+          .select('*')
+          .order('created_at', { ascending: false });
+        
+        const { data: fallbackData, error: fallbackError } = await fallbackQuery;
+        if (fallbackError) {
+          console.error('Fallback query also failed:', fallbackError);
+          throw fallbackError;
+        }
+        
+        // Use fallback data
+        const filteredData = fallbackData || [];
+        setApplications(filteredData);
+        setStats(prev => ({
+          ...prev,
+          pending: filteredData.filter((a: any) => a.status === 'pending').length || 0,
+          approved: filteredData.filter((a: any) => a.status === 'approved').length || 0,
+          rejected: filteredData.filter((a: any) => a.status === 'rejected').length || 0,
+          total: filteredData.length,
+          bibleSchool: filteredData.filter((a: any) => a.program_type === 'bible_school').length || 0,
+          membership: filteredData.filter((a: any) => a.program_type === 'membership').length || 0
+        }));
+        setLoading(false);
+        return;
+      }
 
       let filteredData = data || [];
 
@@ -108,8 +137,27 @@ export function ApplicationManagementPage() {
         bibleSchool,
         membership
       }));
-    } catch (err) {
-      console.error('Error fetching applications:', err);
+      
+      console.log(`✅ Fetched ${allData.length} applications (${pending} pending, ${bibleSchool} Bible School, ${membership} Membership)`);
+    } catch (err: any) {
+      console.error('❌ Error fetching applications:', err);
+      console.error('Error details:', {
+        message: err.message,
+        code: err.code,
+        details: err.details,
+        hint: err.hint
+      });
+      // Set empty array on error to prevent UI issues
+      setApplications([]);
+      setStats(prev => ({
+        ...prev,
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        total: 0,
+        bibleSchool: 0,
+        membership: 0
+      }));
     } finally {
       setLoading(false);
     }
