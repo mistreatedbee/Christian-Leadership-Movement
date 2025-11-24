@@ -760,77 +760,78 @@ export function ApplicationManagementPage() {
                     const fullName = app.full_name || app.form_data?.fullName || app.form_data?.firstName + ' ' + app.form_data?.lastName || 'Unknown';
                     const email = app.email || app.form_data?.email || 'N/A';
                     return (
-                    <tr key={app.id} className="hover:bg-muted-gray/50">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
-                            {fullName.charAt(0).toUpperCase() || 'A'}
-                      </div>
-                      <div>
-                        <p className="font-medium text-navy-ink">
-                              {fullName}
-                        </p>
-                        <p className="text-sm text-gray-600">{email}</p>
-                      </div>
-                    </div>
-                  </td>
-                      <td className="px-6 py-4 text-gray-600">
-                        {app.programs?.title || app.program_type}
-                      </td>
-                  <td className="px-6 py-4 text-gray-600">
-                        {new Date(app.created_at).toLocaleDateString()}
-                  </td>
-                  <td className="px-6 py-4">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          app.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                          app.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                          'bg-red-100 text-red-800'
-                        }`}>
-                          {app.payment_status}
-                        </span>
-                  </td>
-                  <td className="px-6 py-4">{getStatusBadge(app.status)}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex space-x-2">
-                          <button
-                            onClick={() => exportToPDF(app)}
-                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-card"
-                            title="Download PDF"
-                          >
-                            <FileText size={18} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              setSelectedApplication(app);
-                              setShowDetailsModal(true);
-                            }}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
-                            title="View Details"
-                          >
-                            <Eye size={18} />
-                          </button>
-                          {app.status === 'pending' && (
-                            <>
-                              <button
-                                onClick={() => handleStatusChange(app.id, 'approved')}
-                                className="p-2 text-green-600 hover:bg-green-50 rounded-card"
-                                title="Approve"
-                              >
-                                <CheckCircle size={18} />
-                              </button>
-                              <button
-                                onClick={() => handleStatusChange(app.id, 'rejected')}
-                                className="p-2 text-red-600 hover:bg-red-50 rounded-card"
-                                title="Reject"
-                              >
-                                <XCircle size={18} />
-                              </button>
-                            </>
-                          )}
-                    </div>
-                  </td>
-                    </tr>
-                  ))
+                      <tr key={app.id} className="hover:bg-muted-gray/50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center">
+                            <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
+                              {fullName.charAt(0).toUpperCase() || 'A'}
+                            </div>
+                            <div>
+                              <p className="font-medium text-navy-ink">
+                                {fullName}
+                              </p>
+                              <p className="text-sm text-gray-600">{email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {app.programs?.title || app.program_type}
+                        </td>
+                        <td className="px-6 py-4 text-gray-600">
+                          {new Date(app.created_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            app.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                            app.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {app.payment_status}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4">{getStatusBadge(app.status)}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex space-x-2">
+                            <button
+                              onClick={() => exportToPDF(app)}
+                              className="p-2 text-purple-600 hover:bg-purple-50 rounded-card"
+                              title="Download PDF"
+                            >
+                              <FileText size={18} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedApplication(app);
+                                setShowDetailsModal(true);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
+                              title="View Details"
+                            >
+                              <Eye size={18} />
+                            </button>
+                            {app.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => handleStatusChange(app.id, 'approved')}
+                                  className="p-2 text-green-600 hover:bg-green-50 rounded-card"
+                                  title="Approve"
+                                >
+                                  <CheckCircle size={18} />
+                                </button>
+                                <button
+                                  onClick={() => handleStatusChange(app.id, 'rejected')}
+                                  className="p-2 text-red-600 hover:bg-red-50 rounded-card"
+                                  title="Reject"
+                                >
+                                  <XCircle size={18} />
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  }))
               )}
             </tbody>
           </table>
