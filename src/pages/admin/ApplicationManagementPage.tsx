@@ -1025,12 +1025,12 @@ export function ApplicationManagementPage() {
                   )}
                   <div>
                     <p className="text-sm text-gray-600">ID Number</p>
-                    <p className="font-medium">{selectedApplication.id_number || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.id_number || selectedApplication.form_data?.idNumber || selectedApplication.form_data?.['Id Number'] || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'membership' && (
                     <div>
                       <p className="text-sm text-gray-600">Nationality</p>
-                      <p className="font-medium">{selectedApplication.nationality || 'N/A'}</p>
+                      <p className="font-medium">{selectedApplication.nationality || selectedApplication.form_data?.nationality || 'N/A'}</p>
                     </div>
                   )}
                   <div>
@@ -1039,64 +1039,70 @@ export function ApplicationManagementPage() {
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone / Contact Number</p>
-                    <p className="font-medium">{selectedApplication.phone || selectedApplication.contact_number || selectedApplication.contactNumber || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.phone || selectedApplication.contact_number || selectedApplication.form_data?.contactNumber || selectedApplication.form_data?.['Contact Number'] || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'bible_school' && (
                     <div>
                       <p className="text-sm text-gray-600">Contact Number (Bible School)</p>
-                      <p className="font-medium">{selectedApplication.contact_number || selectedApplication.contactNumber || 'N/A'}</p>
+                      <p className="font-medium">{selectedApplication.contact_number || selectedApplication.form_data?.contactNumber || selectedApplication.form_data?.['Contact Number'] || 'N/A'}</p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Date of Birth</p>
-                    <p className="font-medium">{selectedApplication.date_of_birth ? new Date(selectedApplication.date_of_birth).toLocaleDateString() : 'N/A'}</p>
+                    <p className="font-medium">
+                      {selectedApplication.date_of_birth 
+                        ? new Date(selectedApplication.date_of_birth).toLocaleDateString() 
+                        : selectedApplication.form_data?.dateOfBirth 
+                        ? new Date(selectedApplication.form_data.dateOfBirth).toLocaleDateString()
+                        : 'N/A'}
+                    </p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Gender</p>
-                    <p className="font-medium">{selectedApplication.gender || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.gender || selectedApplication.form_data?.gender || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'bible_school' && (
                     <div>
                       <p className="text-sm text-gray-600">Marital Status</p>
-                      <p className="font-medium">{selectedApplication.marital_status || 'N/A'}</p>
+                      <p className="font-medium">{selectedApplication.marital_status || selectedApplication.form_data?.maritalStatus || 'N/A'}</p>
                     </div>
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Province</p>
-                    <p className="font-medium">{selectedApplication.province || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.province || selectedApplication.form_data?.province || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">City</p>
-                    <p className="font-medium">{selectedApplication.city || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.city || selectedApplication.form_data?.city || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'membership' && (
                     <>
                       <div>
                         <p className="text-sm text-gray-600">Postal Code</p>
-                        <p className="font-medium">{selectedApplication.postal_code || 'N/A'}</p>
+                        <p className="font-medium">{selectedApplication.postal_code || selectedApplication.form_data?.postalCode || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Residential Status</p>
-                        <p className="font-medium">{selectedApplication.residential_status || 'N/A'}</p>
+                        <p className="font-medium">{selectedApplication.residential_status || selectedApplication.form_data?.residentialStatus || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Home Language</p>
-                        <p className="font-medium">{selectedApplication.home_language || 'N/A'}</p>
+                        <p className="font-medium">{selectedApplication.home_language || selectedApplication.form_data?.homeLanguage || 'N/A'}</p>
                       </div>
                       <div>
                         <p className="text-sm text-gray-600">Population Group</p>
-                        <p className="font-medium">{selectedApplication.population_group || 'N/A'}</p>
+                        <p className="font-medium">{selectedApplication.population_group || selectedApplication.form_data?.populationGroup || 'N/A'}</p>
                       </div>
                     </>
                   )}
                   <div className="col-span-2">
                     <p className="text-sm text-gray-600">Physical Address</p>
-                    <p className="font-medium">{selectedApplication.physical_address || selectedApplication.address || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.physical_address || selectedApplication.address || selectedApplication.form_data?.physicalAddress || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'bible_school' && (
                     <div>
                       <p className="text-sm text-gray-600">Country</p>
-                      <p className="font-medium">{selectedApplication.country || 'N/A'}</p>
+                      <p className="font-medium">{selectedApplication.country || selectedApplication.form_data?.country || 'N/A'}</p>
                     </div>
                   )}
                   {/* Disability Information - Membership Only - Show ALL disability fields */}
@@ -1214,25 +1220,26 @@ export function ApplicationManagementPage() {
                 <div>
                   <h3 className="text-lg font-bold text-navy-ink mb-4">Leadership Interests</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    {selectedApplication.why_join_bible_school && (
+                    {(selectedApplication.why_join_bible_school || selectedApplication.form_data?.whyJoinBibleSchool) && (
                       <div>
                         <p className="text-sm text-gray-600">Why Join Bible School</p>
-                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.why_join_bible_school}</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.why_join_bible_school || selectedApplication.form_data?.whyJoinBibleSchool || 'N/A'}</p>
                       </div>
                     )}
-                    {selectedApplication.previous_leadership_experience && (
+                    {(selectedApplication.previous_leadership_experience || selectedApplication.form_data?.previousLeadershipExperience) && (
                       <div>
                         <p className="text-sm text-gray-600">Previous Leadership Experience</p>
-                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.previous_leadership_experience}</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.previous_leadership_experience || selectedApplication.form_data?.previousLeadershipExperience || 'N/A'}</p>
                       </div>
                     )}
-                    {selectedApplication.leadership_roles && Array.isArray(selectedApplication.leadership_roles) && selectedApplication.leadership_roles.length > 0 && (
+                    {((selectedApplication.leadership_roles && Array.isArray(selectedApplication.leadership_roles) && selectedApplication.leadership_roles.length > 0) || 
+                      (selectedApplication.form_data?.leadershipRoles && Array.isArray(selectedApplication.form_data.leadershipRoles) && selectedApplication.form_data.leadershipRoles.length > 0)) && (
                       <div>
                         <p className="text-sm text-gray-600 mb-2">Leadership Roles</p>
                         <div className="space-y-2">
-                          {selectedApplication.leadership_roles.map((role: any, idx: number) => (
+                          {(selectedApplication.leadership_roles || selectedApplication.form_data?.leadershipRoles || []).map((role: any, idx: number) => (
                             <div key={idx} className="p-3 bg-gray-50 rounded">
-                              <p className="font-medium">{role.title || `Role ${idx + 1}`}</p>
+                              <p className="font-medium">{role.title || role || `Role ${idx + 1}`}</p>
                               {role.description && <p className="text-sm text-gray-600 mt-1">{role.description}</p>}
                             </div>
                           ))}
@@ -1248,16 +1255,16 @@ export function ApplicationManagementPage() {
                 <div>
                   <h3 className="text-lg font-bold text-navy-ink mb-4">Vision & Calling</h3>
                   <div className="grid grid-cols-1 gap-4">
-                    {selectedApplication.calling_statement && (
+                    {(selectedApplication.calling_statement || selectedApplication.form_data?.callingStatement) && (
                       <div>
                         <p className="text-sm text-gray-600">Calling Statement</p>
-                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.calling_statement}</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.calling_statement || selectedApplication.form_data?.callingStatement || 'N/A'}</p>
                       </div>
                     )}
-                    {selectedApplication.leadership_ambitions && (
+                    {(selectedApplication.leadership_ambitions || selectedApplication.form_data?.leadershipAmbitions) && (
                       <div>
                         <p className="text-sm text-gray-600">Leadership Ambitions</p>
-                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.leadership_ambitions}</p>
+                        <p className="font-medium whitespace-pre-wrap">{selectedApplication.leadership_ambitions || selectedApplication.form_data?.leadershipAmbitions || 'N/A'}</p>
                       </div>
                     )}
                   </div>
