@@ -4,6 +4,7 @@ import { ArrowLeft, Video, FileText, CheckCircle, Play, BookOpen, Clock, ArrowRi
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
+import { getStorageUrl } from '../../lib/connection';
 
 interface Lesson {
   id: string;
@@ -264,18 +265,28 @@ export function CourseLessonPage() {
           </p>
         </div>
 
-        {lesson.resources_url && (
-          <div className="mb-6">
-            <h3 className="font-bold text-navy-ink mb-3">Resources</h3>
-            <Button
-              variant="outline"
-              onClick={() => window.open(lesson.resources_url!, '_blank')}
-            >
-              <Download className="mr-2" size={16} />
-              Download Resources
-            </Button>
-          </div>
-        )}
+        {(lesson.resources_url || lesson.resources_key) && (() => {
+          // Get resources URL - use storage URL if resources_key exists, otherwise use resources_url
+          let resourcesUrl = lesson.resources_url;
+          if (lesson.resources_key) {
+            resourcesUrl = getStorageUrl('courses', lesson.resources_key);
+          } else if (lesson.resources_url && !lesson.resources_url.startsWith('http')) {
+            resourcesUrl = getStorageUrl('courses', lesson.resources_url);
+          }
+          
+          return (
+            <div className="mb-6">
+              <h3 className="font-bold text-navy-ink mb-3">Resources</h3>
+              <Button
+                variant="outline"
+                onClick={() => window.open(resourcesUrl!, '_blank')}
+              >
+                <Download className="mr-2" size={16} />
+                Download Resources
+              </Button>
+            </div>
+          );
+        })()}
 
         {/* Progress */}
         {progress && (
