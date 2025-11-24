@@ -314,13 +314,13 @@ export function GroupsManagementPage() {
           let notificationTitle = '';
           let notificationMessage = '';
 
-          if (newStatus === 'approved' || newStatus === 'active') {
+          if (statusToSet === 'approved' || newStatus === 'active') {
             notificationTitle = 'Group Approved';
-            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active! You can now view it and others can join it.`;
-          } else if (newStatus === 'rejected') {
+            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active! You can now view it on the groups page and others can join it.`;
+          } else if (statusToSet === 'rejected') {
             notificationTitle = 'Group Rejected';
             notificationMessage = `Your group creation request for "${updatedGroup.name}" has been rejected. Please contact administrators for more information.`;
-          } else if (newStatus === 'inactive') {
+          } else if (statusToSet === 'inactive') {
             notificationTitle = 'Group Deactivated';
             notificationMessage = `Your group "${updatedGroup.name}" has been deactivated by administrators.`;
           }
@@ -341,7 +341,7 @@ export function GroupsManagementPage() {
             if (notifError) {
               console.error('Error creating notification:', notifError);
             } else {
-              console.log(`✅ Notification sent to user ${updatedGroup.created_by} for group approval`);
+              console.log(`✅ Notification sent to user ${updatedGroup.created_by} for group ${statusToSet}`);
             }
           }
         } catch (notifError) {
@@ -350,7 +350,7 @@ export function GroupsManagementPage() {
       }
 
       fetchGroups();
-      alert(`Group status updated to ${newStatus}`);
+      alert(`Group status updated to ${statusToSet}`);
     } catch (error: any) {
       console.error('Error updating group status:', error);
       alert(`Failed to update group status: ${error.message || 'Unknown error'}`);
