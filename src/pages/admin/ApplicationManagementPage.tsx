@@ -8,6 +8,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export function ApplicationManagementPage() {
+  const { user } = useUser();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [activeTab, setActiveTab] = useState<'all' | 'pending' | 'approved' | 'rejected' | 'bible_school' | 'membership'>('all');
@@ -15,6 +16,7 @@ export function ApplicationManagementPage() {
   const [loading, setLoading] = useState(true);
   const [selectedApplication, setSelectedApplication] = useState<any | null>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [stats, setStats] = useState({
     pending: 0,
     approved: 0,
@@ -28,9 +30,19 @@ export function ApplicationManagementPage() {
   });
 
   useEffect(() => {
-    fetchApplications();
-    fetchStatistics();
-  }, [filterStatus, activeTab]);
+    if (user) {
+      checkAdminAccess(user.id).then(admin => {
+        setIsAdmin(admin);
+        if (admin) {
+          fetchApplications();
+          fetchStatistics();
+        } else {
+          console.error('❌ User is not an admin. Cannot access applications.');
+          setLoading(false);
+        }
+      });
+    }
+  }, [filterStatus, activeTab, user]);
 
   const fetchStatistics = async () => {
     try {
@@ -62,6 +74,26 @@ export function ApplicationManagementPage() {
   const fetchApplications = async () => {
     setLoading(true);
     try {
+      console.log('🔍 Starting to fetch applications...');
+      
+      // First, try a simple count query to verify we can access the table
+      const { count: testCount, error: testError } = await insforge.database
+        .from('applications')
+        .select('*', { count: 'exact', head: true });
+      
+      if (testError) {
+        console.error('❌ Cannot access applications table:', testError);
+        console.error('Error details:', {
+          message: testError.message,
+          code: testError.code,
+          details: testError.details,
+          hint: testError.hint
+        });
+        throw testError;
+      }
+      
+      console.log(`✅ Can access applications table. Total count: ${testCount || 0}`);
+      
       // Fetch all applications - admins should see all
       let query = insforge.database
         .from('applications')
@@ -74,8 +106,16 @@ export function ApplicationManagementPage() {
 
       const { data, error } = await query;
       if (error) {
-        console.error('Error fetching applications:', error);
+        console.error('❌ Error fetching applications with form_data:', error);
+        console.error('Error details:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
+        
         // Try without form_data if that's causing issues
+        console.log('🔄 Trying fallback query without form_data...');
         const fallbackQuery = insforge.database
           .from('applications')
           .select('*')
@@ -83,9 +123,17 @@ export function ApplicationManagementPage() {
         
         const { data: fallbackData, error: fallbackError } = await fallbackQuery;
         if (fallbackError) {
-          console.error('Fallback query also failed:', fallbackError);
+          console.error('❌ Fallback query also failed:', fallbackError);
+          console.error('Fallback error details:', {
+            message: fallbackError.message,
+            code: fallbackError.code,
+            details: fallbackError.details,
+            hint: fallbackError.hint
+          });
           throw fallbackError;
         }
+        
+        console.log(`✅ Fallback query succeeded. Got ${fallbackData?.length || 0} applications`);
         
         // Use fallback data
         const filteredData = fallbackData || [];
@@ -102,6 +150,8 @@ export function ApplicationManagementPage() {
         setLoading(false);
         return;
       }
+      
+      console.log(`✅ Main query succeeded. Got ${data?.length || 0} applications`);
 
       let filteredData = data || [];
 

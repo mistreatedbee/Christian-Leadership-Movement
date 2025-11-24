@@ -63,7 +63,14 @@ export function AdminDashboardHome() {
           if (result.status === 'fulfilled') {
             return result.value;
           }
-          console.warn('Query failed:', result.reason);
+          const error = result.reason;
+          console.error('❌ Query failed:', error);
+          console.error('Error details:', {
+            message: error?.message,
+            code: error?.code,
+            details: error?.details,
+            hint: error?.hint
+          });
           return { count: 0, data: [] };
         };
 
