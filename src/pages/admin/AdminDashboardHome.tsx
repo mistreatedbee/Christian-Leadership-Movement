@@ -290,6 +290,11 @@ export function AdminDashboardHome() {
               setNotifications([]);
             } else {
               setNotifications(recentNotifications || []);
+              // Log group notifications for debugging
+              const groupNotifs = (recentNotifications || []).filter((n: any) => n.type === 'group') || [];
+              if (groupNotifs.length > 0) {
+                console.log(`📬 Admin has ${groupNotifs.length} group-related notifications`);
+              }
             }
           } catch (notifErr: any) {
             console.error('Error fetching notifications:', notifErr);
@@ -297,12 +302,6 @@ export function AdminDashboardHome() {
           }
         } else {
           setNotifications([]);
-        }
-        
-        // Log group notifications for debugging
-        const groupNotifs = recentNotifications?.filter((n: any) => n.type === 'group') || [];
-        if (groupNotifs.length > 0) {
-          console.log(`📬 Admin has ${groupNotifs.length} group-related notifications`);
         }
       } catch (err) {
         console.error('Error fetching admin data:', err);

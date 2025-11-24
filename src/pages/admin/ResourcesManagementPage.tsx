@@ -229,8 +229,8 @@ export function ResourcesManagementPage() {
           .upload(filePath, resourceFile);
 
         if (uploadError) throw uploadError;
-        fileUrl = uploadData.path;
-        fileKey = uploadData.path;
+        fileUrl = uploadData.url;
+        fileKey = uploadData.key;
       }
 
       // Upload thumbnail if provided
@@ -241,8 +241,8 @@ export function ResourcesManagementPage() {
           .upload(thumbPath, thumbnailFile);
 
         if (thumbError) throw thumbError;
-        thumbnailUrl = thumbUploadData.path;
-        thumbnailKey = thumbUploadData.path;
+        thumbnailUrl = thumbUploadData.url;
+        thumbnailKey = thumbUploadData.key;
       }
 
       const resourceData: any = {
