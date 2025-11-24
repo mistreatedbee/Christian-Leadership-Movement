@@ -50,17 +50,23 @@ export function QuizTakePage() {
       const interval = setInterval(() => {
         const elapsed = Math.floor((new Date().getTime() - startedAt.getTime()) / 1000);
         const remaining = totalSeconds - elapsed;
-        setTimeRemaining(remaining);
+        setTimeRemaining(Math.max(0, remaining));
 
         if (remaining <= 0) {
           clearInterval(interval);
-          handleSubmit();
+          // Auto-submit when time runs out
+          if (!submitting) {
+            handleSubmit();
+          }
         }
       }, 1000);
 
       return () => clearInterval(interval);
+    } else if (quiz && !quiz.time_limit) {
+      // No time limit - set to null
+      setTimeRemaining(null);
     }
-  }, [quiz, startedAt]);
+  }, [quiz, startedAt, submitting]);
 
   const fetchQuiz = async () => {
     if (!quizId) return;
@@ -144,24 +150,28 @@ export function QuizTakePage() {
         ? Math.floor((new Date().getTime() - startedAt.getTime()) / 1000)
         : 0;
 
+      // Ensure we save all answers even if time ran out
+      const finalAnswers = { ...answers };
+
       await insforge.database
         .from('quiz_attempts')
         .insert({
           quiz_id: quizId,
           user_id: user.id,
-          answers,
+          answers: finalAnswers,
           score: earnedPoints,
           percentage,
           passed,
           time_taken: timeTaken,
-          submitted_at: new Date().toISOString()
+          completed_at: new Date().toISOString(),
+          started_at: startedAt?.toISOString() || new Date().toISOString()
         });
 
+      // Navigate to results page
       navigate(`/dashboard/courses/${courseId}/quizzes/${quizId}/results`);
     } catch (error) {
       console.error('Error submitting quiz:', error);
-      alert('Error submitting quiz');
-    } finally {
+      alert('Error submitting quiz. Please try again.');
       setSubmitting(false);
     }
   };
@@ -238,15 +248,45 @@ export function QuizTakePage() {
               Question {currentQuestionIndex + 1} of {questions.length}
             </p>
           </div>
-          {timeRemaining !== null && (
-            <div className="flex items-center gap-2 text-lg font-semibold ml-4">
-              <Clock className="w-5 h-5" />
-              <span className={timeRemaining < 60 ? 'text-red-600' : ''}>
+          {timeRemaining !== null && quiz.time_limit && (
+            <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ml-4 ${
+              timeRemaining < 60 
+                ? 'bg-red-100 border-2 border-red-500 animate-pulse' 
+                : timeRemaining < 300 
+                ? 'bg-yellow-100 border-2 border-yellow-500' 
+                : 'bg-blue-50 border-2 border-blue-500'
+            }`}>
+              <Clock className={`w-5 h-5 ${
+                timeRemaining < 60 ? 'text-red-600' : timeRemaining < 300 ? 'text-yellow-600' : 'text-blue-600'
+              }`} />
+              <span className={`text-lg font-bold ${
+                timeRemaining < 60 ? 'text-red-600' : timeRemaining < 300 ? 'text-yellow-600' : 'text-blue-600'
+              }`}>
                 {formatTime(timeRemaining)}
               </span>
             </div>
           )}
         </div>
+        
+        {/* Time Warning */}
+        {timeRemaining !== null && timeRemaining < 60 && timeRemaining > 0 && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg mb-4 animate-pulse">
+            <div className="flex items-center gap-2">
+              <Clock className="w-5 h-5 text-red-600" />
+              <p className="text-red-800 font-semibold">
+                ⚠️ Time is running out! The quiz will be automatically submitted in {formatTime(timeRemaining)}.
+              </p>
+            </div>
+          </div>
+        )}
+        
+        {timeRemaining !== null && timeRemaining <= 0 && (
+          <div className="bg-red-100 border-l-4 border-red-500 p-4 rounded-lg mb-4">
+            <p className="text-red-800 font-semibold">
+              Time's up! Submitting your quiz now...
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Instructions */}
@@ -365,7 +405,7 @@ export function QuizTakePage() {
         <Button
           onClick={() => setCurrentQuestionIndex(Math.max(0, currentQuestionIndex - 1))}
           variant="outline"
-          disabled={currentQuestionIndex === 0}
+          disabled={currentQuestionIndex === 0 || isSubmitting}
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
           Previous
@@ -376,6 +416,7 @@ export function QuizTakePage() {
             <Button
               onClick={() => setCurrentQuestionIndex(currentQuestionIndex + 1)}
               variant="primary"
+              disabled={isSubmitting}
             >
               Next
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -384,7 +425,7 @@ export function QuizTakePage() {
             <Button
               onClick={handleSubmit}
               variant="primary"
-              disabled={submitting}
+              disabled={isSubmitting}
             >
               {submitting ? 'Submitting...' : 'Submit Quiz'}
             </Button>
@@ -399,12 +440,15 @@ export function QuizTakePage() {
           {questions.map((q, index) => (
             <button
               key={q.id}
-              onClick={() => setCurrentQuestionIndex(index)}
+              onClick={() => !isSubmitting && setCurrentQuestionIndex(index)}
+              disabled={isSubmitting}
               className={`w-10 h-10 rounded-lg text-sm font-medium transition-colors ${
-                index === currentQuestionIndex
+                isSubmitting 
+                  ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  : index === currentQuestionIndex
                   ? 'bg-gold text-white'
                   : answers[q.id]
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-green-100 text-green-800 hover:bg-green-200'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
