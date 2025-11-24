@@ -164,7 +164,7 @@ export function CalendarSection() {
               type: 'course',
               is_online: !!lesson.meeting_link,
               online_link: lesson.meeting_link,
-              link: `/courses/${lesson.courses?.id}`
+              link: `/dashboard/courses/${lesson.courses?.id}/lessons/${lesson.id}`
             });
           }
         });
