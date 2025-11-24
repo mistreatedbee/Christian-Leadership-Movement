@@ -1,30 +1,60 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
+import { insforge } from '../../lib/insforge';
+import { getStorageUrl } from '../../lib/connection';
 
-const partners = [
-  {
-    id: 1,
-    name: 'ACRP (Association of Christian Religious Practitioners)',
-    logo: 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=ACRP'
-  },
-  {
-    id: 2,
-    name: 'SAQA Recognized Center for Faith Community Enterprise @ University of Pretoria',
-    logo: 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=SAQA'
-  },
-  {
-    id: 3,
-    name: 'Department of Social Development Mpumalanga Province - Screening Child Protection Register Act No. 38 of 2005',
-    logo: 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=DSD'
-  },
-  {
-    id: 4,
-    name: 'Criminal offence Registry (NARSO) National Registry for Sex offenders License',
-    logo: 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=NARSO'
-  }
-];
+interface Partner {
+  id: string;
+  name: string;
+  logo_url: string | null;
+  logo_key: string | null;
+}
 
 export function PartnersSection() {
+  const [partners, setPartners] = useState<Partner[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchPartners();
+  }, []);
+
+  const fetchPartners = async () => {
+    try {
+      const { data, error } = await insforge.database
+        .from('partners')
+        .select('id, name, logo_url, logo_key')
+        .eq('is_active', true)
+        .order('display_order', { ascending: true })
+        .order('created_at', { ascending: false })
+        .limit(8);
+
+      if (error) throw error;
+      setPartners(data || []);
+    } catch (err) {
+      console.error('Error fetching partners:', err);
+      // Fallback to empty array if table doesn't exist yet
+      setPartners([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+    <section className="py-16 bg-gray-50">
+      <div className="container mx-auto px-4">
+        <div className="text-center">
+          <p className="text-gray-600">Loading partners...</p>
+        </div>
+      </div>
+    </section>
+    );
+  }
+
+  if (partners.length === 0) {
+    return null; // Don't show section if no partners
+  }
+
   return (
     <section className="py-16 bg-gray-50">
       <div className="container mx-auto px-4">
@@ -40,21 +70,30 @@ export function PartnersSection() {
 
         {/* Partner Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
-          {partners.map(partner => (
-            <div
-              key={partner.id}
-              className="bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow-soft hover:shadow-lg transform hover:scale-105 transition-transform transition-shadow duration-300 flex flex-col items-center text-center"
-            >
-              <img
-                src={partner.logo}
-                alt={partner.name}
-                className="max-h-16 mb-4 object-contain"
-              />
-              <h3 className="text-lg font-semibold text-navy-ink">
-                {partner.name}
-              </h3>
-            </div>
-          ))}
+          {partners.map(partner => {
+            const logoUrl = partner.logo_key 
+              ? getStorageUrl('gallery', partner.logo_key) 
+              : partner.logo_url || 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
+            
+            return (
+              <div
+                key={partner.id}
+                className="bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow-soft hover:shadow-lg transform hover:scale-105 transition-transform transition-shadow duration-300 flex flex-col items-center text-center"
+              >
+                <img
+                  src={logoUrl}
+                  alt={partner.name}
+                  className="max-h-16 mb-4 object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
+                  }}
+                />
+                <h3 className="text-lg font-semibold text-navy-ink">
+                  {partner.name}
+                </h3>
+              </div>
+            );
+          })}
         </div>
 
         {/* View All Button */}

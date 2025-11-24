@@ -90,6 +90,7 @@ import { CalendarPage } from './pages/dashboard/CalendarPage';
 import { BibleSchoolProgramPage } from './pages/BibleSchoolProgramPage';
 import { MembershipProgramPage } from './pages/MembershipProgramPage';
 import { PartnersPage } from './pages/PartnersPage';
+import { PartnersManagementPage } from './pages/admin/PartnersManagementPage';
 
 export function App() {
   return (
@@ -173,6 +174,7 @@ export function App() {
             <Route path="content" element={<ContentManagementPage />} />
             <Route path="fees" element={<FeeManagementPage />} />
             <Route path="objectives" element={<ObjectivesManagementPage />} />
+            <Route path="partners" element={<PartnersManagementPage />} />
             <Route path="financial-reports" element={<FinancialReportsPage />} />
             <Route path="prayer-requests" element={<PrayerRequestsManagementPage />} />
             <Route path="quizzes" element={<QuizManagementPage />} />

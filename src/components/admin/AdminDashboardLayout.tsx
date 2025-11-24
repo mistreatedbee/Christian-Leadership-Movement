@@ -230,6 +230,10 @@ export function AdminDashboardLayout() {
     label: 'Strategic Objectives',
     path: '/admin/objectives'
   }, {
+    icon: Users,
+    label: 'Partners',
+    path: '/admin/partners'
+  }, {
     icon: Settings,
     label: 'Settings',
     path: '/admin/settings'
