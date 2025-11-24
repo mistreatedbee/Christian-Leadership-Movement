@@ -222,30 +222,31 @@ export function ApplicationManagementPage() {
       yPos += 5;
     };
 
-    // Personal Information
+    // Personal Information - Read from form_data if columns don't exist
+    const formData = application.form_data || {};
     const personalInfo: Array<[string, any]> = [
-      ['Full Name:', application.full_name],
-      ['First Name:', application.first_name],
-      ['Middle Name:', application.middle_name],
-      ['Last Name:', application.last_name],
-      ['Preferred Name:', application.preferred_name],
-      ['Title:', application.title],
-      ['ID Number:', application.id_number],
-      ['Nationality:', application.nationality],
-      ['Email:', application.email],
-      ['Phone:', application.phone],
-      ['Contact Number:', application.contact_number],
-      ['Date of Birth:', application.date_of_birth],
-      ['Gender:', application.gender],
-      ['Marital Status:', application.marital_status],
-      ['Province:', application.province],
-      ['City:', application.city],
-      ['Postal Code:', application.postal_code],
-      ['Physical Address:', application.physical_address || application.address],
-      ['Country:', application.country],
-      ['Residential Status:', application.residential_status],
-      ['Home Language:', application.home_language],
-      ['Population Group:', application.population_group]
+      ['Full Name:', application.full_name || formData.fullName || (formData.firstName && formData.lastName ? `${formData.firstName} ${formData.lastName}` : null)],
+      ['First Name:', application.first_name || formData.firstName],
+      ['Middle Name:', application.middle_name || formData.middleName],
+      ['Last Name:', application.last_name || formData.lastName],
+      ['Preferred Name:', application.preferred_name || formData.preferredName],
+      ['Title:', application.title || formData.title],
+      ['ID Number:', application.id_number || formData.idNumber],
+      ['Nationality:', application.nationality || formData.nationality],
+      ['Email:', application.email || formData.email],
+      ['Phone:', application.phone || formData.phone || formData.contactNumber],
+      ['Contact Number:', application.contact_number || formData.contactNumber],
+      ['Date of Birth:', application.date_of_birth || formData.dateOfBirth],
+      ['Gender:', application.gender || formData.gender],
+      ['Marital Status:', application.marital_status || formData.maritalStatus],
+      ['Province:', application.province || formData.province],
+      ['City:', application.city || formData.city],
+      ['Postal Code:', application.postal_code || formData.postalCode],
+      ['Physical Address:', application.physical_address || application.address || formData.physicalAddress],
+      ['Country:', application.country || formData.country],
+      ['Residential Status:', application.residential_status || formData.residentialStatus],
+      ['Home Language:', application.home_language || formData.homeLanguage],
+      ['Population Group:', application.population_group || formData.populationGroup]
     ].filter(([_, value]) => value);
 
     addSection('Personal Information', personalInfo);
@@ -368,7 +369,7 @@ export function ApplicationManagementPage() {
         doc.setFont(undefined, 'bold');
         doc.text('Leadership Roles:', margin, yPos);
         yPos += 8;
-        application.leadership_roles.forEach((role: any, idx: number) => {
+        leadershipRoles.forEach((role: any, idx: number) => {
           if (yPos > pageHeight - 30) {
             doc.addPage();
             yPos = 20;
@@ -747,24 +748,29 @@ export function ApplicationManagementPage() {
                   .filter(app => {
                     if (!searchTerm) return true;
                     const search = searchTerm.toLowerCase();
+                    const fullName = app.full_name || app.form_data?.fullName || app.form_data?.firstName + ' ' + app.form_data?.lastName || '';
+                    const email = app.email || app.form_data?.email || '';
                     return (
-                      app.full_name?.toLowerCase().includes(search) ||
-                      app.email?.toLowerCase().includes(search) ||
+                      fullName.toLowerCase().includes(search) ||
+                      email.toLowerCase().includes(search) ||
                       app.programs?.title?.toLowerCase().includes(search)
                     );
                   })
-                  .map(app => (
+                  .map(app => {
+                    const fullName = app.full_name || app.form_data?.fullName || app.form_data?.firstName + ' ' + app.form_data?.lastName || 'Unknown';
+                    const email = app.email || app.form_data?.email || 'N/A';
+                    return (
                     <tr key={app.id} className="hover:bg-muted-gray/50">
                   <td className="px-6 py-4">
                     <div className="flex items-center">
                       <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
-                            {app.full_name?.charAt(0) || 'A'}
+                            {fullName.charAt(0).toUpperCase() || 'A'}
                       </div>
                       <div>
                         <p className="font-medium text-navy-ink">
-                              {app.full_name}
+                              {fullName}
                         </p>
-                        <p className="text-sm text-gray-600">{app.email}</p>
+                        <p className="text-sm text-gray-600">{email}</p>
                       </div>
                     </div>
                   </td>
@@ -856,7 +862,7 @@ export function ApplicationManagementPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <p className="text-sm text-gray-600">Full Name</p>
-                    <p className="font-medium">{selectedApplication.full_name || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.full_name || selectedApplication.form_data?.fullName || selectedApplication.form_data?.firstName + ' ' + selectedApplication.form_data?.lastName || 'N/A'}</p>
                   </div>
                   {selectedApplication.program_type === 'membership' && (
                     <>
@@ -898,7 +904,7 @@ export function ApplicationManagementPage() {
                   )}
                   <div>
                     <p className="text-sm text-gray-600">Email</p>
-                    <p className="font-medium">{selectedApplication.email || 'N/A'}</p>
+                    <p className="font-medium">{selectedApplication.email || selectedApplication.form_data?.email || 'N/A'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-gray-600">Phone / Contact Number</p>
