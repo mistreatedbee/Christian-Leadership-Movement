@@ -1169,46 +1169,76 @@ export function ApplicationManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-sm text-gray-600">Date Accepted Christ</p>
-                      <p className="font-medium">{selectedApplication.date_accepted_christ ? new Date(selectedApplication.date_accepted_christ).toLocaleDateString() : 'N/A'}</p>
+                      <p className="font-medium">
+                        {selectedApplication.date_accepted_christ 
+                          ? new Date(selectedApplication.date_accepted_christ).toLocaleDateString() 
+                          : selectedApplication.form_data?.dateAcceptedChrist
+                          ? new Date(selectedApplication.form_data.dateAcceptedChrist).toLocaleDateString()
+                          : 'N/A'}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-gray-600">Baptized</p>
-                      <p className="font-medium">{selectedApplication.is_baptized ? 'Yes' : 'No'}</p>
+                      <p className="font-medium">
+                        {selectedApplication.is_baptized !== undefined 
+                          ? (selectedApplication.is_baptized ? 'Yes' : 'No')
+                          : selectedApplication.form_data?.isBaptized !== undefined
+                          ? (selectedApplication.form_data.isBaptized ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </p>
                     </div>
-                    {selectedApplication.is_baptized && (
+                    {(selectedApplication.is_baptized || selectedApplication.form_data?.isBaptized) && (
                       <div>
                         <p className="text-sm text-gray-600">Baptism Date</p>
-                        <p className="font-medium">{selectedApplication.baptism_date ? new Date(selectedApplication.baptism_date).toLocaleDateString() : 'N/A'}</p>
+                        <p className="font-medium">
+                          {selectedApplication.baptism_date 
+                            ? new Date(selectedApplication.baptism_date).toLocaleDateString() 
+                            : selectedApplication.form_data?.baptismDate
+                            ? new Date(selectedApplication.form_data.baptismDate).toLocaleDateString()
+                            : 'N/A'}
+                        </p>
                       </div>
                     )}
                     <div>
                       <p className="text-sm text-gray-600">Attends Local Church</p>
-                      <p className="font-medium">{selectedApplication.attends_local_church ? 'Yes' : 'No'}</p>
+                      <p className="font-medium">
+                        {selectedApplication.attends_local_church !== undefined
+                          ? (selectedApplication.attends_local_church ? 'Yes' : 'No')
+                          : selectedApplication.form_data?.attendsLocalChurch !== undefined
+                          ? (selectedApplication.form_data.attendsLocalChurch ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </p>
                     </div>
-                    {selectedApplication.attends_local_church && (
+                    {(selectedApplication.attends_local_church || selectedApplication.form_data?.attendsLocalChurch) && (
                       <>
                         <div>
                           <p className="text-sm text-gray-600">Church Name</p>
-                          <p className="font-medium">{selectedApplication.church_name || 'N/A'}</p>
+                          <p className="font-medium">{selectedApplication.church_name || selectedApplication.form_data?.churchName || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Denomination</p>
-                          <p className="font-medium">{selectedApplication.denomination || 'N/A'}</p>
+                          <p className="font-medium">{selectedApplication.denomination || selectedApplication.form_data?.denomination || 'N/A'}</p>
                         </div>
                         <div>
                           <p className="text-sm text-gray-600">Pastor Name</p>
-                          <p className="font-medium">{selectedApplication.pastor_name || 'N/A'}</p>
+                          <p className="font-medium">{selectedApplication.pastor_name || selectedApplication.form_data?.pastorName || 'N/A'}</p>
                         </div>
                       </>
                     )}
                     <div>
                       <p className="text-sm text-gray-600">Serves in Ministry</p>
-                      <p className="font-medium">{selectedApplication.serves_in_ministry ? 'Yes' : 'No'}</p>
+                      <p className="font-medium">
+                        {selectedApplication.serves_in_ministry !== undefined
+                          ? (selectedApplication.serves_in_ministry ? 'Yes' : 'No')
+                          : selectedApplication.form_data?.servesInMinistry !== undefined
+                          ? (selectedApplication.form_data.servesInMinistry ? 'Yes' : 'No')
+                          : 'N/A'}
+                      </p>
                     </div>
-                    {selectedApplication.serves_in_ministry && (
+                    {(selectedApplication.serves_in_ministry || selectedApplication.form_data?.servesInMinistry) && (
                       <div className="col-span-2">
                         <p className="text-sm text-gray-600">Ministry Service Description</p>
-                        <p className="font-medium">{selectedApplication.ministry_service_description || 'N/A'}</p>
+                        <p className="font-medium">{selectedApplication.ministry_service_description || selectedApplication.form_data?.ministryServiceDescription || 'N/A'}</p>
                       </div>
                     )}
                   </div>
