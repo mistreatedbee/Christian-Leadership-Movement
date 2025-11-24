@@ -313,7 +313,7 @@ export function GroupsManagementPage() {
 
           if (newStatus === 'approved' || newStatus === 'active') {
             notificationTitle = 'Group Approved';
-            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active!`;
+            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active! You can now view it and others can join it.`;
           } else if (newStatus === 'rejected') {
             notificationTitle = 'Group Rejected';
             notificationMessage = `Your group creation request for "${updatedGroup.name}" has been rejected. Please contact administrators for more information.`;
@@ -323,7 +323,7 @@ export function GroupsManagementPage() {
           }
 
           if (notificationTitle) {
-            await insforge.database
+            const { error: notifError } = await insforge.database
               .from('notifications')
               .insert([{
                 user_id: updatedGroup.created_by,
@@ -334,6 +334,12 @@ export function GroupsManagementPage() {
                 link_url: '/groups',
                 read: false
               }]);
+            
+            if (notifError) {
+              console.error('Error creating notification:', notifError);
+            } else {
+              console.log(`✅ Notification sent to user ${updatedGroup.created_by} for group approval`);
+            }
           }
         } catch (notifError) {
           console.error('Error sending notification:', notifError);
@@ -785,6 +791,12 @@ export function GroupsManagementPage() {
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+
       )}
     </div>
   );

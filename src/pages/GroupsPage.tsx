@@ -68,12 +68,12 @@ export function GroupsPage() {
     try {
       setLoading(true);
       const [allGroupsRes, myGroupsRes, myCreatedGroupsRes] = await Promise.all([
-        // Fetch public approved/active groups
+        // Fetch public approved/active groups - include both 'approved' and 'active' status
         insforge.database
           .from('groups')
           .select('*, users(*), group_members(*)')
           .eq('is_public', true)
-          .in('status', ['approved', 'active'])
+          .or('status.eq.approved,status.eq.active')
           .order('created_at', { ascending: false }),
         // Fetch groups user is a member of
         user ? insforge.database
