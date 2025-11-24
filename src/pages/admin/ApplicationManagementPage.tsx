@@ -831,7 +831,7 @@ export function ApplicationManagementPage() {
                         </td>
                       </tr>
                     );
-                  }))
+                  })
               )}
             </tbody>
           </table>
