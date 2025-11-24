@@ -44,6 +44,29 @@ export function DashboardLayout() {
     navigate('/login');
   };
   
+  const [isApprovedMentor, setIsApprovedMentor] = React.useState(false);
+
+  React.useEffect(() => {
+    if (user) {
+      checkMentorStatus();
+    }
+  }, [user]);
+
+  const checkMentorStatus = async () => {
+    if (!user) return;
+    try {
+      const { data } = await insforge.database
+        .from('mentors')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('status', 'available')
+        .maybeSingle();
+      setIsApprovedMentor(!!data);
+    } catch (err) {
+      console.error('Error checking mentor status:', err);
+    }
+  };
+
   const navItems = [{
     icon: Home,
     label: 'Dashboard',
@@ -72,7 +95,11 @@ export function DashboardLayout() {
     icon: UserCheck,
     label: 'Mentorship',
     path: '/mentorship'
-  }, {
+  }, ...(isApprovedMentor ? [{
+    icon: Settings,
+    label: 'Mentor Management',
+    path: '/dashboard/mentor-management'
+  }] : []), {
     icon: Calendar,
     label: 'Calendar',
     path: '/dashboard/calendar'

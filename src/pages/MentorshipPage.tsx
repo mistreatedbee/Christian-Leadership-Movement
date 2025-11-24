@@ -319,9 +319,9 @@ export function MentorshipPage() {
               Dashboard
             </Button>
           )}
-          <Button onClick={() => setShowMentorForm(true)} variant="primary">
+          <Button onClick={() => navigate('/apply/mentor')} variant="primary">
             <Plus className="w-4 h-4 mr-2" />
-            Become a Mentor
+            Apply to Become a Mentor
           </Button>
           <Button onClick={() => setShowMenteeForm(true)} variant="secondary">
             <Plus className="w-4 h-4 mr-2" />

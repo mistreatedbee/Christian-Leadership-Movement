@@ -94,6 +94,8 @@ import { PartnersPage } from './pages/PartnersPage';
 import { PartnersManagementPage } from './pages/admin/PartnersManagementPage';
 import { MembershipManagementPage } from './pages/admin/MembershipManagementPage';
 import { MentorshipResourcesManagementPage } from './pages/admin/MentorshipResourcesManagementPage';
+import { ApplyMentorPage } from './pages/ApplyMentorPage';
+import { MentorManagementPage } from './pages/dashboard/MentorManagementPage';
 
 export function App() {
   return (
@@ -139,6 +141,7 @@ export function App() {
           <Route path="/groups" element={<GroupsPage />} />
           <Route path="/groups/:id" element={<GroupDetailPage />} />
           <Route path="/mentorship" element={<MentorshipPage />} />
+          <Route path="/apply/mentor" element={<ApplyMentorPage />} />
           <Route path="/stream/:id" element={<LiveStreamPage />} />
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
@@ -156,6 +159,7 @@ export function App() {
             <Route path="messages" element={<MessagesPage />} />
             <Route path="volunteer" element={<VolunteerPage />} />
             <Route path="attendance" element={<AttendancePage />} />
+            <Route path="mentor-management" element={<MentorManagementPage />} />
           <Route path="security" element={<SecuritySettingsPage />} />
         </Route>
           <Route path="/admin" element={

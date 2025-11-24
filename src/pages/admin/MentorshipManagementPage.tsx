@@ -162,10 +162,32 @@ export function MentorshipManagementPage() {
     }
 
     try {
+      const { data: mentor, error: mentorError } = await insforge.database
+        .from('mentors')
+        .select('user_id')
+        .eq('id', mentorId)
+        .single();
+
+      if (mentorError) throw mentorError;
+
       await insforge.database
         .from('mentors')
         .update({ status: 'available' })
         .eq('id', mentorId);
+
+      // Create notification for the mentor
+      if (mentor?.user_id) {
+        await insforge.database
+          .from('notifications')
+          .insert([{
+            user_id: mentor.user_id,
+            type: 'mentor_approval',
+            title: 'Mentor Application Approved',
+            message: 'Congratulations! Your mentor application has been approved. You can now manage your mentorship profile and resources.',
+            link_url: '/dashboard/mentor-management',
+            read: false
+          }]);
+      }
       
       fetchData();
       alert('Mentor approved successfully!');
@@ -181,10 +203,32 @@ export function MentorshipManagementPage() {
     }
 
     try {
+      const { data: mentor, error: mentorError } = await insforge.database
+        .from('mentors')
+        .select('user_id')
+        .eq('id', mentorId)
+        .single();
+
+      if (mentorError) throw mentorError;
+
       await insforge.database
         .from('mentors')
         .update({ status: 'rejected' })
         .eq('id', mentorId);
+
+      // Create notification for the mentor
+      if (mentor?.user_id) {
+        await insforge.database
+          .from('notifications')
+          .insert([{
+            user_id: mentor.user_id,
+            type: 'mentor_rejection',
+            title: 'Mentor Application Status',
+            message: 'Your mentor application has been reviewed. Unfortunately, it was not approved at this time. You can contact support for more information.',
+            link_url: '/mentorship',
+            read: false
+          }]);
+      }
       
       fetchData();
       alert('Mentor application rejected.');
@@ -392,6 +436,102 @@ export function MentorshipManagementPage() {
                       
                       {mentor.bio && (
                         <p className="text-gray-600 mb-3">{mentor.bio}</p>
+                      )}
+                      
+                      {/* Show full application details */}
+                      {(mentor as any).application_data && (
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg space-y-3">
+                          <h4 className="font-semibold text-navy-ink">Application Details:</h4>
+                          {(mentor as any).application_data.mentorship_about && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">What is your mentorship about?</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.mentorship_about}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.what_offers && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">What do you offer?</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.what_offers}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.goals && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Goals:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.goals}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.program_description && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Program Description:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.program_description}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.qualifications && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Qualifications:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.qualifications}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.experience_years !== undefined && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Years of Experience:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.experience_years} years</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.specializations && (mentor as any).application_data.specializations.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Specializations:</p>
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {(mentor as any).application_data.specializations.map((spec: string, idx: number) => (
+                                  <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded">
+                                    {spec}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.availability && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Availability:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.availability}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.contact_preferences && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Contact Preferences:</p>
+                              <p className="text-sm text-gray-600">{(mentor as any).application_data.contact_preferences}</p>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.references && (mentor as any).application_data.references.length > 0 && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">References:</p>
+                              <div className="space-y-2 mt-1">
+                                {(mentor as any).application_data.references.map((ref: any, idx: number) => (
+                                  <div key={idx} className="text-sm text-gray-600 pl-4 border-l-2 border-gray-300">
+                                    <p><strong>{ref.name}</strong> - {ref.relationship}</p>
+                                    <p className="text-xs">{ref.contact}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.website_url && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">Website:</p>
+                              <a href={(mentor as any).application_data.website_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                                {(mentor as any).application_data.website_url}
+                              </a>
+                            </div>
+                          )}
+                          {(mentor as any).application_data.linkedin_url && (
+                            <div>
+                              <p className="text-sm font-medium text-gray-700">LinkedIn:</p>
+                              <a href={(mentor as any).application_data.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:underline">
+                                {(mentor as any).application_data.linkedin_url}
+                              </a>
+                            </div>
+                          )}
+                        </div>
                       )}
                       
                       {mentor.expertise_areas && mentor.expertise_areas.length > 0 && (
