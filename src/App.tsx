@@ -59,6 +59,7 @@ import { VolunteerPage } from './pages/dashboard/VolunteerPage';
 import { AttendancePage } from './pages/dashboard/AttendancePage';
 import { QuizManagementPage } from './pages/admin/QuizManagementPage';
 import { QuizQuestionsPage } from './pages/admin/QuizQuestionsPage';
+import { QuizAttemptsReviewPage } from './pages/admin/QuizAttemptsReviewPage';
 import { VolunteerManagementPage } from './pages/admin/VolunteerManagementPage';
 import { GroupsPage } from './pages/GroupsPage';
 import { GroupDetailPage } from './pages/GroupDetailPage';
@@ -181,6 +182,7 @@ export function App() {
             <Route path="prayer-requests" element={<PrayerRequestsManagementPage />} />
             <Route path="quizzes" element={<QuizManagementPage />} />
             <Route path="quizzes/:quizId/questions" element={<QuizQuestionsPage />} />
+            <Route path="quizzes/:quizId/attempts" element={<QuizAttemptsReviewPage />} />
             <Route path="volunteers" element={<VolunteerManagementPage />} />
             <Route path="blog" element={<BlogManagementPage />} />
             <Route path="mentorship" element={<MentorshipManagementPage />} />

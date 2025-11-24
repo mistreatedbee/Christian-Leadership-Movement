@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BookOpen, Plus, Edit, Trash2, Search, Settings, GraduationCap, Users } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Search, Settings, GraduationCap, Users, MessageSquare } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 import { Link } from 'react-router-dom';
@@ -561,6 +561,13 @@ export function QuizManagementPage() {
                           title="Manage Questions"
                         >
                           <Settings className="w-4 h-4" />
+                        </Link>
+                        <Link
+                          to={`/admin/quizzes/${quiz.id}/attempts`}
+                          className="text-blue-600 hover:text-blue-800"
+                          title="Review Attempts"
+                        >
+                          <Users className="w-4 h-4" />
                         </Link>
                       </div>
                     </td>

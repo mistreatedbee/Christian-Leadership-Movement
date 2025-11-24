@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { CheckCircle, XCircle, Clock, Award, ArrowLeft } from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Award, ArrowLeft, MessageSquare, Star } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
@@ -14,6 +14,10 @@ interface QuizAttempt {
   passed?: boolean;
   time_taken?: number;
   submitted_at?: string;
+  feedback?: string;
+  is_graded?: boolean;
+  question_scores?: Record<string, number>;
+  question_feedback?: Record<string, string>;
 }
 
 interface Quiz {
@@ -56,7 +60,7 @@ export function QuizResultsPage() {
           .select('*')
           .eq('quiz_id', quizId)
           .eq('user_id', user.id)
-          .order('submitted_at', { ascending: false })
+          .order('completed_at', { ascending: false })
           .limit(1)
           .single(),
         insforge.database
@@ -81,19 +85,30 @@ export function QuizResultsPage() {
     }
   };
 
-  const isAnswerCorrect = (question: QuizQuestion): boolean => {
-    if (!attempt) return false;
+  const getQuestionScore = (question: QuizQuestion): number => {
+    if (!attempt) return 0;
+    
+    // If manually graded, use the awarded score
+    if (attempt.question_scores && attempt.question_scores[question.id] !== undefined) {
+      return attempt.question_scores[question.id];
+    }
+    
+    // Otherwise, calculate auto-score
     const userAnswer = attempt.answers[question.id];
-
     if (question.question_type === 'multiple_choice') {
       const correctOption = question.options?.find((opt: any) => opt.correct);
-      return correctOption ? userAnswer === correctOption.text : false;
+      return correctOption && userAnswer === correctOption.text ? question.points : 0;
     } else if (question.question_type === 'true_false') {
-      return userAnswer === question.correct_answer;
+      return userAnswer === question.correct_answer ? question.points : 0;
     } else if (question.question_type === 'short_answer') {
-      return userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim();
+      return userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim() ? question.points : 0;
     }
-    return false;
+    // Long answer questions default to 0 if not manually graded
+    return 0;
+  };
+
+  const isAnswerCorrect = (question: QuizQuestion): boolean => {
+    return getQuestionScore(question) > 0;
   };
 
   const formatTime = (seconds?: number) => {
@@ -140,7 +155,26 @@ export function QuizResultsPage() {
         <p className="text-gray-600 mt-2">
           Passing Score: {quiz.passing_score}%
         </p>
+        {attempt.is_graded && (
+          <div className="mt-3 flex items-center gap-2 text-blue-600">
+            <Star className="w-4 h-4" />
+            <span className="text-sm font-medium">Graded by Admin</span>
+          </div>
+        )}
       </div>
+
+      {/* Admin Feedback */}
+      {attempt.feedback && (
+        <div className="bg-blue-50 border-l-4 border-blue-500 p-4 rounded-lg">
+          <div className="flex items-start gap-2">
+            <MessageSquare className="w-5 h-5 text-blue-600 mt-0.5" />
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-1">Admin Feedback</h3>
+              <p className="text-blue-800 whitespace-pre-wrap">{attempt.feedback}</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -210,8 +244,25 @@ export function QuizResultsPage() {
                       </p>
                     </div>
                   </div>
-                  {!isCorrect && (
-                    <div>
+                  {/* Show awarded points */}
+                  <div className="mt-2">
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      Points Awarded: <span className="font-bold text-gold">{getQuestionScore(question)} / {question.points}</span>
+                    </p>
+                  </div>
+
+                  {/* Admin Feedback for this question */}
+                  {attempt.question_feedback && attempt.question_feedback[question.id] && (
+                    <div className="mt-2 p-3 bg-blue-50 rounded-lg border-l-2 border-blue-500">
+                      <p className="text-xs font-medium text-blue-900 mb-1">Admin Feedback:</p>
+                      <p className="text-sm text-blue-800 whitespace-pre-wrap">
+                        {attempt.question_feedback[question.id]}
+                      </p>
+                    </div>
+                  )}
+
+                  {!isCorrect && question.question_type !== 'long_answer' && (
+                    <div className="mt-2">
                       <p className="text-sm font-medium text-gray-700 mb-1">Correct Answer:</p>
                       <div className="p-3 rounded-lg bg-green-100">
                         <p className="text-green-800">
