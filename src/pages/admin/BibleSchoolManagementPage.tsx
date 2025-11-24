@@ -848,7 +848,8 @@ export function BibleSchoolManagementPage() {
                     <label className="flex items-center">
                       <input
                         type="checkbox"
-                        {...register('is_public')}
+                        checked={watch('is_public') || false}
+                        onChange={(e) => setValue('is_public', e.target.checked)}
                         className="mr-2"
                       />
                       <span className="text-sm font-medium text-navy-ink">Make this resource public</span>

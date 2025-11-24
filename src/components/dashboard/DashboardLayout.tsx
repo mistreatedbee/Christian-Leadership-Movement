@@ -32,9 +32,17 @@ export function DashboardLayout() {
     label: 'My Courses',
     path: '/dashboard/courses'
   }, {
+    icon: BookOpen,
+    label: 'Bible School',
+    path: '/bible-school'
+  }, {
     icon: Calendar,
     label: 'Calendar',
     path: '/dashboard/calendar'
+  }, {
+    icon: FileText,
+    label: 'Resources',
+    path: '/resources'
   }, {
     icon: Bell,
     label: 'Notifications',
