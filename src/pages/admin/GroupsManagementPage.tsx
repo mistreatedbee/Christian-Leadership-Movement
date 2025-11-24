@@ -292,12 +292,9 @@ export function GroupsManagementPage() {
 
   const updateGroupStatus = async (groupId: string, newStatus: string) => {
     try {
-      // When approving, set status to 'approved' (not 'active') to match the filter in GroupsPage
-      const statusToSet = newStatus === 'active' ? 'approved' : newStatus;
-      
       const { data: updatedGroup, error } = await insforge.database
         .from('groups')
-        .update({ status: statusToSet, updated_at: new Date().toISOString() })
+        .update({ status: newStatus })
         .eq('id', groupId)
         .select()
         .single();
@@ -314,19 +311,19 @@ export function GroupsManagementPage() {
           let notificationTitle = '';
           let notificationMessage = '';
 
-          if (statusToSet === 'approved' || newStatus === 'active') {
+          if (newStatus === 'approved' || newStatus === 'active') {
             notificationTitle = 'Group Approved';
-            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active! You can now view it on the groups page and others can join it.`;
-          } else if (statusToSet === 'rejected') {
+            notificationMessage = `Your group "${updatedGroup.name}" has been approved and is now active!`;
+          } else if (newStatus === 'rejected') {
             notificationTitle = 'Group Rejected';
             notificationMessage = `Your group creation request for "${updatedGroup.name}" has been rejected. Please contact administrators for more information.`;
-          } else if (statusToSet === 'inactive') {
+          } else if (newStatus === 'inactive') {
             notificationTitle = 'Group Deactivated';
             notificationMessage = `Your group "${updatedGroup.name}" has been deactivated by administrators.`;
           }
 
           if (notificationTitle) {
-            const { error: notifError } = await insforge.database
+            await insforge.database
               .from('notifications')
               .insert([{
                 user_id: updatedGroup.created_by,
@@ -337,12 +334,6 @@ export function GroupsManagementPage() {
                 link_url: '/groups',
                 read: false
               }]);
-            
-            if (notifError) {
-              console.error('Error creating notification:', notifError);
-            } else {
-              console.log(`✅ Notification sent to user ${updatedGroup.created_by} for group ${statusToSet}`);
-            }
           }
         } catch (notifError) {
           console.error('Error sending notification:', notifError);
@@ -350,7 +341,7 @@ export function GroupsManagementPage() {
       }
 
       fetchGroups();
-      alert(`Group status updated to ${statusToSet}`);
+      alert(`Group status updated to ${newStatus}`);
     } catch (error: any) {
       console.error('Error updating group status:', error);
       alert(`Failed to update group status: ${error.message || 'Unknown error'}`);
@@ -391,12 +382,18 @@ export function GroupsManagementPage() {
     }
   };
 
-  const filteredGroups = groups.filter(group =>
-    group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.users?.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    group.users?.email?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredGroups = groups.filter(group => {
+    const matchesSearch = !searchTerm || 
+      group.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.description?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.users?.nickname?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      group.users?.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesType = filterType === 'all' || group.group_type === filterType;
+    const matchesStatus = filterStatus === 'all' || group.status === filterStatus;
+    
+    return matchesSearch && matchesType && matchesStatus;
+  });
 
   const groupTypes = Array.from(new Set(groups.map(g => g.group_type).filter(Boolean))) as string[];
 
@@ -794,12 +791,6 @@ export function GroupsManagementPage() {
             </div>
           </div>
         </div>
-      )}
-    </div>
-  );
-}
-
-
       )}
     </div>
   );

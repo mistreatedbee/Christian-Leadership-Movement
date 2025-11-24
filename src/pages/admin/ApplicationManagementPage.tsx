@@ -225,46 +225,29 @@ export function ApplicationManagementPage() {
       // Create notification
       const app = applications.find(a => a.id === applicationId);
       if (app) {
-        const programType = app.programs?.title || app.program_type?.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Application';
         const notification = {
           user_id: app.user_id,
           type: 'application',
-          title: `${programType} Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
-          message: newStatus === 'approved' 
-            ? `Congratulations! Your ${programType} application has been approved. You will receive further instructions soon.`
-            : `Your ${programType} application has been rejected. Please contact administrators for more information.`,
-          related_id: applicationId,
-          link_url: '/dashboard/applications',
-          read: false
+          title: `Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+          message: `Your application for ${app.programs?.title || app.program_type} has been ${newStatus}.`,
+          related_id: applicationId
         };
 
-        const { error: notifError } = await insforge.database
+        await insforge.database
           .from('notifications')
           .insert([notification]);
 
-        if (notifError) {
-          console.error('Error creating notification:', notifError);
-        } else {
-          console.log(`✅ Notification sent to user ${app.user_id} for application ${newStatus}`);
-        }
-
         // Send email notification
-        try {
-          await sendEmailNotification(app.user_id, {
-            type: `application_${newStatus}`,
-            subject: notification.title,
-            message: notification.message
-          });
-        } catch (emailErr) {
-          console.error('Error sending email notification:', emailErr);
-          // Continue even if email fails
-        }
+        await sendEmailNotification(app.user_id, {
+          type: `application_${newStatus}`,
+          subject: notification.title,
+          message: notification.message
+        });
       }
 
       fetchApplications();
     } catch (err) {
       console.error('Error updating application:', err);
-      alert(`Failed to update application status: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   };
 
