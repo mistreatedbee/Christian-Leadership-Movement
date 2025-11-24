@@ -382,21 +382,20 @@ export function ApplyBibleSchoolPage() {
         declarationDate: data.declarationDate
       };
 
-      // Create application - Save essential columns and ALL form data to form_data JSONB
+      // Create application - Save only essential columns and ALL form data to form_data JSONB
       // Only use columns that definitely exist in the applications table
+      // All detailed data goes in form_data JSONB column
       const applicationData: any = {
         user_id: user.id,
         program_type: 'bible_school',
-        // Essential columns that exist in the table
-        full_name: data.fullName,
-        email: data.email,
-        // File URLs
+        // File URLs (if these columns exist)
         id_passport_url: idUpload.url,
         id_passport_key: idUpload.key,
         payment_proof_url: paymentUpload?.url || null,
         payment_proof_key: paymentUpload?.key || null,
         // CRITICAL: Save ALL form data to form_data JSONB column
         // This ensures admins can see every single field that was submitted
+        // All fields including full_name, email, etc. are in form_data
         form_data: completeFormData,
         status: 'pending',
         payment_status: 'pending'
