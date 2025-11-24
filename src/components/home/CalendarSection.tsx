@@ -407,9 +407,13 @@ export function CalendarSection() {
               ) : events.length > 0 ? (
                 <div className="space-y-3 max-h-96 overflow-y-auto">
                   {events.slice(0, 5).map(event => (
-                    <div
+                    <Link
                       key={event.id}
-                      className="border border-gray-200 rounded-lg p-3 hover:border-gold transition-colors"
+                      to={event.link || '#'}
+                      className="block border border-gray-200 rounded-lg p-3 hover:border-gold transition-colors"
+                      onClick={(e) => {
+                        if (!event.link) e.preventDefault();
+                      }}
                     >
                       <div className="flex items-start justify-between mb-2">
                         <span className={`px-2 py-1 text-xs font-semibold rounded ${getEventTypeColor(event.type)} text-white`}>
@@ -429,14 +433,11 @@ export function CalendarSection() {
                         <span>{event.is_online ? 'Online' : event.location || 'TBA'}</span>
                       </div>
                       {event.link && (
-                        <Link
-                          to={event.link}
-                          className="text-xs text-gold hover:underline mt-2 inline-block"
-                        >
-                          View Details →
-                        </Link>
+                        <button className="mt-2 w-full px-3 py-1.5 bg-gold text-white rounded-lg hover:bg-gold/80 transition-colors font-medium text-xs">
+                          Go to {event.type === 'quiz' ? 'Quiz' : event.type === 'event' ? 'Event' : event.type === 'course' ? 'Course' : 'Details'} →
+                        </button>
                       )}
-                    </div>
+                    </Link>
                   ))}
                 </div>
               ) : (

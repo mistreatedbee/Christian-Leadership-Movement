@@ -28,8 +28,49 @@ export function CalendarPage() {
   useEffect(() => {
     if (isLoaded) {
       fetchAllEvents();
+      if (user) {
+        fetchAttendingEvents();
+      }
     }
-  }, [isLoaded, currentDate]);
+  }, [isLoaded, currentDate, user]);
+
+  const fetchAttendingEvents = async () => {
+    if (!user) return;
+    try {
+      // Fetch event registrations
+      const { data: eventRegs } = await insforge.database
+        .from('event_registrations')
+        .select('event_id')
+        .eq('user_id', user.id)
+        .eq('status', 'registered');
+      
+      // Fetch Bible school participants
+      const { data: studyParticipants } = await insforge.database
+        .from('bible_school_participants')
+        .select('study_id')
+        .eq('user_id', user.id);
+      
+      const { data: classParticipants } = await insforge.database
+        .from('bible_school_participants')
+        .select('class_id')
+        .eq('user_id', user.id);
+      
+      const { data: meetingParticipants } = await insforge.database
+        .from('bible_school_participants')
+        .select('meeting_id')
+        .eq('user_id', user.id);
+      
+      const attending = new Set<string>();
+      eventRegs?.forEach((reg: any) => attending.add(reg.event_id));
+      studyParticipants?.forEach((p: any) => attending.add(p.study_id));
+      classParticipants?.forEach((p: any) => attending.add(p.class_id));
+      meetingParticipants?.forEach((p: any) => attending.add(p.meeting_id));
+      
+      setAttendingEvents(attending);
+    } catch (err) {
+      console.error('Error fetching attending events:', err);
+    }
+  };
 
   const fetchAllEvents = async () => {
     setLoading(true);
@@ -375,13 +416,17 @@ export function CalendarPage() {
                             </div>
                             <div className="space-y-0.5">
                               {dayEvents.slice(0, 2).map(event => (
-                                <div
+                                <Link
                                   key={event.id}
-                                  className={`text-xs px-1 py-0.5 rounded truncate ${getEventColor(event.type)}`}
+                                  to={event.link || '#'}
+                                  className={`text-xs px-1 py-0.5 rounded truncate block hover:opacity-80 transition-opacity ${getEventColor(event.type)}`}
                                   title={event.title}
+                                  onClick={(e) => {
+                                    if (!event.link) e.preventDefault();
+                                  }}
                                 >
                                   {event.title}
-                                </div>
+                                </Link>
                               ))}
                               {dayEvents.length > 2 && (
                                 <div className="text-xs text-gray-500 px-1">
@@ -416,7 +461,9 @@ export function CalendarPage() {
                   </p>
                 ) : (
                   <div className="space-y-4">
-                    {selectedDateEvents.map(event => (
+                    {selectedDateEvents.map(event => {
+                      const isAttending = attendingEvents.has(event.id);
+                      return (
                       <div
                         key={event.id}
                         className={`border-l-4 p-4 rounded ${getEventColor(event.type)}`}
@@ -425,6 +472,11 @@ export function CalendarPage() {
                           <div className="flex items-center gap-2">
                             {getEventIcon(event.type)}
                             <h4 className="font-semibold">{event.title}</h4>
+                            {isAttending && (
+                              <span className="px-2 py-0.5 text-xs bg-green-500 text-white rounded-full">
+                                Attending
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="text-sm space-y-1 mt-2">
@@ -462,13 +514,16 @@ export function CalendarPage() {
                         {event.link && (
                           <Link
                             to={event.link}
-                            className="text-sm text-gold hover:underline mt-2 inline-block"
+                            className="mt-3 inline-block"
                           >
-                            View Details →
+                            <button className="w-full px-4 py-2 bg-gold text-white rounded-lg hover:bg-gold/80 transition-colors font-medium text-sm">
+                              Go to {event.type === 'quiz' ? 'Quiz' : event.type === 'event' ? 'Event' : event.type === 'course' ? 'Course' : 'Details'} →
+                            </button>
                           </Link>
                         )}
                       </div>
-                    ))}
+                    );
+                    })}
                   </div>
                 )}
 
@@ -477,9 +532,13 @@ export function CalendarPage() {
                   <h3 className="text-lg font-bold text-navy-ink mb-4">Upcoming Events</h3>
                   <div className="space-y-3">
                     {events.slice(0, 5).map(event => (
-                      <div
+                      <Link
                         key={event.id}
-                        className="flex items-start gap-2 text-sm"
+                        to={event.link || '#'}
+                        className="flex items-start gap-2 text-sm hover:bg-gray-50 p-2 rounded-lg transition-colors"
+                        onClick={(e) => {
+                          if (!event.link) e.preventDefault();
+                        }}
                       >
                         <div className={`w-1 h-full rounded ${getEventColor(event.type).split(' ')[0]}`} />
                         <div className="flex-1">
@@ -493,7 +552,7 @@ export function CalendarPage() {
                             })}
                           </p>
                         </div>
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 </div>
