@@ -137,7 +137,7 @@ export function QuizQuestionsPage() {
       options: [{ text: '', correct: false }, { text: '', correct: false }],
       correct_answer: '',
       points: 1,
-      order_index: 0
+      order_index: questions.length
     });
   };
 
