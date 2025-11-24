@@ -67,6 +67,8 @@ export function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
+      console.log('🔍 Fetching groups...');
+      
       const [allGroupsRes, myGroupsRes, myCreatedGroupsRes] = await Promise.all([
         // Fetch public approved/active groups
         insforge.database
@@ -91,16 +93,59 @@ export function GroupsPage() {
         : Promise.resolve({ data: [] })
       ]);
 
-      setGroups(allGroupsRes.data || []);
+      console.log('📊 Group fetch results:', {
+        publicApproved: allGroupsRes.data?.length || 0,
+        myMemberGroups: myGroupsRes?.length || 0,
+        myCreatedGroups: myCreatedGroupsRes.data?.length || 0
+      });
+
+      // Combine ALL groups: public approved + member groups + created groups
+      const allGroups: Group[] = [];
+      const groupIds = new Set<string>();
+
+      // Add public approved/active groups
+      if (allGroupsRes.data) {
+        allGroupsRes.data.forEach((group: Group) => {
+          if (!groupIds.has(group.id)) {
+            allGroups.push(group);
+            groupIds.add(group.id);
+          }
+        });
+      }
+
+      // Add groups user is a member of (regardless of status)
+      if (myGroupsRes) {
+        myGroupsRes.forEach((group: Group) => {
+          if (group && !groupIds.has(group.id)) {
+            allGroups.push(group);
+            groupIds.add(group.id);
+          }
+        });
+      }
+
+      // Add groups user created (to see pending status)
+      if (myCreatedGroupsRes.data) {
+        myCreatedGroupsRes.data.forEach((group: Group) => {
+          if (!groupIds.has(group.id)) {
+            allGroups.push(group);
+            groupIds.add(group.id);
+          }
+        });
+      }
+
+      console.log(`✅ Total groups to display: ${allGroups.length}`);
+      setGroups(allGroups);
       
-      // Combine member groups and created groups, removing duplicates
+      // Combine member groups and created groups for "My Groups" section
       const allMyGroups = [...(myGroupsRes || []), ...(myCreatedGroupsRes.data || [])];
       const uniqueMyGroups = allMyGroups.filter((group, index, self) =>
-        index === self.findIndex(g => g.id === group.id)
+        index === self.findIndex(g => g && g.id === group.id)
       );
       setMyGroups(uniqueMyGroups || []);
     } catch (error) {
-      console.error('Error fetching groups:', error);
+      console.error('❌ Error fetching groups:', error);
+      setGroups([]);
+      setMyGroups([]);
     } finally {
       setLoading(false);
     }
