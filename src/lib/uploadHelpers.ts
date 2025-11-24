@@ -15,78 +15,78 @@ export async function ensureUserExists(
   userName?: string | null
 ): Promise<void> {
   try {
-    // Use upsert to ensure user exists in public.users table
-    // This handles both creation and updates, and avoids race conditions
-    const { data: userData, error: upsertError } = await insforge.database
+    // First, check if user already exists
+    const { data: existingUser, error: checkError } = await insforge.database
       .from('users')
-      .upsert([{ 
-        id: userId,
-        email: userEmail || null,
-        nickname: userName || null,
-        name: userName || null
-      }], {
-        onConflict: 'id'
-      })
-      .select()
-      .single();
+      .select('id')
+      .eq('id', userId)
+      .maybeSingle();
     
-    if (upsertError) {
-      // If upsert fails, try to check if user exists
-      const { data: existingUser, error: checkError } = await insforge.database
-        .from('users')
-        .select('id')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (checkError && checkError.code !== 'PGRST116') {
-        console.error('Error checking user after upsert failed:', checkError);
-        throw new Error(`Failed to ensure user exists: ${checkError.message}`);
-      }
-      
-      if (!existingUser) {
-        // User doesn't exist and upsert failed, try insert
-        try {
-          const { error: insertError } = await insforge.database
-            .from('users')
-            .insert([{ 
-              id: userId,
-              email: userEmail || null,
-              nickname: userName || null,
-              name: userName || null
-            }]);
-          
-          if (insertError) {
-            // If it's a duplicate key error, that's okay - user was created by another process
-            if (insertError.code === '23505' || insertError.message?.includes('duplicate') || insertError.message?.includes('unique')) {
-              console.log('User record already exists (race condition), continuing...');
-            } else {
-              console.error('Error creating user record:', insertError);
-              throw new Error(`Failed to create user record: ${insertError.message}`);
-            }
-          } else {
-            console.log('User record created successfully via insert');
-          }
-        } catch (insertErr: any) {
-          // Handle duplicate key errors gracefully
-          if (insertErr.code === '23505' || insertErr.message?.includes('duplicate') || insertErr.message?.includes('unique')) {
-            console.log('User record already exists, continuing...');
-          } else {
-            throw insertErr;
-          }
-        }
-      } else {
-        console.log('User record exists (verified after upsert failed)');
-      }
-    } else if (userData) {
-      console.log('User record ensured via upsert:', userData.id);
+    if (checkError && checkError.code !== 'PGRST116') {
+      console.error('Error checking user:', checkError);
+      // Continue anyway - might be a permission issue
     }
     
-    // Wait longer to ensure the record is committed and any triggers have run
+    // If user doesn't exist, try to insert
+    if (!existingUser) {
+      try {
+        // Only include fields that definitely exist in the users table
+        const userData: any = {
+          id: userId
+        };
+        
+        // Only add optional fields if they have values
+        if (userEmail) {
+          userData.email = userEmail;
+        }
+        if (userName) {
+          userData.nickname = userName;
+        }
+        
+        const { error: insertError } = await insforge.database
+          .from('users')
+          .insert([userData]);
+        
+        if (insertError) {
+          // If it's a duplicate key error, that's okay - user was created by another process
+          if (insertError.code === '23505' || 
+              insertError.message?.includes('duplicate') || 
+              insertError.message?.includes('unique') ||
+              insertError.message?.includes('already exists')) {
+            console.log('User record already exists (race condition), continuing...');
+          } else {
+            console.error('Error creating user record:', insertError);
+            // Don't throw - just log and continue
+            // The user might exist in auth.users but not public.users yet
+            console.warn('User insert failed, but continuing with upload attempt');
+          }
+        } else {
+          console.log('User record created successfully');
+        }
+      } catch (insertErr: any) {
+        // Handle duplicate key errors gracefully
+        if (insertErr.code === '23505' || 
+            insertErr.message?.includes('duplicate') || 
+            insertErr.message?.includes('unique') ||
+            insertErr.message?.includes('already exists')) {
+          console.log('User record already exists, continuing...');
+        } else {
+          console.warn('User insert exception (non-fatal):', insertErr);
+          // Don't throw - continue with upload attempt
+        }
+      }
+    } else {
+      console.log('User record already exists');
+    }
+    
+    // Wait to ensure the record is committed and any triggers have run
     // This is important for foreign key constraints in _storage table
     await new Promise(resolve => setTimeout(resolve, 500));
   } catch (err: any) {
     console.error('Error ensuring user exists:', err);
-    throw new Error(`Failed to verify user account: ${err.message || 'Unknown error'}`);
+    // Don't throw - just log and continue
+    // The upload might still work if user exists in auth.users
+    console.warn('User existence check failed, but continuing with upload attempt');
   }
 }
 
@@ -143,33 +143,11 @@ export async function uploadFileWithUserCheck(
             uploadError.message?.includes('violates foreign key constraint');
         
         if (isForeignKeyError) {
-          console.log(`Foreign key error on attempt ${attempt}, ensuring user exists and waiting...`);
-          
-          // Try to ensure user exists in public.users with upsert
-          try {
-            const { error: upsertError } = await insforge.database
-              .from('users')
-              .upsert([{ 
-                id: userId, 
-                email: userEmail || null,
-                nickname: userName || null,
-                name: userName || null
-              }], {
-                onConflict: 'id'
-              });
-            
-            if (upsertError) {
-              console.warn('Upsert error (may be non-fatal):', upsertError);
-            } else {
-              console.log('User record upserted successfully');
-            }
-          } catch (upsertErr: any) {
-            console.warn('Upsert exception (non-fatal):', upsertErr);
-          }
+          console.log(`Foreign key error on attempt ${attempt}, waiting for auth.users sync...`);
           
           // Wait progressively longer on each retry
           // The _storage table references auth.users, which should exist
-          // but there might be a sync delay
+          // but there might be a sync delay between auth.users and public.users
           const waitTime = attempt * 1000; // 1s, 2s, 3s, 4s, 5s
           console.log(`Waiting ${waitTime}ms for auth.users sync...`);
           await new Promise(resolve => setTimeout(resolve, waitTime));
