@@ -709,11 +709,12 @@ export function MentorshipPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => handleDownloadResource(resource)}
-                    disabled={!resource.file_url && !resource.external_link}
+                    disabled={!resource.file_url && !resource.file_key && !resource.external_link}
+                    title={(!resource.file_url && !resource.file_key && !resource.external_link) ? 'No download available for this resource' : ''}
                     className="w-full"
                   >
                     <Download className="w-4 h-4 mr-2" />
-                    Download
+                    {resource.external_link ? 'Open Link' : 'Download'}
                   </Button>
                 </div>
               ))}

@@ -880,9 +880,11 @@ export function BibleSchoolPage() {
                                 variant="outline"
                                 size="sm"
                                 onClick={() => handleDownloadResource(resource)}
+                                disabled={!resource.file_url && !resource.file_key && !resource.external_link}
+                                title={(!resource.file_url && !resource.file_key && !resource.external_link) ? 'No download available for this resource' : ''}
                               >
                                 <Download className="mr-1" size={14} />
-                                Download
+                                {resource.external_link ? 'Open Link' : 'Download'}
                               </Button>
                             </div>
                           </div>

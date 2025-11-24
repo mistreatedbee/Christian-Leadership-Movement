@@ -395,6 +395,8 @@ export function ResourceLibraryPage() {
                   onClick={() => handleDownload(resource)}
                   variant="outline"
                   size="sm"
+                  disabled={!resource.file_url && !resource.file_key && !resource.external_link}
+                  title={(!resource.file_url && !resource.file_key && !resource.external_link) ? 'No download available for this resource' : ''}
                 >
                   <Download className="w-4 h-4 mr-2" />
                   {resource.external_link ? 'Open Link' : 'Download'}

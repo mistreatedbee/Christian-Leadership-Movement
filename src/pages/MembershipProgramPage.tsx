@@ -532,7 +532,7 @@ export function MembershipProgramPage() {
               </p>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {resources.map(resource => {
-                  const hasDownload = resource.file_url || resource.external_link;
+                  const hasDownload = resource.file_url || resource.file_key || resource.external_link;
                   return (
                     <div key={resource.id} className="bg-white border border-gray-200 rounded-card p-6 hover:border-gold transition-all shadow-sm">
                       <div className="flex items-start justify-between mb-3">
