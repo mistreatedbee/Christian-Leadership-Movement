@@ -232,7 +232,7 @@ export function ApplicationManagementPage() {
           title: `${programType} Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
           message: newStatus === 'approved' 
             ? `Congratulations! Your ${programType} application has been approved. You will receive further instructions soon.`
-            : `Your ${programType} application has been rejected. Please contact administrators if you have any questions.`,
+            : `Your ${programType} application has been rejected. Please contact administrators for more information.`,
           related_id: applicationId,
           link_url: '/dashboard/applications',
           read: false
@@ -257,7 +257,7 @@ export function ApplicationManagementPage() {
           });
         } catch (emailErr) {
           console.error('Error sending email notification:', emailErr);
-          // Continue - email is not critical
+          // Continue even if email fails
         }
       }
 
@@ -1897,24 +1897,6 @@ export function ApplicationManagementPage() {
                       Approve
                     </Button>
                     <Button
-                      variant="outline"
-                      onClick={() => {
-                        handleStatusChange(selectedApplication.id, 'rejected');
-                        setShowDetailsModal(false);
-                      }}
-                    >
-                      <XCircle size={18} className="mr-2" />
-                      Reject
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>;
-}
                       variant="outline"
                       onClick={() => {
                         handleStatusChange(selectedApplication.id, 'rejected');
