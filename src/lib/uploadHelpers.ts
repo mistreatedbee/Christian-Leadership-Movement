@@ -109,41 +109,16 @@ export async function uploadFileWithUserCheck(
   userEmail?: string | null,
   userName?: string | null
 ): Promise<{ url: string; key: string }> {
-  // CRITICAL: Verify user is authenticated and session is valid
-  // The _storage table's uploaded_by FK references auth.users
-  try {
-    const { data: { session }, error: sessionError } = await insforge.auth.getSession();
-    
-    if (sessionError) {
-      console.error('Session error:', sessionError);
-      throw new Error('Authentication session is invalid. Please log in again.');
-    }
-    
-    if (!session || !session.user) {
-      throw new Error('No active session found. Please log in again.');
-    }
-    
-    if (session.user.id !== userId) {
-      console.warn('Session user ID mismatch:', { sessionUserId: session.user.id, providedUserId: userId });
-      // Use the session user ID instead
-      userId = session.user.id;
-    }
-    
-    console.log('Verified auth session for user:', userId);
-  } catch (sessionErr: any) {
-    console.error('Error verifying session:', sessionErr);
-    throw new Error('Failed to verify authentication. Please log in again.');
-  }
-  
   // CRITICAL: Ensure user exists in public.users FIRST
   // This is important because _storage.uploaded_by references auth.users,
   // but we need to ensure public.users exists for our app logic
+  // Note: If user is passed to this function, they're already authenticated via useUser hook
   await ensureUserExists(userId, userEmail, userName);
   
   // Wait longer to ensure database consistency and auth sync
   // The _storage table's uploaded_by FK references auth.users, which should
   // exist when user signs up, but we need to give it time to sync
-  // Increased wait time to allow auth.users to fully sync
+  // Increased wait time to allow auth.users to fully sync with public.users
   await new Promise(resolve => setTimeout(resolve, 1000));
   
   // Try upload with retry logic
