@@ -220,21 +220,29 @@ export function CalendarPage() {
       try {
         const { data: quizzesData } = await insforge.database
           .from('quizzes')
-          .select('id, title, created_at, course_id, program_id, bible_school_context')
+          .select('id, title, created_at, course_id, program_id, bible_school_context, quiz_type')
           .eq('is_active', true)
           .gte('created_at', startDate)
           .lte('created_at', endDate);
 
         quizzesData?.forEach((quiz: any) => {
+          // Determine the correct link based on quiz type
+          let quizLink = '/dashboard/courses';
+          if (quiz.quiz_type === 'course' && quiz.course_id) {
+            quizLink = `/dashboard/courses/${quiz.course_id}/quizzes/${quiz.id}/take`;
+          } else if (quiz.quiz_type === 'bible_school') {
+            quizLink = '/bible-school';
+          } else if (quiz.quiz_type === 'program' && quiz.program_id) {
+            quizLink = `/dashboard/programs/${quiz.program_id}/quizzes/${quiz.id}/take`;
+          }
+          
           // Show quizzes created in this month as upcoming assessments
           allEvents.push({
             id: quiz.id,
             title: `Quiz: ${quiz.title}`,
             date: new Date(quiz.created_at),
             type: 'quiz' as any,
-            link: quiz.course_id 
-              ? `/dashboard/courses/${quiz.course_id}/quizzes/${quiz.id}/take`
-              : '/dashboard/courses'
+            link: quizLink
           });
         });
       } catch (err) {
