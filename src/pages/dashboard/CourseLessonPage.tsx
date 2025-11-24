@@ -11,7 +11,9 @@ interface Lesson {
   title: string;
   description: string | null;
   video_url: string | null;
+  video_key: string | null;
   resources_url: string | null;
+  resources_key: string | null;
   order_index: number;
   scheduled_date: string | null;
   meeting_link: string | null;
@@ -220,24 +222,34 @@ export function CourseLessonPage() {
 
       {/* Lesson Content */}
       <div className="bg-white rounded-card shadow-soft p-6">
-        {lesson.video_url && (
-          <div className="mb-6">
-            <div className="relative aspect-video bg-black rounded-card overflow-hidden mb-4">
-              <video
-                src={lesson.video_url}
-                controls
-                className="w-full h-full"
-                onTimeUpdate={(e) => {
-                  const video = e.currentTarget;
-                  const percentage = (video.currentTime / video.duration) * 100;
-                  if (percentage > 0) {
-                    updateProgress(Math.min(percentage, 100));
-                  }
-                }}
-              />
+        {(lesson.video_url || lesson.video_key) && (() => {
+          // Get video URL - use storage URL if video_key exists, otherwise use video_url
+          let videoSrc = lesson.video_url;
+          if (lesson.video_key) {
+            videoSrc = getStorageUrl('courses', lesson.video_key);
+          } else if (lesson.video_url && !lesson.video_url.startsWith('http')) {
+            videoSrc = getStorageUrl('courses', lesson.video_url);
+          }
+          
+          return (
+            <div className="mb-6">
+              <div className="relative aspect-video bg-black rounded-card overflow-hidden mb-4">
+                <video
+                  src={videoSrc || ''}
+                  controls
+                  className="w-full h-full"
+                  onTimeUpdate={(e) => {
+                    const video = e.currentTarget;
+                    const percentage = (video.currentTime / video.duration) * 100;
+                    if (percentage > 0) {
+                      updateProgress(Math.min(percentage, 100));
+                    }
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {lesson.meeting_link && (
           <div className="bg-blue-50 border border-blue-200 rounded-card p-4 mb-6">
