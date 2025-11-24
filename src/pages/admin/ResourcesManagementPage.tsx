@@ -18,7 +18,10 @@ interface Resource {
   description?: string;
   resource_type: string;
   file_url?: string;
+  file_key?: string;
+  external_link?: string;
   thumbnail_url?: string;
+  thumbnail_key?: string;
   download_count: number;
   is_featured: boolean;
   is_public: boolean;
@@ -216,10 +219,10 @@ export function ResourcesManagementPage() {
   const handleResourceSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      let fileUrl = formData.file_url;
-      let fileKey = null;
-      let thumbnailUrl = formData.thumbnail_url;
-      let thumbnailKey = null;
+      let fileUrl = editingResource?.file_url || formData.file_url || null;
+      let fileKey = editingResource?.file_key || null;
+      let thumbnailUrl = editingResource?.thumbnail_url || formData.thumbnail_url || null;
+      let thumbnailKey = editingResource?.thumbnail_key || null;
 
       // Upload resource file if provided
       if (resourceFile) {
@@ -254,15 +257,24 @@ export function ResourcesManagementPage() {
         is_public: formData.is_public
       };
 
+      // Always include file_url and file_key if they exist (preserve existing when editing)
       if (fileUrl) {
         resourceData.file_url = fileUrl;
+      }
+      if (fileKey) {
         resourceData.file_key = fileKey;
       }
       if (formData.external_link) {
         resourceData.external_link = formData.external_link;
+      } else if (editingResource && editingResource.external_link) {
+        // Preserve existing external_link if not provided
+        resourceData.external_link = editingResource.external_link;
       }
       if (thumbnailUrl) {
         resourceData.thumbnail_url = thumbnailUrl;
+      }
+      if (thumbnailKey) {
+        resourceData.thumbnail_key = thumbnailKey;
       }
 
       if (editingResource) {
