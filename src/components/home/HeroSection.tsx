@@ -35,6 +35,18 @@ export function HeroSection() {
                 src="/assets/images/hero.jpeg"
                 alt="CLM Logo"
                 className="w-full h-full object-contain animate-fade-in-up"
+                onError={(e) => {
+                  // Fallback if image doesn't load - show placeholder
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  const parent = target.parentElement;
+                  if (parent && !parent.querySelector('.placeholder')) {
+                    const placeholder = document.createElement('div');
+                    placeholder.className = 'placeholder w-full h-64 bg-gradient-to-br from-gold/20 to-brand-dark-blue/20 flex items-center justify-center rounded-xl';
+                    placeholder.innerHTML = '<div class="text-white text-2xl font-bold">CLM</div>';
+                    parent.appendChild(placeholder);
+                  }
+                }}
               />
               {/* Glow behind logo */}
               <div className="absolute inset-0 bg-gradient-to-tr from-yellow-400 to-blue-500 opacity-20 rounded-xl blur-3xl animate-pulse-slow"></div>

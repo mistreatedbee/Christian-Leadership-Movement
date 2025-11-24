@@ -776,7 +776,7 @@ export function UserManagementPage() {
                         <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3 flex-shrink-0 overflow-hidden">
                           {user.avatar_url ? (
                             <img 
-                              src={user.avatar_url} 
+                              src={user.avatar_url.startsWith('http') ? user.avatar_url : getStorageUrl('avatars', user.avatar_url)} 
                               alt={user.nickname || 'User'} 
                               className="w-full h-full object-cover"
                               onError={(e) => {

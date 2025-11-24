@@ -4,6 +4,7 @@ import { ArrowLeft, MessageSquare, Pin, Lock, Send, Check, Heart, Bell, BellOff 
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
+import { getStorageUrl } from '../lib/connection';
 
 interface ForumTopic {
   id: string;
@@ -443,9 +444,14 @@ export function ForumTopicPage() {
           <div className="flex items-center gap-3">
             {topic.users?.avatar_url ? (
               <img
-                src={topic.users.avatar_url}
+                src={topic.users.avatar_url.startsWith('http') ? topic.users.avatar_url : getStorageUrl('avatars', topic.users.avatar_url)}
                 alt={topic.users.nickname || topic.users.email}
                 className="w-10 h-10 rounded-full"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                  target.parentElement!.innerHTML = `<div class="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold">${(topic.users?.nickname || topic.users?.email || 'U')[0].toUpperCase()}</div>`;
+                }}
               />
             ) : (
               <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold">
@@ -490,9 +496,14 @@ export function ForumTopicPage() {
                 <div className="flex items-center gap-3">
                   {reply.users?.avatar_url ? (
                     <img
-                      src={reply.users.avatar_url}
+                      src={reply.users.avatar_url.startsWith('http') ? reply.users.avatar_url : getStorageUrl('avatars', reply.users.avatar_url)}
                       alt={reply.users.nickname || reply.users.email}
                       className="w-10 h-10 rounded-full"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = `<div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">${(reply.users?.nickname || reply.users?.email || 'U')[0].toUpperCase()}</div>`;
+                      }}
                     />
                   ) : (
                     <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold">

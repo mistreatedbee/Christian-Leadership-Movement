@@ -3,6 +3,7 @@ import { Mail, Send, Search, User, Check, CheckCheck } from 'lucide-react';
 import { useUser } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
+import { getStorageUrl } from '../../lib/connection';
 
 interface Message {
   id: string;
@@ -274,9 +275,14 @@ export function MessagesPage() {
                     <div className="flex items-center gap-2">
                       {otherUser?.avatar_url ? (
                         <img
-                          src={otherUser.avatar_url}
+                          src={otherUser.avatar_url.startsWith('http') ? otherUser.avatar_url : getStorageUrl('avatars', otherUser.avatar_url)}
                           alt={otherUser.nickname || otherUser.email}
                           className="w-8 h-8 rounded-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = `<div class="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-white text-xs font-bold">${(otherUser?.nickname || otherUser?.email || 'U')[0].toUpperCase()}</div>`;
+                          }}
                         />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-gold flex items-center justify-center text-white text-xs font-bold">

@@ -71,6 +71,11 @@ export function TopNav() {
             src="/assets/images/hero.jpeg" 
             alt="CLM Logo" 
             className="h-10 w-auto"
+            onError={(e) => {
+              // Fallback if image doesn't load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+            }}
           />
           <span className="text-brand-dark-blue font-bold text-xl">
             Christian Leadership Movement
