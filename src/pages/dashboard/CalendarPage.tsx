@@ -495,25 +495,23 @@ export function CalendarPage() {
                               minute: '2-digit'
                             })}
                           </div>
-                          {event.is_online ? (
-                            event.online_link && (
-                              <a
-                                href={event.online_link}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="flex items-center text-blue-600 hover:underline"
-                              >
-                                <LinkIcon className="mr-1" size={12} />
-                                Join Online
-                              </a>
-                            )
-                          ) : (
-                            event.location && (
-                              <div className="flex items-center text-gray-700">
-                                <MapPin className="mr-1" size={12} />
-                                {event.location}
-                              </div>
-                            )
+                          {event.is_online && event.online_link && (
+                            <a
+                              href={event.online_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center text-blue-600 hover:underline mb-2"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <LinkIcon className="mr-1" size={12} />
+                              Join Online Meeting
+                            </a>
+                          )}
+                          {!event.is_online && event.location && (
+                            <div className="flex items-center text-gray-700">
+                              <MapPin className="mr-1" size={12} />
+                              {event.location}
+                            </div>
                           )}
                         </div>
                         {event.description && (

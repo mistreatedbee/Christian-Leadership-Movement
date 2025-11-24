@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useUser } from '@insforge/react';
+import { useSearchParams } from 'react-router-dom';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
@@ -13,7 +14,11 @@ type TabType = 'studies' | 'classes' | 'meetings' | 'resources';
 
 export function BibleSchoolPage() {
   const { user, isLoaded } = useUser();
-  const [activeTab, setActiveTab] = useState<TabType>('studies');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab') as TabType | null;
+  const [activeTab, setActiveTab] = useState<TabType>(
+    tabParam && ['studies', 'classes', 'meetings', 'resources'].includes(tabParam) ? tabParam : 'studies'
+  );
   const [studies, setStudies] = useState<any[]>([]);
   const [classes, setClasses] = useState<any[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
@@ -29,6 +34,20 @@ export function BibleSchoolPage() {
       fetchData();
     }
   }, [activeTab, isLoaded, user]);
+
+  // Update active tab when URL parameter changes
+  useEffect(() => {
+    const tabParam = searchParams.get('tab') as TabType | null;
+    if (tabParam && ['studies', 'classes', 'meetings', 'resources'].includes(tabParam)) {
+      setActiveTab(tabParam);
+    }
+  }, [searchParams]);
+
+  // Update URL when tab changes
+  const handleTabChange = (tab: TabType) => {
+    setActiveTab(tab);
+    setSearchParams({ tab });
+  };
 
   const checkAdminStatus = async () => {
     if (user) {
