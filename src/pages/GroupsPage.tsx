@@ -73,7 +73,7 @@ export function GroupsPage() {
           .from('groups')
           .select('*, users(*), group_members(*)')
           .eq('is_public', true)
-          .or('status.eq.approved,status.eq.active')
+          .in('status', ['approved', 'active'])
           .order('created_at', { ascending: false }),
         // Fetch groups user is a member of
         user ? insforge.database

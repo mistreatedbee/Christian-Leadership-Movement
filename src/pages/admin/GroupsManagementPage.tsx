@@ -292,15 +292,12 @@ export function GroupsManagementPage() {
 
   const updateGroupStatus = async (groupId: string, newStatus: string) => {
     try {
-      // When approving, ensure status is set to 'approved' explicitly
-      const updateData: any = {
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      };
+      // When approving, set status to 'approved' (not 'active') to match the filter in GroupsPage
+      const statusToSet = newStatus === 'active' ? 'approved' : newStatus;
       
       const { data: updatedGroup, error } = await insforge.database
         .from('groups')
-        .update(updateData)
+        .update({ status: statusToSet, updated_at: new Date().toISOString() })
         .eq('id', groupId)
         .select()
         .single();
@@ -798,17 +795,6 @@ export function GroupsManagementPage() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-
-      )}
-    </div>
-  );
-}
-
-
     </div>
   );
 }
