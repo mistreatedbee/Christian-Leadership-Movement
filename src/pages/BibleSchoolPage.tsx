@@ -453,7 +453,7 @@ export function BibleSchoolPage() {
               {tabs.map(tab => (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`flex items-center px-4 py-2 border-b-2 transition-colors ${
                     activeTab === tab.id
                       ? 'border-gold text-gold font-semibold'

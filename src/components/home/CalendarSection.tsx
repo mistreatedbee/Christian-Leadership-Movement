@@ -79,7 +79,7 @@ export function CalendarSection() {
               location: study.location,
               is_online: study.is_online,
               online_link: study.meeting_link,
-              link: '/bible-school'
+              link: '/bible-school?tab=studies'
             });
           }
         });
@@ -108,7 +108,7 @@ export function CalendarSection() {
               is_online: classItem.is_online,
               online_link: classItem.meeting_link,
               description: classItem.description,
-              link: '/bible-school'
+              link: '/bible-school?tab=classes'
             });
           }
         });
@@ -137,7 +137,7 @@ export function CalendarSection() {
               is_online: meeting.is_online,
               online_link: meeting.meeting_link,
               description: meeting.description,
-              link: '/bible-school'
+              link: '/bible-school?tab=meetings'
             });
           }
         });
