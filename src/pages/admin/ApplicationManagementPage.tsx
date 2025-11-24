@@ -679,6 +679,34 @@ export function ApplicationManagementPage() {
         {status.charAt(0).toUpperCase() + status.slice(1)}
       </span>;
   };
+
+  if (isAdmin === null || loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gold mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading applications...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isAdmin === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted-gray">
+        <div className="bg-white rounded-card shadow-soft p-8 max-w-md text-center">
+          <h1 className="text-2xl font-bold text-navy-ink mb-4">Access Denied</h1>
+          <p className="text-gray-600 mb-6">
+            You do not have permission to access the application management page.
+          </p>
+          <a href="/admin" className="text-gold hover:underline font-medium">
+            Go to Admin Dashboard
+          </a>
+        </div>
+      </div>
+    );
+  }
+
   return <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-navy-ink mb-2">
