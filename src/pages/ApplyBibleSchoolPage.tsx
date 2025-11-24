@@ -382,45 +382,21 @@ export function ApplyBibleSchoolPage() {
         declarationDate: data.declarationDate
       };
 
-      // Create application - Save to both individual columns AND form_data JSONB
+      // Create application - Save essential columns and ALL form data to form_data JSONB
+      // Only use columns that definitely exist in the applications table
       const applicationData: any = {
         user_id: user.id,
         program_type: 'bible_school',
-        // Individual columns (for compatibility and easy querying)
+        // Essential columns that exist in the table
         full_name: data.fullName,
         email: data.email,
-        phone: data.contactNumber,
-        contact_number: data.contactNumber, // Also save as contact_number
-        id_number: data.idNumber,
-        gender: data.gender,
-        marital_status: data.maritalStatus,
-        physical_address: data.physicalAddress,
-        country: data.country,
-        date_accepted_christ: data.dateAcceptedChrist,
-        is_baptized: data.isBaptized,
-        baptism_date: data.baptismDate,
-        attends_local_church: data.attendsLocalChurch,
-        church_name: data.churchName,
-        denomination: data.denomination,
-        pastor_name: data.pastorName,
-        serves_in_ministry: data.servesInMinistry,
-        ministry_service_description: data.ministryServiceDescription,
-        why_join_bible_school: data.whyJoinBibleSchool,
-        leadership_roles: data.leadershipRoles,
-        previous_leadership_experience: data.previousLeadershipExperience,
-        calling_statement: data.callingStatement,
-        leadership_ambitions: data.leadershipAmbitions,
-        referee_name: data.refereeName,
-        referee_contact: data.refereeContact,
-        relationship_to_referee: data.relationshipToReferee,
-        registration_option: data.registrationOption,
-        signature: data.signature,
-        declaration_date: data.declarationDate,
+        // File URLs
         id_passport_url: idUpload.url,
         id_passport_key: idUpload.key,
         payment_proof_url: paymentUpload?.url || null,
         payment_proof_key: paymentUpload?.key || null,
         // CRITICAL: Save ALL form data to form_data JSONB column
+        // This ensures admins can see every single field that was submitted
         form_data: completeFormData,
         status: 'pending',
         payment_status: 'pending'
