@@ -50,12 +50,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 CREATE INDEX IF NOT EXISTS idx_users_id ON public.users(id);
 CREATE INDEX IF NOT EXISTS idx_users_email ON public.users(email);
 
--- Add comment
+-- Add comments
 COMMENT ON FUNCTION public.sync_user_from_auth() IS 
-  'Syncs user from auth.users to public.users when auth record is created/updated. ' ||
-  'Note: Trigger must be created in Supabase dashboard on auth.users table.';
+  'Syncs user from auth.users to public.users when auth record is created/updated. Note: Trigger must be created in Supabase dashboard on auth.users table.';
 
 COMMENT ON FUNCTION public.sync_all_auth_users() IS 
-  'Placeholder function for syncing all auth users. ' ||
-  'The uploadFileWithUserCheck function handles user sync before uploads.';
+  'Placeholder function for syncing all auth users. The uploadFileWithUserCheck function handles user sync before uploads.';
 

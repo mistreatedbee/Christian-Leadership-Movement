@@ -97,13 +97,37 @@ export function LoginPage() {
                     .eq('id', result.user.id);
                 } else if (!existingUser) {
                   // If user doesn't exist in public.users, create it
-                  await insforge.database
+                  // Use upsert to handle race conditions
+                  const emailPrefix = userEmail ? userEmail.split('@')[0] : null;
+                  const { error: upsertError } = await insforge.database
                     .from('users')
-                    .insert([{ 
+                    .upsert([{ 
                       id: result.user.id, 
                       email: userEmail,
-                      nickname: result.user.user_metadata?.nickname || null
-                    }]);
+                      nickname: result.user.user_metadata?.nickname || result.user.user_metadata?.name || emailPrefix,
+                      name: result.user.user_metadata?.name || emailPrefix
+                    }], {
+                      onConflict: 'id'
+                    });
+                  
+                  if (upsertError) {
+                    console.error('Error upserting user:', upsertError);
+                    // Try insert as fallback
+                    try {
+                      await insforge.database
+                        .from('users')
+                        .insert([{ 
+                          id: result.user.id, 
+                          email: userEmail,
+                          nickname: result.user.user_metadata?.nickname || null
+                        }]);
+                    } catch (insertErr: any) {
+                      // If duplicate, that's okay
+                      if (insertErr.code !== '23505' && !insertErr.message?.includes('duplicate')) {
+                        console.error('Error creating user record:', insertErr);
+                      }
+                    }
+                  }
                 }
               }
               
