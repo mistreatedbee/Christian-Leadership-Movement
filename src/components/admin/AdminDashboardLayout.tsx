@@ -206,6 +206,10 @@ export function AdminDashboardLayout() {
     label: 'Mentorship',
     path: '/admin/mentorship'
   }, {
+    icon: Users,
+    label: 'Membership',
+    path: '/admin/membership'
+  }, {
     icon: MessageSquare,
     label: 'Forum',
     path: '/admin/forum'

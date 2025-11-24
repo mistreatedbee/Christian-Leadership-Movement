@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
-import { Users, BookOpen, Award, CheckCircle, ArrowRight, ArrowLeft, FileText, Lock, Unlock } from 'lucide-react';
+import { Users, BookOpen, Award, CheckCircle, ArrowRight, ArrowLeft, FileText, Lock, Unlock, Download, Clock } from 'lucide-react';
+import { getStorageUrl } from '../lib/connection';
 
 interface Program {
   id: string;
@@ -21,6 +22,7 @@ export function MembershipProgramPage() {
   const [hasMembership, setHasMembership] = useState(false);
   const [loading, setLoading] = useState(true);
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
 
   useEffect(() => {
     fetchProgram();
@@ -28,6 +30,7 @@ export function MembershipProgramPage() {
       checkMembership();
     }
     fetchQuizzes();
+    fetchResources();
   }, [user, program]);
 
   const fetchProgram = async () => {
@@ -439,6 +442,52 @@ export function MembershipProgramPage() {
               </Button>
             )}
           </div>
+
+          {/* Resources Section */}
+          {hasMembership && resources.length > 0 && (
+            <div className="bg-white rounded-card shadow-soft p-8 mb-8">
+              <h2 className="text-3xl font-bold text-navy-ink mb-6 flex items-center gap-2">
+                <BookOpen className="w-8 h-8 text-gold" />
+                Membership Resources
+              </h2>
+              <p className="text-gray-600 mb-6">
+                Access exclusive resources, materials, and links available to CLM members.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {resources.map(resource => {
+                  const hasDownload = resource.file_url || resource.external_link;
+                  return (
+                    <div key={resource.id} className="bg-white border border-gray-200 rounded-card p-6 hover:border-gold transition-all shadow-sm">
+                      <div className="flex items-start justify-between mb-3">
+                        <h3 className="font-semibold text-navy-ink text-lg">{resource.title}</h3>
+                        <FileText className="text-blue-500 flex-shrink-0" size={20} />
+                      </div>
+                      {resource.description && (
+                        <p className="text-sm text-gray-600 mb-4 line-clamp-3">{resource.description}</p>
+                      )}
+                      <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500 mb-4">
+                        <span className="px-2 py-1 bg-gray-100 rounded">{resource.resource_type}</span>
+                        {resource.is_featured && (
+                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 rounded">Featured</span>
+                        )}
+                        <span>Downloads: {resource.download_count || 0}</span>
+                      </div>
+                      {hasDownload && (
+                        <Button 
+                          variant="primary" 
+                          className="w-full"
+                          onClick={() => handleDownloadResource(resource)}
+                        >
+                          <Download className="mr-2" size={16} />
+                          {resource.external_link ? 'Open Link' : 'Download'}
+                        </Button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Quizzes Section */}
           {quizzes.length > 0 && (

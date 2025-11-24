@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Target, Search, CheckCircle, XCircle, Plus, Link as LinkIcon, Eye, Trash2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { insforge } from '../../lib/insforge';
 import { Button } from '../../components/ui/Button';
 
@@ -453,8 +454,14 @@ export function MentorshipManagementPage() {
       {/* Programs Tab */}
       {activeTab === 'programs' && (
         <div className="bg-white rounded-card shadow-soft overflow-hidden">
-          <div className="p-6 border-b">
+          <div className="p-6 border-b flex justify-between items-center">
             <h2 className="text-xl font-bold text-navy-ink">Mentorship Programs</h2>
+            <Link to="/admin/mentorship/resources">
+              <Button variant="primary" size="sm">
+                <Plus className="w-4 h-4 mr-1" />
+                Manage Resources
+              </Button>
+            </Link>
           </div>
           <div className="divide-y">
             {programs.map((program) => (

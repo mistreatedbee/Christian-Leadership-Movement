@@ -91,6 +91,8 @@ import { BibleSchoolProgramPage } from './pages/BibleSchoolProgramPage';
 import { MembershipProgramPage } from './pages/MembershipProgramPage';
 import { PartnersPage } from './pages/PartnersPage';
 import { PartnersManagementPage } from './pages/admin/PartnersManagementPage';
+import { MembershipManagementPage } from './pages/admin/MembershipManagementPage';
+import { MentorshipResourcesManagementPage } from './pages/admin/MentorshipResourcesManagementPage';
 
 export function App() {
   return (
@@ -182,6 +184,8 @@ export function App() {
             <Route path="volunteers" element={<VolunteerManagementPage />} />
             <Route path="blog" element={<BlogManagementPage />} />
             <Route path="mentorship" element={<MentorshipManagementPage />} />
+            <Route path="mentorship/resources" element={<MentorshipResourcesManagementPage />} />
+            <Route path="membership" element={<MembershipManagementPage />} />
             <Route path="streams" element={<LiveStreamManagementPage />} />
             <Route path="forum" element={<ForumManagementPage />} />
             <Route path="groups" element={<GroupsManagementPage />} />

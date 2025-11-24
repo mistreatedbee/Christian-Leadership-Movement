@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard, ArrowLeft, BookOpen, Clock, ArrowRight } from 'lucide-react';
+import { Users, Target, Calendar, MessageSquare, CheckCircle, Plus, LayoutDashboard, ArrowLeft, BookOpen, Clock, ArrowRight, FileText, Download } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
+import { getStorageUrl } from '../lib/connection';
 
 interface MentorshipProgram {
   id: string;
@@ -68,6 +69,7 @@ export function MentorshipPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'browse' | 'my-mentorship'>('browse');
   const [quizzes, setQuizzes] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
   const [showMentorForm, setShowMentorForm] = useState(false);
   const [showMenteeForm, setShowMenteeForm] = useState(false);
   const [mentorFormData, setMentorFormData] = useState({
