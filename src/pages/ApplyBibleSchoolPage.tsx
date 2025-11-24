@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useUser } from '@insforge/react';
 import { Button } from '../components/ui/Button';
@@ -63,6 +63,7 @@ const BANK_DETAILS = {
 
 export function ApplyBibleSchoolPage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { user, isLoaded } = useUser();
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
@@ -71,6 +72,8 @@ export function ApplyBibleSchoolPage() {
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>('');
   const [registrationFees, setRegistrationFees] = useState({ withACRP: 0, withoutACRP: 0 });
+  const [editingApplicationId, setEditingApplicationId] = useState<string | null>(null);
+  const [isEditMode, setIsEditMode] = useState(false);
 
   const {
     register,
@@ -105,9 +108,55 @@ export function ApplyBibleSchoolPage() {
       navigate('/login?redirect=/apply/bible-school');
       return;
     }
-    loadDraft();
+    
+    // Check if editing an existing application
+    const editId = searchParams.get('edit');
+    if (editId) {
+      setEditingApplicationId(editId);
+      setIsEditMode(true);
+      loadApplicationForEdit(editId);
+    } else {
+      loadDraft();
+    }
+    
     fetchRegistrationFees();
-  }, [user, isLoaded]);
+  }, [user, isLoaded, searchParams]);
+  
+  const loadApplicationForEdit = async (applicationId: string) => {
+    try {
+      const { data: application, error } = await insforge.database
+        .from('applications')
+        .select('*, form_data')
+        .eq('id', applicationId)
+        .eq('user_id', user?.id)
+        .eq('status', 'pending')
+        .single();
+      
+      if (error) throw error;
+      if (!application) {
+        setError('Application not found or cannot be edited');
+        return;
+      }
+      
+      // Load form data from form_data JSONB
+      const formData = application.form_data || {};
+      Object.keys(formData).forEach(key => {
+        if (key === 'leadershipRoles' && Array.isArray(formData[key])) {
+          formData[key].forEach((role: any) => append(role));
+        } else {
+          setValue(key as any, formData[key]);
+        }
+      });
+      
+      // Set file URLs if they exist (for display, not re-upload)
+      if (application.id_passport_url) {
+        // File already uploaded, user can see it but would need to re-upload to change
+      }
+    } catch (err: any) {
+      console.error('Error loading application for edit:', err);
+      setError('Failed to load application for editing');
+    }
+  };
 
   const fetchRegistrationFees = async () => {
     try {
@@ -456,37 +505,42 @@ export function ApplyBibleSchoolPage() {
           related_id: application.id
         }]);
 
-      // Create notifications for all admins
-      try {
-        const { data: admins } = await insforge.database
-          .from('user_profiles')
-          .select('user_id')
-          .in('role', ['admin', 'super_admin']);
+      // Create notifications for all admins (only if new application, not edit)
+      if (!isEditMode) {
+        try {
+          const { data: admins } = await insforge.database
+            .from('user_profiles')
+            .select('user_id')
+            .in('role', ['admin', 'super_admin']);
 
-        if (admins && admins.length > 0) {
-          const adminNotifications = admins.map((admin: any) => ({
-            user_id: admin.user_id,
-            type: 'application',
-            title: 'New Bible School Application',
-            message: `A new Bible School application has been submitted by ${data.fullName || user.email || 'a user'}. Please review it.`,
-            related_id: application.id,
-            read: false
-          }));
+          if (admins && admins.length > 0) {
+            const adminNotifications = admins.map((admin: any) => ({
+              user_id: admin.user_id,
+              type: 'application',
+              title: 'New Bible School Application',
+              message: `A new Bible School application has been submitted by ${data.fullName || user.email || 'a user'}. Please review it.`,
+              related_id: application.id,
+              read: false
+            }));
 
-          await insforge.database
-            .from('notifications')
-            .insert(adminNotifications);
+            await insforge.database
+              .from('notifications')
+              .insert(adminNotifications);
+          }
+        } catch (adminNotifError) {
+          console.error('Error creating admin notifications:', adminNotifError);
+          // Don't fail the application submission if admin notification fails
         }
-      } catch (adminNotifError) {
-        console.error('Error creating admin notifications:', adminNotifError);
-        // Don't fail the application submission if admin notification fails
       }
 
-      await sendEmailNotification(user.id, {
-        type: 'application_submitted',
-        subject: 'Bible School Application Submitted',
-        message: 'Your Bible School application has been submitted successfully.'
-      });
+      // Send email notification (only if new application)
+      if (!isEditMode) {
+        await sendEmailNotification(user.id, {
+          type: 'application_submitted',
+          subject: 'Bible School Application Submitted',
+          message: 'Your Bible School application has been submitted successfully.'
+        });
+      }
 
       // Delete draft
       await insforge.database
