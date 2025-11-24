@@ -226,7 +226,7 @@ export function ApplyMentorPage() {
         specializations: selectedSpecializations,
         availability: data.availability,
         contact_preferences: data.contact_preferences,
-        references: references,
+        mentor_references: references,
         website_url: data.website_url || null,
         linkedin_url: data.linkedin_url || null,
         bio: data.bio
@@ -251,7 +251,7 @@ export function ApplyMentorPage() {
         specializations: selectedSpecializations,
         availability: data.availability,
         contact_preferences: data.contact_preferences,
-        references: references.length > 0 ? references : null,
+        mentor_references: references.length > 0 ? references : null,
         website_url: data.website_url || null,
         linkedin_url: data.linkedin_url || null
       };

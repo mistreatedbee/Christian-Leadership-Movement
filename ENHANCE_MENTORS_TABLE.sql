@@ -13,7 +13,7 @@ ADD COLUMN IF NOT EXISTS experience_years INTEGER,
 ADD COLUMN IF NOT EXISTS specializations TEXT[],
 ADD COLUMN IF NOT EXISTS availability TEXT,
 ADD COLUMN IF NOT EXISTS contact_preferences TEXT,
-ADD COLUMN IF NOT EXISTS references JSONB,
+ADD COLUMN IF NOT EXISTS mentor_references JSONB,
 ADD COLUMN IF NOT EXISTS profile_image_url TEXT,
 ADD COLUMN IF NOT EXISTS profile_image_key TEXT,
 ADD COLUMN IF NOT EXISTS website_url TEXT,
@@ -53,7 +53,7 @@ COMMENT ON COLUMN public.mentors.experience_years IS 'Years of experience in men
 COMMENT ON COLUMN public.mentors.specializations IS 'Array of specialization areas';
 COMMENT ON COLUMN public.mentors.availability IS 'Mentor availability schedule';
 COMMENT ON COLUMN public.mentors.contact_preferences IS 'Preferred contact methods and times';
-COMMENT ON COLUMN public.mentors.references IS 'References in JSONB format';
+COMMENT ON COLUMN public.mentors.mentor_references IS 'References in JSONB format';
 COMMENT ON COLUMN public.mentors.profile_image_url IS 'URL to mentor profile image';
 COMMENT ON COLUMN public.mentors.profile_image_key IS 'Storage key for mentor profile image';
 COMMENT ON COLUMN public.mentors.website_url IS 'Mentor personal or professional website';

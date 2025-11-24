@@ -502,11 +502,11 @@ export function MentorshipManagementPage() {
                               <p className="text-sm text-gray-600">{(mentor as any).application_data.contact_preferences}</p>
                             </div>
                           )}
-                          {(mentor as any).application_data.references && (mentor as any).application_data.references.length > 0 && (
+                          {((mentor as any).application_data.mentor_references || (mentor as any).application_data.references) && ((mentor as any).application_data.mentor_references || (mentor as any).application_data.references).length > 0 && (
                             <div>
                               <p className="text-sm font-medium text-gray-700">References:</p>
                               <div className="space-y-2 mt-1">
-                                {(mentor as any).application_data.references.map((ref: any, idx: number) => (
+                                {((mentor as any).application_data.mentor_references || (mentor as any).application_data.references).map((ref: any, idx: number) => (
                                   <div key={idx} className="text-sm text-gray-600 pl-4 border-l-2 border-gray-300">
                                     <p><strong>{ref.name}</strong> - {ref.relationship}</p>
                                     <p className="text-xs">{ref.contact}</p>
