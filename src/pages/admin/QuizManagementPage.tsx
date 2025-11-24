@@ -17,6 +17,8 @@ interface Quiz {
   passing_score: number;
   max_attempts: number;
   is_active: boolean;
+  question_count?: number;
+  total_marks?: number;
   courses?: {
     id: string;
     title: string;
@@ -477,6 +479,8 @@ export function QuizManagementPage() {
                 <th className="text-left py-3 px-6">Title</th>
                 <th className="text-left py-3 px-6">Type</th>
                 <th className="text-left py-3 px-6">Context</th>
+                <th className="text-left py-3 px-6">Questions</th>
+                <th className="text-left py-3 px-6">Total Marks</th>
                 <th className="text-left py-3 px-6">Time Limit</th>
                 <th className="text-left py-3 px-6">Passing Score</th>
                 <th className="text-left py-3 px-6">Status</th>
@@ -520,6 +524,12 @@ export function QuizManagementPage() {
                     <td className="py-4 px-6 font-medium">{quiz.title}</td>
                     <td className="py-4 px-6">{getTypeBadge()}</td>
                     <td className="py-4 px-6 text-sm text-gray-600">{getContextLabel()}</td>
+                    <td className="py-4 px-6">
+                      <span className="font-semibold">{quiz.question_count || 0}</span>
+                    </td>
+                    <td className="py-4 px-6">
+                      <span className="font-semibold text-gold">{quiz.total_marks || 0}</span>
+                    </td>
                     <td className="py-4 px-6">{quiz.time_limit ? `${quiz.time_limit} min` : 'No limit'}</td>
                     <td className="py-4 px-6">{quiz.passing_score}%</td>
                     <td className="py-4 px-6">

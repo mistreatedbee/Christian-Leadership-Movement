@@ -104,6 +104,9 @@ export function QuizQuestionsPage() {
         data.options = formData.options;
       } else if (formData.question_type === 'true_false' || formData.question_type === 'short_answer') {
         data.correct_answer = formData.correct_answer;
+      } else if (formData.question_type === 'long_answer') {
+        // For long answer, store guidelines in correct_answer field (will be used for manual grading)
+        data.correct_answer = formData.correct_answer || null;
       }
 
       if (editingQuestion) {
@@ -259,6 +262,7 @@ export function QuizQuestionsPage() {
                 <option value="multiple_choice">Multiple Choice</option>
                 <option value="true_false">True/False</option>
                 <option value="short_answer">Short Answer</option>
+                <option value="long_answer">Long Answer (Essay)</option>
               </select>
             </div>
 
@@ -334,6 +338,22 @@ export function QuizQuestionsPage() {
               </div>
             )}
 
+            {formData.question_type === 'long_answer' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Answer Guidelines (Optional)</label>
+                <textarea
+                  value={formData.correct_answer || ''}
+                  onChange={(e) => setFormData({ ...formData, correct_answer: e.target.value })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+                  rows={4}
+                  placeholder="Provide guidelines or key points for grading this essay question..."
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Note: Long answer questions require manual grading. Provide guidelines to help with evaluation.
+                </p>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Points *</label>
@@ -379,7 +399,15 @@ export function QuizQuestionsPage() {
       {/* Questions List */}
       <div className="bg-white rounded-card shadow-soft overflow-hidden">
         <div className="p-6 border-b">
-          <h2 className="text-xl font-bold text-navy-ink">Questions ({questions.length})</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-bold text-navy-ink">Questions ({questions.length})</h2>
+            <div className="text-right">
+              <p className="text-sm text-gray-600">Total Marks</p>
+              <p className="text-2xl font-bold text-gold">
+                {questions.reduce((sum, q) => sum + q.points, 0)}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="divide-y">
           {questions.map((question, index) => (
@@ -410,6 +438,12 @@ export function QuizQuestionsPage() {
                     <div className="ml-4">
                       <span className="text-sm text-gray-600">Correct Answer: </span>
                       <span className="font-semibold text-green-700">{question.correct_answer}</span>
+                    </div>
+                  )}
+                  {question.question_type === 'long_answer' && (
+                    <div className="ml-4">
+                      <span className="text-sm text-gray-600">Grading Guidelines: </span>
+                      <span className="font-semibold text-blue-700">{question.correct_answer || 'No guidelines provided'}</span>
                     </div>
                   )}
                 </div>

@@ -121,6 +121,10 @@ export function QuizTakePage() {
         if (userAnswer?.toLowerCase().trim() === question.correct_answer?.toLowerCase().trim()) {
           earnedPoints += question.points;
         }
+      } else if (question.question_type === 'long_answer') {
+        // Long answer questions require manual grading - don't auto-score
+        // They will be marked as needing review
+        // For now, we'll give 0 points and mark for manual review
       }
     });
 
@@ -186,20 +190,56 @@ export function QuizTakePage() {
 
   const currentQuestion = questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const totalMarks = questions.reduce((sum, q) => sum + q.points, 0);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      {/* Header */}
+      {/* Header with Quiz Information */}
       <div className="bg-white p-6 rounded-card shadow-soft">
-        <div className="flex items-center justify-between mb-4">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-navy-ink mb-2">{quiz.title}</h1>
+          {quiz.description && (
+            <p className="text-gray-600 mb-4">{quiz.description}</p>
+          )}
+        </div>
+        
+        {/* Quiz Information Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4 p-4 bg-muted-gray rounded-lg">
           <div>
-            <h1 className="text-2xl font-bold text-navy-ink">{quiz.title}</h1>
-            {quiz.description && (
-              <p className="text-gray-600 mt-1">{quiz.description}</p>
-            )}
+            <p className="text-xs text-gray-600 mb-1">Total Questions</p>
+            <p className="text-lg font-bold text-navy-ink">{questions.length}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-600 mb-1">Total Marks</p>
+            <p className="text-lg font-bold text-gold">{totalMarks}</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-600 mb-1">Passing Mark</p>
+            <p className="text-lg font-bold text-navy-ink">{quiz.passing_score}%</p>
+          </div>
+          <div>
+            <p className="text-xs text-gray-600 mb-1">Time Limit</p>
+            <p className="text-lg font-bold text-navy-ink">
+              {quiz.time_limit ? `${quiz.time_limit} min` : 'No limit'}
+            </p>
+          </div>
+        </div>
+
+        {/* Timer and Progress */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex-1">
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-gold h-2 rounded-full transition-all"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 mt-2">
+              Question {currentQuestionIndex + 1} of {questions.length}
+            </p>
           </div>
           {timeRemaining !== null && (
-            <div className="flex items-center gap-2 text-lg font-semibold">
+            <div className="flex items-center gap-2 text-lg font-semibold ml-4">
               <Clock className="w-5 h-5" />
               <span className={timeRemaining < 60 ? 'text-red-600' : ''}>
                 {formatTime(timeRemaining)}
@@ -207,15 +247,6 @@ export function QuizTakePage() {
             </div>
           )}
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div
-            className="bg-gold h-2 rounded-full transition-all"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-        <p className="text-sm text-gray-600 mt-2">
-          Question {currentQuestionIndex + 1} of {questions.length}
-        </p>
       </div>
 
       {/* Instructions */}
@@ -228,11 +259,18 @@ export function QuizTakePage() {
       {/* Question */}
       <div className="bg-white p-6 rounded-card shadow-soft">
         <div className="mb-6">
-          <h2 className="text-xl font-bold text-navy-ink mb-2">
-            {currentQuestion.question_text}
-          </h2>
-          <p className="text-sm text-gray-600">
-            {currentQuestion.points} point{currentQuestion.points !== 1 ? 's' : ''}
+          <div className="flex items-start justify-between mb-2">
+            <h2 className="text-xl font-bold text-navy-ink flex-1">
+              {currentQuestion.question_text}
+            </h2>
+            <div className="ml-4 bg-gold/10 px-3 py-1 rounded-lg">
+              <p className="text-sm font-semibold text-gold">
+                {currentQuestion.points} mark{currentQuestion.points !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            Question Type: {currentQuestion.question_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
           </p>
         </div>
 
@@ -307,6 +345,16 @@ export function QuizTakePage() {
               className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
               rows={4}
               placeholder="Type your answer..."
+            />
+          )}
+
+          {currentQuestion.question_type === 'long_answer' && (
+            <textarea
+              value={answers[currentQuestion.id] || ''}
+              onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gold"
+              rows={10}
+              placeholder="Type your detailed answer here. Be thorough and provide examples where applicable..."
             />
           )}
         </div>
