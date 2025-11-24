@@ -394,7 +394,6 @@ export function ApplyBibleSchoolPage() {
         id_number: data.idNumber,
         gender: data.gender,
         marital_status: data.maritalStatus,
-        address: data.physicalAddress,
         physical_address: data.physicalAddress,
         country: data.country,
         date_accepted_christ: data.dateAcceptedChrist,
