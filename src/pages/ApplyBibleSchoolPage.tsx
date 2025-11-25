@@ -1207,9 +1207,8 @@ export function ApplyBibleSchoolPage() {
 
                   {/* Bank Details - Only show for manual payment */}
                   {paymentMethod === 'manual' && (
-                  <div className="border-t pt-6">
-                  <div className="border-t pt-6">
-                    <h3 className="text-lg font-semibold text-navy-ink mb-4">Bank Details for Payment</h3>
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold text-navy-ink mb-4">Bank Details for Payment</h3>
                     <div className="bg-muted-gray p-6 rounded-card">
                       <div className="space-y-2 text-sm">
                         <div className="flex justify-between">
@@ -1247,7 +1246,7 @@ export function ApplyBibleSchoolPage() {
                         Copy Bank Details
                       </Button>
                     </div>
-                  </div>
+                    </div>
                   )}
 
                   {/* Document Upload */}
