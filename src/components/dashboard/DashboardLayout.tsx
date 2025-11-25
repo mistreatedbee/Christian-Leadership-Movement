@@ -90,7 +90,7 @@ export function DashboardLayout() {
   }, {
     icon: Users,
     label: 'Membership',
-    path: '/membership'
+    path: '/programs/membership'
   }, {
     icon: UserCheck,
     label: 'Mentorship',

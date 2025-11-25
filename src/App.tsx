@@ -38,6 +38,7 @@ import { FeeManagementPage } from './pages/admin/FeeManagementPage';
 import { ObjectivesManagementPage } from './pages/admin/ObjectivesManagementPage';
 import { PaymentPage } from './pages/PaymentPage';
 import { PaymentSuccessPage } from './pages/PaymentSuccessPage';
+import { PaymentCancelPage } from './pages/PaymentCancelPage';
 import { ObjectiveDetailPage } from './pages/ObjectiveDetailPage';
 import { AdminRoute } from './components/admin/AdminRoute';
 import { FinancialReportsPage } from './pages/admin/FinancialReportsPage';
@@ -97,6 +98,7 @@ import { MentorshipResourcesManagementPage } from './pages/admin/MentorshipResou
 import { ApplyMentorPage } from './pages/ApplyMentorPage';
 import { MentorManagementPage } from './pages/dashboard/MentorManagementPage';
 import { ApplyCoursePage } from './pages/ApplyCoursePage';
+import { AboutPage } from './pages/AboutPage';
 
 export function App() {
   return (
@@ -109,6 +111,7 @@ export function App() {
           <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
@@ -121,6 +124,7 @@ export function App() {
           <Route path="/apply/course/:courseId" element={<ApplyCoursePage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/payment/success" element={<PaymentSuccessPage />} />
+          <Route path="/payment/cancel" element={<PaymentCancelPage />} />
           <Route path="/objectives/:slug" element={<ObjectiveDetailPage />} />
           <Route path="/courses" element={<CourseCataloguePage />} />
           <Route path="/courses/:id" element={<CourseDetailPage />} />
