@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { insforge } from '../lib/insforge';
 import { Button } from '../components/ui/Button';
-import { BookOpen, GraduationCap, Clock, Users, Search, Filter, Award, LayoutDashboard } from 'lucide-react';
+import { BookOpen, GraduationCap, Clock, Users, Search, Filter, Award, LayoutDashboard, DollarSign } from 'lucide-react';
 
 interface Course {
   id: string;
@@ -16,6 +16,10 @@ interface Course {
   category: string | null;
   duration: string | null;
   level: string | null;
+  course_fees?: {
+    application_fee: number;
+    registration_fee: number;
+  };
 }
 
 export function CourseCataloguePage() {
@@ -40,12 +44,19 @@ export function CourseCataloguePage() {
     try {
       const { data, error } = await insforge.database
         .from('courses')
-        .select('*')
+        .select('*, course_fees(application_fee, registration_fee)')
         .order('is_up_endorsed', { ascending: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCourses(data || []);
+      
+      // Map courses with fees
+      const coursesWithFees = (data || []).map((course: any) => ({
+        ...course,
+        course_fees: course.course_fees?.[0] || { application_fee: 0, registration_fee: 0 }
+      }));
+      
+      setCourses(coursesWithFees);
     } catch (err) {
       console.error('Error fetching courses:', err);
     } finally {
@@ -250,6 +261,38 @@ export function CourseCataloguePage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Course Fees Display */}
+                  {course.course_fees && (course.course_fees.application_fee > 0 || course.course_fees.registration_fee > 0) && (
+                    <div className="bg-gold/10 border border-gold/20 rounded-lg p-3 mb-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <DollarSign className="w-4 h-4 text-gold" />
+                        <span className="text-xs font-semibold text-navy-ink">Course Fees</span>
+                      </div>
+                      <div className="space-y-1 text-xs">
+                        {course.course_fees.application_fee > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Application:</span>
+                            <span className="font-medium text-navy-ink">R {course.course_fees.application_fee.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {course.course_fees.registration_fee > 0 && (
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Registration:</span>
+                            <span className="font-medium text-navy-ink">R {course.course_fees.registration_fee.toFixed(2)}</span>
+                          </div>
+                        )}
+                        {(course.course_fees.application_fee > 0 && course.course_fees.registration_fee > 0) && (
+                          <div className="flex justify-between pt-1 border-t border-gold/20">
+                            <span className="font-bold text-navy-ink">Total:</span>
+                            <span className="font-bold text-gold">
+                              R {(course.course_fees.application_fee + course.course_fees.registration_fee).toFixed(2)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {course.instructor && (
                     <p className="text-sm text-gray-600">

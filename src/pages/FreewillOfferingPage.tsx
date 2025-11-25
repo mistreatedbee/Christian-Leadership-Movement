@@ -9,14 +9,14 @@ import { Heart, DollarSign } from 'lucide-react';
 import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
 
-interface DonationFormData {
+interface FreewillOfferingFormData {
   amount: number;
   campaign?: string;
   message?: string;
   anonymous: boolean;
 }
 
-export function DonationsPage() {
+export function FreewillOfferingPage() {
   const { user, isLoaded } = useUser();
   const navigate = useNavigate();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -27,11 +27,11 @@ export function DonationsPage() {
     register,
     handleSubmit,
     formState: { errors }
-  } = useForm<DonationFormData>();
+  } = useForm<FreewillOfferingFormData>();
 
-  const onSubmit = async (data: DonationFormData) => {
+  const onSubmit = async (data: FreewillOfferingFormData) => {
     if (!user) {
-      navigate('/login?redirect=/donations');
+      navigate('/login?redirect=/freewill-offering');
       return;
     }
 
@@ -39,8 +39,8 @@ export function DonationsPage() {
     setError(null);
 
     try {
-      // Create donation record
-      const { data: donation, error: donationError } = await insforge.database
+      // Create freewill offering record (using donations table for compatibility)
+      const { data: offering, error: offeringError } = await insforge.database
         .from('donations')
         .insert([{
           user_id: user.id,
@@ -53,7 +53,7 @@ export function DonationsPage() {
         .select()
         .single();
 
-      if (donationError) throw donationError;
+      if (offeringError) throw offeringError;
 
       // Create payment record
       const { data: payment, error: paymentError } = await insforge.database
@@ -62,7 +62,7 @@ export function DonationsPage() {
           user_id: user.id,
           amount: data.amount,
           currency: 'ZAR',
-          payment_type: 'donation',
+          payment_type: 'donation', // Keep payment_type as 'donation' for database compatibility
           status: 'pending'
         }])
         .select()
@@ -70,11 +70,11 @@ export function DonationsPage() {
 
       if (paymentError) throw paymentError;
 
-      // Update donation with payment_id
+      // Update offering with payment_id
       await insforge.database
         .from('donations')
         .update({ payment_id: payment.id })
-        .eq('id', donation.id);
+        .eq('id', offering.id);
 
       // Create notification
       const amount = parseFloat(data.amount.toString()) || 0;
@@ -82,24 +82,24 @@ export function DonationsPage() {
         .from('notifications')
         .insert([{
           user_id: user.id,
-          type: 'donation',
-          title: 'Donation Submitted',
-          message: `Thank you for your donation of R${amount.toFixed(2)}. Payment processing...`,
-          related_id: donation.id
+          type: 'donation', // Keep type as 'donation' for notification system compatibility
+          title: 'Freewill Offering Submitted',
+          message: `Thank you for your freewill offering of R${amount.toFixed(2)}. Payment processing...`,
+          related_id: offering.id
         }]);
 
       // Send email notification
       await sendEmailNotification(user.id, {
         type: 'donation_submitted',
-        subject: 'Donation Submitted - Payment Required',
-        message: `Thank you for your donation of R${amount.toFixed(2)}. Please complete payment to finalize your donation.`
+        subject: 'Freewill Offering Submitted - Payment Required',
+        message: `Thank you for your freewill offering of R${amount.toFixed(2)}. Please complete payment to finalize your offering.`
       });
 
       setSuccess(true);
       // Redirect to payment page
-      navigate(`/payment?payment_id=${payment.id}&return_url=/donations`);
+      navigate(`/payment?payment_id=${payment.id}&return_url=/freewill-offering`);
     } catch (err: any) {
-      setError(err.message || 'Failed to submit donation. Please try again.');
+      setError(err.message || 'Failed to submit freewill offering. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
@@ -113,17 +113,17 @@ export function DonationsPage() {
           <div className="text-center mb-12">
             <Heart className="mx-auto text-gold mb-4" size={48} />
             <h1 className="text-4xl font-bold text-navy-ink mb-4">
-              Support Our Mission
+              Freewill Offering
             </h1>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Your generous donation helps us develop Christian leaders and transform communities.
+              Your generous freewill offering helps us develop Christian leaders and transform communities.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Donation Form */}
+            {/* Freewill Offering Form */}
             <div className="bg-white rounded-card shadow-soft p-8">
-              <h2 className="text-2xl font-bold text-navy-ink mb-6">Make a Donation</h2>
+              <h2 className="text-2xl font-bold text-navy-ink mb-6">Make a Freewill Offering</h2>
               
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl mb-6">
@@ -134,7 +134,7 @@ export function DonationsPage() {
               {success ? (
                 <div className="text-center py-8">
                   <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl mb-4">
-                    Thank you for your donation! You will be redirected to complete payment.
+                    Thank you for your freewill offering! You will be redirected to complete payment.
                   </div>
                   <Button onClick={() => navigate('/dashboard')} variant="primary">
                     Go to Dashboard
@@ -154,7 +154,7 @@ export function DonationsPage() {
                         min="1"
                         {...register('amount', {
                           required: 'Amount is required',
-                          min: { value: 1, message: 'Minimum donation is R1' }
+                          min: { value: 1, message: 'Minimum offering is R1' }
                         })}
                         className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                         placeholder="0.00"
@@ -197,14 +197,14 @@ export function DonationsPage() {
                         className="mr-2"
                       />
                       <span className="text-sm text-gray-600">
-                        Make this donation anonymous
+                        Make this offering anonymous
                       </span>
                     </label>
                   </div>
 
                   {!user && (
                     <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm">
-                      Please <button type="button" onClick={() => navigate('/login')} className="underline font-medium">log in</button> to make a donation.
+                      Please <button type="button" onClick={() => navigate('/login')} className="underline font-medium">log in</button> to make a freewill offering.
                     </div>
                   )}
 
@@ -214,7 +214,7 @@ export function DonationsPage() {
                     className="w-full"
                     disabled={isSubmitting || !user}
                   >
-                    {isSubmitting ? 'Processing...' : 'Donate Now'}
+                    {isSubmitting ? 'Processing...' : 'Submit Offering'}
                   </Button>
                 </form>
               )}
@@ -223,7 +223,7 @@ export function DonationsPage() {
             {/* Info Section */}
             <div className="space-y-6">
               <div className="bg-gold/10 rounded-card p-6">
-                <h3 className="text-xl font-bold text-navy-ink mb-4">Why Donate?</h3>
+                <h3 className="text-xl font-bold text-navy-ink mb-4">Why Give a Freewill Offering?</h3>
                 <ul className="space-y-3 text-gray-700">
                   <li className="flex items-start">
                     <span className="text-gold mr-2">•</span>
@@ -245,7 +245,7 @@ export function DonationsPage() {
               </div>
 
               <div className="bg-white rounded-card shadow-soft p-6">
-                <h3 className="text-xl font-bold text-navy-ink mb-4">Donation Impact</h3>
+                <h3 className="text-xl font-bold text-navy-ink mb-4">Offering Impact</h3>
                 <div className="space-y-4">
                   <div>
                     <p className="text-sm text-gray-600">R500</p>

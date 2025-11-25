@@ -111,8 +111,8 @@ export function TopNav() {
           <Link to="/mentorship" className="text-navy-ink hover:text-gold transition-colors">
             Mentorship
           </Link>
-          <Link to="/donations" className="text-navy-ink hover:text-gold transition-colors">
-            Donate
+          <Link to="/freewill-offering" className="text-navy-ink hover:text-gold transition-colors">
+            Freewill Offering
           </Link>
         </div>
 
@@ -188,8 +188,8 @@ export function TopNav() {
             <Link to="/mentorship" className="text-navy-ink py-2" onClick={toggleMenu}>
               Mentorship
             </Link>
-            <Link to="/donations" className="text-navy-ink py-2" onClick={toggleMenu}>
-              Donate
+            <Link to="/freewill-offering" className="text-navy-ink py-2" onClick={toggleMenu}>
+              Freewill Offering
             </Link>
             <div className="flex flex-col space-y-3 pt-4 border-t border-gray-100">
               {isLoaded && user ? (

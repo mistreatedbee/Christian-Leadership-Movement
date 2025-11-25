@@ -15,7 +15,8 @@ import {
   ArrowLeft,
   Lock,
   CheckCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  DollarSign
 } from 'lucide-react';
 
 interface Course {
@@ -29,6 +30,10 @@ interface Course {
   category: string | null;
   duration: string | null;
   level: string | null;
+  course_fees?: {
+    application_fee: number;
+    registration_fee: number;
+  };
 }
 
 interface Lesson {
@@ -62,15 +67,22 @@ export function CourseDetailPage() {
     try {
       setLoading(true);
 
-      // Fetch course
+      // Fetch course with fees
       const { data: courseData, error: courseError } = await insforge.database
         .from('courses')
-        .select('*')
+        .select('*, course_fees(application_fee, registration_fee)')
         .eq('id', id)
         .single();
 
       if (courseError) throw courseError;
-      setCourse(courseData);
+      
+      // Map course with fees
+      const courseWithFees = {
+        ...courseData,
+        course_fees: courseData.course_fees?.[0] || { application_fee: 0, registration_fee: 0 }
+      };
+      
+      setCourse(courseWithFees);
 
       // Fetch lessons
       const { data: lessonsData } = await insforge.database
@@ -110,13 +122,13 @@ export function CourseDetailPage() {
     }
   };
 
-  const handleEnroll = () => {
+  const handleApply = () => {
     if (!user) {
-      navigate('/login');
+      navigate(`/login?redirect=/apply/course/${id}`);
       return;
     }
-    // Navigate to application page or enrollment
-    navigate('/apply');
+    // Navigate to course application page
+    navigate(`/apply/course/${id}`);
   };
 
   const handleStartLesson = (lessonId: string) => {
@@ -245,6 +257,38 @@ export function CourseDetailPage() {
                   <strong>Instructor:</strong> {course.instructor}
                 </p>
               )}
+
+              {/* Course Fees Display */}
+              {course.course_fees && (course.course_fees.application_fee > 0 || course.course_fees.registration_fee > 0) && (
+                <div className="bg-gold/10 border border-gold/30 rounded-lg p-4 mb-4">
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign className="w-5 h-5 text-gold" />
+                    <h3 className="font-bold text-navy-ink">Course Fees</h3>
+                  </div>
+                  <div className="space-y-2 text-sm">
+                    {course.course_fees.application_fee > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Application Fee:</span>
+                        <span className="font-semibold text-navy-ink">R {course.course_fees.application_fee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {course.course_fees.registration_fee > 0 && (
+                      <div className="flex justify-between">
+                        <span className="text-gray-700">Registration Fee:</span>
+                        <span className="font-semibold text-navy-ink">R {course.course_fees.registration_fee.toFixed(2)}</span>
+                      </div>
+                    )}
+                    {(course.course_fees.application_fee > 0 && course.course_fees.registration_fee > 0) && (
+                      <div className="flex justify-between pt-2 border-t border-gold/20">
+                        <span className="font-bold text-navy-ink">Total Fees:</span>
+                        <span className="font-bold text-gold text-lg">
+                          R {(course.course_fees.application_fee + course.course_fees.registration_fee).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -291,9 +335,9 @@ export function CourseDetailPage() {
                 {progress?.completed ? 'Review Course' : 'Start Learning'}
               </Button>
             ) : (
-              <Button variant="primary" onClick={handleEnroll}>
+              <Button variant="primary" onClick={handleApply}>
                 <BookOpen className="w-4 h-4 mr-2" />
-                {user ? 'Enroll in Course' : 'Login to Enroll'}
+                {user ? 'Apply for Course' : 'Login to Apply'}
               </Button>
             )}
           </div>

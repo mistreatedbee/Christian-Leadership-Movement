@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, Clock, BookOpen, X, Save, FileText, Video, Upload } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Clock, BookOpen, X, Save, FileText, Video, Upload, DollarSign } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
@@ -13,6 +13,10 @@ interface Course {
   image_url: string | null;
   image_key: string | null;
   program_id: string | null;
+  course_fees?: {
+    application_fee: number;
+    registration_fee: number;
+  };
 }
 
 interface Lesson {
@@ -85,12 +89,28 @@ export function CourseManagementPage() {
   const fetchData = async () => {
     try {
       const [coursesData, programsData] = await Promise.all([
-        insforge.database.from('courses').select('*').order('created_at', { ascending: false }),
+        insforge.database.from('courses').select('*, course_fees(application_fee, registration_fee)').order('created_at', { ascending: false }),
         insforge.database.from('programs').select('*')
       ]);
 
-      setCourses(coursesData.data || []);
+      // Map courses with fees
+      const coursesWithFees = (coursesData.data || []).map((course: any) => ({
+        ...course,
+        course_fees: course.course_fees?.[0] || { application_fee: 0, registration_fee: 0 }
+      }));
+
+      setCourses(coursesWithFees);
       setPrograms(programsData.data || []);
+
+      // Initialize fee amounts
+      const feeMap: Record<string, { application_fee: string; registration_fee: string }> = {};
+      coursesWithFees.forEach((course: Course) => {
+        feeMap[course.id] = {
+          application_fee: (course.course_fees?.application_fee || 0).toString(),
+          registration_fee: (course.course_fees?.registration_fee || 0).toString()
+        };
+      });
+      setFeeAmounts(feeMap);
 
       // Fetch lessons for each course
       const lessonsMap: Record<string, Lesson[]> = {};
@@ -137,7 +157,90 @@ export function CourseManagementPage() {
     setCourseValue('program_id', course.program_id || '');
     setEditingCourse(course);
     setImageFile(null);
+    
+    // Set fee amounts for editing
+    if (course.course_fees) {
+      setFeeAmounts(prev => ({
+        ...prev,
+        [course.id]: {
+          application_fee: (course.course_fees?.application_fee || 0).toString(),
+          registration_fee: (course.course_fees?.registration_fee || 0).toString()
+        }
+      }));
+    }
+    
     setShowCourseForm(true);
+  };
+
+  const handleEditFees = (courseId: string) => {
+    setEditingFees(courseId);
+  };
+
+  const handleSaveFees = async (courseId: string) => {
+    try {
+      const fees = feeAmounts[courseId];
+      if (!fees) return;
+
+      const applicationFee = parseFloat(fees.application_fee) || 0;
+      const registrationFee = parseFloat(fees.registration_fee) || 0;
+
+      if (applicationFee < 0 || registrationFee < 0) {
+        alert('Fees cannot be negative');
+        return;
+      }
+
+      // Check if fees exist
+      const { data: existingFees } = await insforge.database
+        .from('course_fees')
+        .select('id')
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (existingFees) {
+        // Update existing fees
+        await insforge.database
+          .from('course_fees')
+          .update({
+            application_fee: applicationFee,
+            registration_fee: registrationFee,
+            updated_at: new Date().toISOString()
+          })
+          .eq('course_id', courseId);
+      } else {
+        // Create new fees
+        await insforge.database
+          .from('course_fees')
+          .insert({
+            course_id: courseId,
+            application_fee: applicationFee,
+            registration_fee: registrationFee,
+            currency: 'ZAR',
+            is_active: true
+          });
+      }
+
+      setEditingFees(null);
+      fetchData(); // Refresh to show updated fees
+      alert('Fees updated successfully!');
+    } catch (error: any) {
+      console.error('Error saving fees:', error);
+      alert(`Failed to save fees: ${error.message}`);
+    }
+  };
+
+  const handleCancelFees = (courseId: string) => {
+    setEditingFees(null);
+    // Reset to original values
+    const course = courses.find(c => c.id === courseId);
+    if (course) {
+      setFeeAmounts(prev => ({
+        ...prev,
+        [courseId]: {
+          application_fee: (course.course_fees?.application_fee || 0).toString(),
+          registration_fee: (course.course_fees?.registration_fee || 0).toString()
+        }
+      }));
+    }
   };
 
   const handleDeleteCourse = async (courseId: string) => {
@@ -744,6 +847,85 @@ export function CourseManagementPage() {
                   <p className="text-sm text-gray-500 mb-4">
                     {courseLessons.length} lesson{courseLessons.length !== 1 ? 's' : ''}
                   </p>
+                  
+                  {/* Course Fees Display/Edit */}
+                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium text-navy-ink">Course Fees</span>
+                      {editingFees !== course.id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditFees(course.id)}
+                        >
+                          <Edit size={14} />
+                        </Button>
+                      )}
+                    </div>
+                    {editingFees === course.id ? (
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-xs text-gray-600">Application Fee (ZAR)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={feeAmounts[course.id]?.application_fee || '0'}
+                            onChange={(e) => setFeeAmounts(prev => ({
+                              ...prev,
+                              [course.id]: {
+                                ...prev[course.id],
+                                application_fee: e.target.value
+                              }
+                            }))}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-600">Registration Fee (ZAR)</label>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            value={feeAmounts[course.id]?.registration_fee || '0'}
+                            onChange={(e) => setFeeAmounts(prev => ({
+                              ...prev,
+                              [course.id]: {
+                                ...prev[course.id],
+                                registration_fee: e.target.value
+                              }
+                            }))}
+                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                          />
+                        </div>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleSaveFees(course.id)}
+                          >
+                            <Save size={14} className="mr-1" />
+                            Save
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex-1"
+                            onClick={() => handleCancelFees(course.id)}
+                          >
+                            <X size={14} />
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-xs text-gray-600 space-y-1">
+                        <div>Application: R{(course.course_fees?.application_fee || 0).toFixed(2)}</div>
+                        <div>Registration: R{(course.course_fees?.registration_fee || 0).toFixed(2)}</div>
+                      </div>
+                    )}
+                  </div>
+
                   <div className="space-y-2">
                     <Button
                       variant="outline"

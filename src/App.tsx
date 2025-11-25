@@ -27,7 +27,7 @@ import { AdminSettingsPage } from './pages/admin/AdminSettingsPage';
 import { ApplyPage } from './pages/ApplyPage';
 import { ApplyMembershipPage } from './pages/ApplyMembershipPage';
 import { ApplyBibleSchoolPage } from './pages/ApplyBibleSchoolPage';
-import { DonationsPage } from './pages/DonationsPage';
+import { FreewillOfferingPage } from './pages/FreewillOfferingPage';
 import { NotificationsPage } from './pages/dashboard/NotificationsPage';
 import { EventsPage as DashboardEventsPage } from './pages/dashboard/EventsPage';
 import { CoursesPage } from './pages/dashboard/CoursesPage';
@@ -96,6 +96,7 @@ import { MembershipManagementPage } from './pages/admin/MembershipManagementPage
 import { MentorshipResourcesManagementPage } from './pages/admin/MentorshipResourcesManagementPage';
 import { ApplyMentorPage } from './pages/ApplyMentorPage';
 import { MentorManagementPage } from './pages/dashboard/MentorManagementPage';
+import { ApplyCoursePage } from './pages/ApplyCoursePage';
 
 export function App() {
   return (
@@ -115,7 +116,9 @@ export function App() {
           <Route path="/apply" element={<ApplyPage />} />
           <Route path="/apply/membership" element={<ApplyMembershipPage />} />
           <Route path="/apply/bible-school" element={<ApplyBibleSchoolPage />} />
-          <Route path="/donations" element={<DonationsPage />} />
+          <Route path="/freewill-offering" element={<FreewillOfferingPage />} />
+          <Route path="/donations" element={<FreewillOfferingPage />} /> {/* Redirect old route */}
+          <Route path="/apply/course/:courseId" element={<ApplyCoursePage />} />
           <Route path="/payment" element={<PaymentPage />} />
           <Route path="/payment/success" element={<PaymentSuccessPage />} />
           <Route path="/objectives/:slug" element={<ObjectiveDetailPage />} />
