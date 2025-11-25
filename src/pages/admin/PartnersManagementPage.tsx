@@ -253,58 +253,92 @@ export function PartnersManagementPage() {
             <p className="text-gray-500 text-center py-8">No partners found. Create one to get started.</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {partners.map(partner => (
-                <div key={partner.id} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    {partner.logo_url || partner.logo_key ? (
-                      <img
-                        src={partner.logo_key ? getStorageUrl('gallery', partner.logo_key) : partner.logo_url || ''}
-                        alt={partner.name}
-                        className="max-h-16 object-contain mb-3"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center mb-3">
-                        <ImageIcon className="text-gray-400" size={24} />
+              {partners.map(partner => {
+                const logoUrl = partner.logo_key 
+                  ? getStorageUrl('gallery', partner.logo_key) 
+                  : partner.logo_url;
+                
+                return (
+                  <div key={partner.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1">
+                        {logoUrl ? (
+                          <img
+                            src={logoUrl}
+                            alt={partner.name}
+                            className="max-h-20 max-w-full object-contain mb-3"
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                              if (fallback) fallback.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div 
+                          className="w-20 h-16 bg-gray-200 rounded flex items-center justify-center mb-3"
+                          style={{ display: logoUrl ? 'none' : 'flex' }}
+                        >
+                          <ImageIcon className="text-gray-400" size={24} />
+                        </div>
+                      </div>
+                      <div className="flex gap-2 ml-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleEdit(partner)}
+                          title="Edit Partner"
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleDelete(partner.id)}
+                          title="Delete Partner"
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                        >
+                          <Trash2 size={16} />
+                        </Button>
+                      </div>
+                    </div>
+                    <h3 className="font-semibold text-navy-ink mb-2">{partner.name}</h3>
+                    {partner.description && (
+                      <p className="text-sm text-gray-600 mb-3 line-clamp-3">{partner.description}</p>
+                    )}
+                    <div className="flex items-center gap-2 flex-wrap text-xs">
+                      {partner.partner_type && (
+                        <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded">
+                          {partner.partner_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                        </span>
+                      )}
+                      <span className={`px-2 py-1 rounded ${
+                        partner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {partner.is_active ? 'Active' : 'Inactive'}
+                      </span>
+                      {partner.website_url && (
+                        <a
+                          href={partner.website_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:underline flex items-center gap-1"
+                          title="Visit Website"
+                        >
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                          Website
+                        </a>
+                      )}
+                    </div>
+                    {partner.display_order !== undefined && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        Display Order: {partner.display_order}
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <Button variant="outline" size="sm" onClick={() => handleEdit(partner)}>
-                        <Edit size={16} />
-                      </Button>
-                      <Button variant="outline" size="sm" onClick={() => handleDelete(partner.id)}>
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
                   </div>
-                  <h3 className="font-semibold text-navy-ink mb-2">{partner.name}</h3>
-                  {partner.description && (
-                    <p className="text-sm text-gray-600 mb-2 line-clamp-2">{partner.description}</p>
-                  )}
-                  <div className="flex items-center gap-2 flex-wrap text-xs text-gray-500">
-                    {partner.partner_type && (
-                      <span className="px-2 py-1 bg-gray-100 rounded">{partner.partner_type}</span>
-                    )}
-                    <span className={`px-2 py-1 rounded ${
-                      partner.is_active ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                    }`}>
-                      {partner.is_active ? 'Active' : 'Inactive'}
-                    </span>
-                    {partner.website_url && (
-                      <a
-                        href={partner.website_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-blue-600 hover:underline"
-                      >
-                        Website →
-                      </a>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -395,17 +429,62 @@ export function PartnersManagementPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Logo</label>
+                <label className="block text-sm font-medium text-navy-ink mb-2">
+                  Logo / Image *
+                </label>
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      // Validate file size (max 5MB)
+                      if (file.size > 5 * 1024 * 1024) {
+                        setMessage({ type: 'error', text: 'Image size must be less than 5MB' });
+                        e.target.value = '';
+                        return;
+                      }
+                      // Validate file type
+                      if (!file.type.startsWith('image/')) {
+                        setMessage({ type: 'error', text: 'Please select a valid image file' });
+                        e.target.value = '';
+                        return;
+                      }
+                      setLogoFile(file);
+                      setMessage(null);
+                    }
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
                 />
-                {editingPartner?.logo_url && !logoFile && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    Current logo: <a href={editingPartner.logo_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">View</a>
-                  </p>
+                <p className="text-xs text-gray-500 mt-1">
+                  Recommended: PNG, JPG, or SVG. Max size: 5MB. Square or landscape images work best.
+                </p>
+                {editingPartner && (editingPartner.logo_url || editingPartner.logo_key) && !logoFile && (
+                  <div className="mt-3 p-3 bg-gray-50 rounded-card">
+                    <p className="text-sm text-gray-600 mb-2">Current logo:</p>
+                    <img
+                      src={editingPartner.logo_key ? getStorageUrl('gallery', editingPartner.logo_key) : editingPartner.logo_url || ''}
+                      alt="Current logo"
+                      className="max-h-20 object-contain"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                      }}
+                    />
+                    <p className="text-xs text-gray-500 mt-2">
+                      Upload a new image to replace the current logo.
+                    </p>
+                  </div>
+                )}
+                {logoFile && (
+                  <div className="mt-3 p-3 bg-blue-50 rounded-card">
+                    <p className="text-sm text-blue-700 mb-2">New logo selected:</p>
+                    <img
+                      src={URL.createObjectURL(logoFile)}
+                      alt="Preview"
+                      className="max-h-20 object-contain"
+                    />
+                    <p className="text-xs text-blue-600 mt-2">{logoFile.name} ({(logoFile.size / 1024).toFixed(2)} KB)</p>
+                  </div>
                 )}
               </div>
 

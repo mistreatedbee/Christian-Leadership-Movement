@@ -87,48 +87,64 @@ export function PartnersPage() {
               <p className="text-gray-600">No partners available at this time.</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
               {partners.map(partner => {
                 const logoUrl = partner.logo_key 
                   ? getStorageUrl('gallery', partner.logo_key) 
-                  : partner.logo_url || 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
+                  : partner.logo_url || null;
                 
                 return (
                   <div
                     key={partner.id}
-                    className="bg-white p-8 rounded-2xl shadow-soft hover:shadow-lg transition-shadow duration-300"
+                    className="bg-white p-8 rounded-2xl shadow-soft hover:shadow-lg transition-all duration-300 flex flex-col"
                   >
-                    <div className="flex flex-col md:flex-row items-start md:items-center gap-6">
-                      <div className="flex-shrink-0">
+                    {/* Logo */}
+                    <div className="flex-shrink-0 mb-4 flex justify-center">
+                      {logoUrl ? (
                         <img
                           src={logoUrl}
                           alt={partner.name}
-                          className="max-h-20 object-contain"
+                          className="max-h-24 max-w-full object-contain"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
+                            (e.target as HTMLImageElement).style.display = 'none';
+                            const fallback = (e.target as HTMLImageElement).nextElementSibling as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
                           }}
                         />
+                      ) : null}
+                      <div 
+                        className="w-32 h-24 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm"
+                        style={{ display: logoUrl ? 'none' : 'flex' }}
+                      >
+                        {partner.name.charAt(0).toUpperCase()}
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold text-navy-ink mb-2">
-                          {partner.name}
-                        </h3>
-                        {partner.description && (
-                          <p className="text-gray-600 mb-4">
-                            {partner.description}
-                          </p>
-                        )}
-                        {partner.website_url && (
+                    </div>
+                    
+                    {/* Partner Info */}
+                    <div className="flex-1 flex flex-col">
+                      <h3 className="text-xl font-bold text-navy-ink mb-3 text-center">
+                        {partner.name}
+                      </h3>
+                      {partner.description && (
+                        <p className="text-gray-600 mb-4 flex-1 text-center">
+                          {partner.description}
+                        </p>
+                      )}
+                      {partner.website_url && (
+                        <div className="mt-auto pt-4 border-t border-gray-200">
                           <a
                             href={partner.website_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-gold hover:underline font-medium"
+                            className="text-gold hover:underline font-medium flex items-center justify-center gap-2"
                           >
-                            Visit Website →
+                            Visit Website
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
                           </a>
-                        )}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
