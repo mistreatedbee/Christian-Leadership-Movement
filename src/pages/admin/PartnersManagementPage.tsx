@@ -98,22 +98,34 @@ export function PartnersManagementPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this partner?')) return;
+    if (!confirm('Are you sure you want to delete this partner? This action cannot be undone.')) return;
 
     try {
       const partner = partners.find(p => p.id === id);
+      
+      // Delete logo from storage if it exists
       if (partner?.logo_key) {
-        await insforge.storage.from('gallery').remove(partner.logo_key);
+        try {
+          await insforge.storage.from('gallery').remove([partner.logo_key]);
+        } catch (storageErr) {
+          console.warn('Could not delete logo from storage:', storageErr);
+          // Continue with partner deletion even if logo deletion fails
+        }
       }
 
+      // Delete partner record
       const { error } = await insforge.database
         .from('partners')
         .delete()
         .eq('id', id);
 
       if (error) throw error;
+      
       fetchPartners();
       setMessage({ type: 'success', text: 'Partner deleted successfully!' });
+      
+      // Clear message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       console.error('Error deleting partner:', err);
       setMessage({ type: 'error', text: err.message || 'Failed to delete partner' });
@@ -127,20 +139,31 @@ export function PartnersManagementPage() {
 
       // Upload logo if provided
       if (logoFile) {
-        const { data: uploadData, error: uploadError } = await insforge.storage
-          .from('gallery')
-          .upload(`partners/${Date.now()}_${logoFile.name}`, logoFile);
+        if (!user) {
+          throw new Error('User must be logged in to upload files');
+        }
 
-        if (uploadError) throw uploadError;
+        // Use upload helper to ensure user exists
+        const { uploadFileWithUserCheck } = await import('../../lib/uploadHelpers');
+        const uploadData = await uploadFileWithUserCheck(
+          'gallery',
+          `partners/${user.id}/${Date.now()}_${logoFile.name}`,
+          logoFile,
+          user.id,
+          user.email || null,
+          user.name || null
+        );
+
         logoUrl = uploadData.url;
         logoKey = uploadData.key;
 
         // Delete old logo if exists
         if (editingPartner?.logo_key) {
           try {
-            await insforge.storage.from('gallery').remove(editingPartner.logo_key);
+            await insforge.storage.from('gallery').remove([editingPartner.logo_key]);
           } catch (removeErr) {
             console.warn('Could not remove old logo:', removeErr);
+            // Continue with update even if old logo deletion fails
           }
         }
       }

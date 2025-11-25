@@ -20,19 +20,30 @@ export function PartnersSection() {
 
   const fetchPartners = async () => {
     try {
+      // Fetch active partners - public access, no authentication required
       const { data, error } = await insforge.database
         .from('partners')
-        .select('id, name, logo_url, logo_key')
+        .select('id, name, logo_url, logo_key, description, website_url')
         .eq('is_active', true)
         .order('display_order', { ascending: true })
         .order('created_at', { ascending: false })
         .limit(8);
 
-      if (error) throw error;
+      if (error) {
+        // If table doesn't exist, return empty array
+        if (error.code === '42P01' || error.message?.includes('does not exist')) {
+          console.log('Partners table does not exist yet');
+          setPartners([]);
+          setLoading(false);
+          return;
+        }
+        throw error;
+      }
+      
       setPartners(data || []);
     } catch (err) {
       console.error('Error fetching partners:', err);
-      // Fallback to empty array if table doesn't exist yet
+      // Fallback to empty array on any error
       setPartners([]);
     } finally {
       setLoading(false);
