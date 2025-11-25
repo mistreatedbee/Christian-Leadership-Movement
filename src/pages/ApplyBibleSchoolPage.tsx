@@ -46,6 +46,7 @@ interface BibleSchoolFormData {
   refereeContact: string;
   relationshipToReferee: string;
   registrationOption: string;
+  paymentMethod: 'manual' | 'payfast' | 'ozow';
   signature: string;
   declarationDate: string;
 }
@@ -74,6 +75,7 @@ export function ApplyBibleSchoolPage() {
   const [registrationFees, setRegistrationFees] = useState({ withACRP: 0, withoutACRP: 0 });
   const [editingApplicationId, setEditingApplicationId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
+  const paymentMethod = watch('paymentMethod');
 
   const {
     register,
@@ -463,12 +465,27 @@ export function ApplyBibleSchoolPage() {
         ? registrationFees.withACRP 
         : registrationFees.withoutACRP;
 
+      // Determine payment method and status
+      const paymentMethodValue = data.paymentMethod || (paymentProofFile ? 'manual' : null);
+      const paymentGateway = paymentMethodValue === 'payfast' ? 'payfast' : paymentMethodValue === 'ozow' ? 'ozow' : null;
+      
+      // Payment status logic:
+      // - Manual with POP: pending (admin verifies POP)
+      // - Manual without POP: pending (user will upload later)
+      // - Online: pending (gateway will update via webhook)
+      const paymentStatus = 'pending';
+      const popVerificationStatus = paymentMethodValue === 'manual' && paymentProofFile ? 'pending' : null;
+
+      // Update application with payment method info
+      const applicationUpdate: any = {
+        payment_method: paymentMethodValue,
+        payment_gateway: paymentGateway,
+        pop_verification_status: popVerificationStatus || 'pending'
+      };
+
       // Create payment record
       let paymentId: string | null = null;
       if (selectedFee > 0) {
-        // If payment proof is uploaded, mark as confirmed, otherwise pending
-        const paymentStatus = paymentProofFile ? 'confirmed' : 'pending';
-        
         const { data: payment, error: paymentError } = await insforge.database
           .from('payments')
           .insert([{
@@ -477,6 +494,7 @@ export function ApplyBibleSchoolPage() {
             amount: selectedFee,
             currency: 'ZAR',
             payment_type: 'application',
+            payment_method: paymentMethodValue === 'payfast' || paymentMethodValue === 'ozow' ? paymentMethodValue : null,
             status: paymentStatus
           }])
           .select()
@@ -485,12 +503,18 @@ export function ApplyBibleSchoolPage() {
         if (paymentError) throw paymentError;
         paymentId = payment.id;
 
+        applicationUpdate.payment_id = payment.id;
+        applicationUpdate.payment_status = paymentStatus;
+
         await insforge.database
           .from('applications')
-          .update({ 
-            payment_id: payment.id, 
-            payment_status: paymentStatus 
-          })
+          .update(applicationUpdate)
+          .eq('id', application.id);
+      } else {
+        // No fee, but still update payment method if selected
+        await insforge.database
+          .from('applications')
+          .update(applicationUpdate)
           .eq('id', application.id);
       }
 
@@ -549,9 +573,18 @@ export function ApplyBibleSchoolPage() {
         .eq('user_id', user.id)
         .eq('form_type', 'bible_school');
 
-      // Redirect to payment if fee required and no proof uploaded, otherwise to applications
-      if (selectedFee > 0 && !paymentProofFile && paymentId) {
-        navigate(`/payment?payment_id=${paymentId}&return_url=/dashboard/applications`);
+      // Redirect based on payment method
+      if (selectedFee > 0) {
+        if (paymentMethodValue === 'payfast' || paymentMethodValue === 'ozow') {
+          // Redirect to online payment gateway
+          navigate(`/payment?payment_id=${paymentId}&return_url=/dashboard/applications`);
+        } else if (paymentMethodValue === 'manual' && !paymentProofFile) {
+          // Manual payment without POP - user can upload later or pay online
+          navigate('/dashboard/applications');
+        } else {
+          // Manual payment with POP uploaded - pending verification
+          navigate('/dashboard/applications');
+        }
       } else {
         navigate('/dashboard/applications');
       }
@@ -1102,12 +1135,79 @@ export function ApplyBibleSchoolPage() {
                     </div>
                     <div className="mt-4 bg-blue-50 border border-blue-200 rounded-card p-4">
                       <p className="text-sm text-gray-700">
-                        You can either upload proof of bank payment below, or pay online after form submission.
+                        <strong>Registration Fee:</strong> R {watch('registrationOption') === 'with_acrp' ? registrationFees.withACRP.toFixed(2) : registrationFees.withoutACRP.toFixed(2)}
                       </p>
                     </div>
                   </div>
 
-                  {/* Bank Details */}
+                  {/* Payment Method Selection */}
+                  {watch('registrationOption') && (
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold text-navy-ink mb-4">Payment Method *</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: 'Please select a payment method' })}
+                            value="manual"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option A: Manual Payment (EFT/Cash Deposit)</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Pay via EFT or cash deposit using bank details below</p>
+                              <p>• Upload proof of payment (optional - can upload later)</p>
+                              <p>• Admin will verify your payment proof</p>
+                              <p>• Application status: "Pending POP Verification"</p>
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: 'Please select a payment method' })}
+                            value="payfast"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option B: Online Payment - PayFast</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Credit/Debit Card, EFT, or Instant EFT</p>
+                              <p>• Connects to all major South African banks</p>
+                              <p>• Secure and instant payment processing</p>
+                              <p>• You'll be redirected to PayFast after submission</p>
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: 'Please select a payment method' })}
+                            value="ozow"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option C: Online Payment - Ozow (COSO)</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Instant EFT - Direct bank transfers</p>
+                              <p>• Connect directly to your SA bank account</p>
+                              <p>• Fast and secure payment processing</p>
+                              <p>• You'll be redirected to Ozow after submission</p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                      {errors.paymentMethod && (
+                        <p className="text-red-500 text-sm mt-2">{errors.paymentMethod.message}</p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Bank Details - Only show for manual payment */}
+                  {paymentMethod === 'manual' && (
+                  <div className="border-t pt-6">
                   <div className="border-t pt-6">
                     <h3 className="text-lg font-semibold text-navy-ink mb-4">Bank Details for Payment</h3>
                     <div className="bg-muted-gray p-6 rounded-card">
@@ -1148,6 +1248,7 @@ export function ApplyBibleSchoolPage() {
                       </Button>
                     </div>
                   </div>
+                  )}
 
                   {/* Document Upload */}
                   <div className="border-t pt-6">
@@ -1189,14 +1290,17 @@ export function ApplyBibleSchoolPage() {
 
                       <div>
                         <label className="block text-sm font-medium text-navy-ink mb-2">
-                          Proof of Bank Payment (Optional - PDF, JPG, JPEG, PNG - Max 10MB)
+                          Proof of Bank Payment {paymentMethod === 'manual' ? '(Optional - PDF, JPG, JPEG, PNG - Max 10MB)' : '(Not required for online payment)'}
                         </label>
                         <p className="text-xs text-gray-600 mb-2">
-                          If you've already paid via bank transfer, upload proof here. Otherwise, you can pay online after submission.
+                          {paymentMethod === 'manual' 
+                            ? "If you've already paid via bank transfer, upload proof here. You can also upload it later from your dashboard."
+                            : "Proof of payment is not required for online payments. Your payment will be automatically verified."}
                         </p>
                         <input
                           type="file"
                           accept=".pdf,.jpg,.jpeg,.png"
+                          disabled={paymentMethod !== 'manual'}
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
@@ -1207,7 +1311,9 @@ export function ApplyBibleSchoolPage() {
                               setPaymentProofFile(file);
                             }
                           }}
-                          className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                          className={`w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold ${
+                            paymentMethod !== 'manual' ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
                         />
                         {paymentProofFile && (
                           <div className="mt-2 flex items-center space-x-2 text-sm text-gray-600">

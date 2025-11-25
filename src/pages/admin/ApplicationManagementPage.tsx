@@ -251,6 +251,66 @@ export function ApplicationManagementPage() {
     }
   };
 
+  const handlePOPVerification = async (applicationId: string, verificationStatus: 'verified' | 'rejected') => {
+    try {
+      await insforge.database
+        .from('applications')
+        .update({ 
+          pop_verification_status: verificationStatus,
+          payment_status: verificationStatus === 'verified' ? 'confirmed' : 'pending',
+          updated_at: new Date().toISOString() 
+        })
+        .eq('id', applicationId);
+
+      // Update payment status if POP is verified
+      const app = applications.find(a => a.id === applicationId);
+      if (app && app.payment_id && verificationStatus === 'verified') {
+        await insforge.database
+          .from('payments')
+          .update({ status: 'confirmed' })
+          .eq('id', app.payment_id);
+      }
+
+      // Create notification
+      if (app) {
+        const notification = {
+          user_id: app.user_id,
+          type: 'payment',
+          title: `Proof of Payment ${verificationStatus === 'verified' ? 'Verified' : 'Rejected'}`,
+          message: verificationStatus === 'verified'
+            ? 'Your proof of payment has been verified. Your application is now pending review.'
+            : 'Your proof of payment was rejected. Please upload a new proof of payment or contact support.',
+          related_id: applicationId
+        };
+
+        await insforge.database
+          .from('notifications')
+          .insert([notification]);
+
+        // Send email notification
+        await sendEmailNotification(app.user_id, {
+          type: `pop_${verificationStatus}`,
+          subject: notification.title,
+          message: notification.message
+        });
+      }
+
+      // Refresh applications to show updated status
+      fetchApplications();
+      
+      // Update selected application if modal is open
+      if (selectedApplication?.id === applicationId) {
+        const updated = applications.find(a => a.id === applicationId);
+        if (updated) {
+          setSelectedApplication(updated);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating POP verification:', err);
+      alert('Failed to update POP verification status');
+    }
+  };
+
   const exportToCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Program', 'Status', 'Payment Status', 'Date'];
     const rows = applications.map(app => [
@@ -848,7 +908,13 @@ export function ApplicationManagementPage() {
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-navy-ink">
+                  Payment Method
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-navy-ink">
                   Payment Status
+                </th>
+                <th className="px-6 py-3 text-left text-sm font-medium text-navy-ink">
+                  POP Verification
                 </th>
                 <th className="px-6 py-3 text-left text-sm font-medium text-navy-ink">
                   Status
@@ -861,13 +927,13 @@ export function ApplicationManagementPage() {
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-600">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-600">
                     Loading applications...
                   </td>
                 </tr>
               ) : applications.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-4 text-center text-gray-600">
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-600">
                     No applications found
                   </td>
                 </tr>
@@ -910,13 +976,36 @@ export function ApplicationManagementPage() {
                             {new Date(app.created_at).toLocaleDateString()}
                           </td>
                           <td className="px-6 py-4">
+                            <span className="text-sm text-gray-600">
+                              {app.payment_method === 'manual' ? 'Manual (POP)' :
+                               app.payment_method === 'payfast' ? 'PayFast' :
+                               app.payment_method === 'ozow' ? 'Ozow' :
+                               'N/A'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4">
                             <span className={`px-2 py-1 text-xs rounded-full ${
                               app.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
                               app.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
                               'bg-red-100 text-red-800'
                             }`}>
-                              {app.payment_status}
+                              {app.payment_status || 'N/A'}
                             </span>
+                          </td>
+                          <td className="px-6 py-4">
+                            {app.payment_method === 'manual' ? (
+                              <span className={`px-2 py-1 text-xs rounded-full ${
+                                app.pop_verification_status === 'verified' ? 'bg-green-100 text-green-800' :
+                                app.pop_verification_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-amber-100 text-amber-800'
+                              }`}>
+                                {app.pop_verification_status === 'verified' ? 'Verified' :
+                                 app.pop_verification_status === 'rejected' ? 'Rejected' :
+                                 'Pending'}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">N/A</span>
+                            )}
                           </td>
                           <td className="px-6 py-4">{getStatusBadge(app.status)}</td>
                           <td className="px-6 py-4">
@@ -1614,6 +1703,15 @@ export function ApplicationManagementPage() {
                     <p className="font-medium">{getStatusBadge(selectedApplication.status)}</p>
                   </div>
                   <div>
+                    <p className="text-sm text-gray-600">Payment Method</p>
+                    <p className="font-medium">
+                      {selectedApplication.payment_method === 'manual' ? 'Manual Payment (POP Upload)' :
+                       selectedApplication.payment_method === 'payfast' ? 'PayFast (Online)' :
+                       selectedApplication.payment_method === 'ozow' ? 'Ozow (Online)' :
+                       'N/A'}
+                    </p>
+                  </div>
+                  <div>
                     <p className="text-sm text-gray-600">Payment Status</p>
                     <span className={`px-2 py-1 text-xs rounded-full ${
                       selectedApplication.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
@@ -1623,6 +1721,40 @@ export function ApplicationManagementPage() {
                       {selectedApplication.payment_status || 'N/A'}
                     </span>
                   </div>
+                  {selectedApplication.payment_method === 'manual' && (
+                    <div>
+                      <p className="text-sm text-gray-600">POP Verification Status</p>
+                      <div className="flex items-center gap-2">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          selectedApplication.pop_verification_status === 'verified' ? 'bg-green-100 text-green-800' :
+                          selectedApplication.pop_verification_status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-amber-100 text-amber-800'
+                        }`}>
+                          {selectedApplication.pop_verification_status === 'verified' ? 'Verified' :
+                           selectedApplication.pop_verification_status === 'rejected' ? 'Rejected' :
+                           'Pending Verification'}
+                        </span>
+                        {selectedApplication.pop_verification_status === 'pending' && selectedApplication.payment_proof_url && (
+                          <div className="flex gap-2">
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={() => handlePOPVerification(selectedApplication.id, 'verified')}
+                            >
+                              Verify POP
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePOPVerification(selectedApplication.id, 'rejected')}
+                            >
+                              Reject POP
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

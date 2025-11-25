@@ -64,6 +64,7 @@ interface MembershipFormData {
   referenceContact: string;
   referenceEmail: string;
   referenceTitle?: string;
+  paymentMethod: 'manual' | 'payfast' | 'ozow';
   signature: string;
   declarationDate: string;
 }
@@ -85,8 +86,10 @@ export function ApplyMembershipPage() {
   const [error, setError] = useState<string | null>(null);
   const [idFile, setIdFile] = useState<File | null>(null);
   const [additionalFiles, setAdditionalFiles] = useState<File[]>([]);
+  const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>('');
   const [applicationFee, setApplicationFee] = useState<number>(0);
+  const paymentMethod = watch('paymentMethod');
 
   const {
     register,
@@ -460,6 +463,33 @@ export function ApplyMembershipPage() {
 
       if (appError) throw appError;
 
+      // Determine payment method and status
+      const paymentMethodValue = data.paymentMethod || (paymentProofFile ? 'manual' : null);
+      const paymentGateway = paymentMethodValue === 'payfast' ? 'payfast' : paymentMethodValue === 'ozow' ? 'ozow' : null;
+      
+      // Payment status logic:
+      // - Manual with POP: pending (admin verifies POP)
+      // - Manual without POP: pending (user will upload later)
+      // - Online: pending (gateway will update via webhook)
+      const paymentStatus = 'pending';
+      const popVerificationStatus = paymentMethodValue === 'manual' && paymentProofFile ? 'pending' : null;
+
+      // Upload payment proof if provided (for manual payment)
+      let paymentUpload: { url: string; key: string } | null = null;
+      if (paymentProofFile && paymentMethodValue === 'manual') {
+        paymentUpload = await uploadFile(paymentProofFile, `${user.id}/membership/payment_${Date.now()}_${paymentProofFile.name}`);
+        if (!paymentUpload) return;
+      }
+
+      // Update application with payment method and POP info
+      const applicationUpdate: any = {
+        payment_method: paymentMethodValue,
+        payment_gateway: paymentGateway,
+        pop_verification_status: popVerificationStatus || 'pending',
+        payment_proof_url: paymentUpload?.url || null,
+        payment_proof_key: paymentUpload?.key || null
+      };
+
       // Create payment record if fee is required
       let paymentId: string | null = null;
       if (applicationFee > 0) {
@@ -471,7 +501,8 @@ export function ApplyMembershipPage() {
             amount: applicationFee,
             currency: 'ZAR',
             payment_type: 'application',
-            status: 'pending'
+            payment_method: paymentMethodValue === 'payfast' || paymentMethodValue === 'ozow' ? paymentMethodValue : null,
+            status: paymentStatus
           }])
           .select()
           .single();
@@ -479,10 +510,18 @@ export function ApplyMembershipPage() {
         if (paymentError) throw paymentError;
         paymentId = payment.id;
 
-        // Update application with payment_id
+        applicationUpdate.payment_id = payment.id;
+        applicationUpdate.payment_status = paymentStatus;
+
         await insforge.database
           .from('applications')
-          .update({ payment_id: payment.id })
+          .update(applicationUpdate)
+          .eq('id', application.id);
+      } else {
+        // No fee, but still update payment method if selected
+        await insforge.database
+          .from('applications')
+          .update(applicationUpdate)
           .eq('id', application.id);
       }
 
@@ -541,8 +580,18 @@ export function ApplyMembershipPage() {
         .eq('form_type', 'membership');
 
       // Redirect to payment if fee required, otherwise to applications
-      if (applicationFee > 0 && paymentId) {
-        navigate(`/payment?payment_id=${paymentId}&return_url=/dashboard/applications`);
+      // Redirect based on payment method
+      if (applicationFee > 0) {
+        if (paymentMethodValue === 'payfast' || paymentMethodValue === 'ozow') {
+          // Redirect to online payment gateway
+          navigate(`/payment?payment_id=${paymentId}&return_url=/dashboard/applications`);
+        } else if (paymentMethodValue === 'manual' && !paymentProofFile) {
+          // Manual payment without POP - user can upload later or pay online
+          navigate('/dashboard/applications');
+        } else {
+          // Manual payment with POP uploaded - pending verification
+          navigate('/dashboard/applications');
+        }
       } else {
         navigate('/dashboard/applications');
       }
@@ -1336,6 +1385,136 @@ export function ApplyMembershipPage() {
                       </div>
                     </div>
                   </div>
+
+                  {/* Payment Method Selection - Only show if there's an application fee */}
+                  {applicationFee > 0 && (
+                    <div className="border-t pt-6">
+                      <h3 className="text-lg font-semibold text-navy-ink mb-4">Payment Method *</h3>
+                      <div className="space-y-3">
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: applicationFee > 0 ? 'Please select a payment method' : false })}
+                            value="manual"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option A: Manual Payment (EFT/Cash Deposit)</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Pay via EFT or cash deposit using bank details below</p>
+                              <p>• Upload proof of payment (optional - can upload later)</p>
+                              <p>• Admin will verify your payment proof</p>
+                              <p>• Application status: "Pending POP Verification"</p>
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: applicationFee > 0 ? 'Please select a payment method' : false })}
+                            value="payfast"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option B: Online Payment - PayFast</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Credit/Debit Card, EFT, or Instant EFT</p>
+                              <p>• Connects to all major South African banks</p>
+                              <p>• Secure and instant payment processing</p>
+                              <p>• You'll be redirected to PayFast after submission</p>
+                            </div>
+                          </div>
+                        </label>
+
+                        <label className="flex items-start p-4 border-2 border-gray-300 rounded-card cursor-pointer hover:bg-gray-50 transition-colors">
+                          <input
+                            type="radio"
+                            {...register('paymentMethod', { required: applicationFee > 0 ? 'Please select a payment method' : false })}
+                            value="ozow"
+                            className="mt-1 mr-3"
+                          />
+                          <div className="flex-1">
+                            <div className="font-medium text-navy-ink mb-1">Option C: Online Payment - Ozow (COSO)</div>
+                            <div className="text-sm text-gray-600 space-y-1">
+                              <p>• Instant EFT - Direct bank transfers</p>
+                              <p>• Connect directly to your SA bank account</p>
+                              <p>• Fast and secure payment processing</p>
+                              <p>• You'll be redirected to Ozow after submission</p>
+                            </div>
+                          </div>
+                        </label>
+                      </div>
+                      {errors.paymentMethod && (
+                        <p className="text-red-500 text-sm mt-2">{errors.paymentMethod.message}</p>
+                      )}
+
+                      {/* Bank Details - Only show for manual payment */}
+                      {paymentMethod === 'manual' && (
+                        <div className="mt-6 bg-muted-gray p-6 rounded-card">
+                          <h4 className="font-semibold text-navy-ink mb-3">Bank Details for Manual Payment</h4>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="font-medium">Account Name:</span>
+                              <span>Ken's Training Institute</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-medium">Bank:</span>
+                              <span>Standard Bank</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-medium">Account Number:</span>
+                              <span>1234567890</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="font-medium">Branch Code:</span>
+                              <span>123456</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Proof of Payment Upload - Only for manual payment */}
+                      {paymentMethod === 'manual' && (
+                        <div className="mt-6">
+                          <label className="block text-sm font-medium text-navy-ink mb-2">
+                            Proof of Bank Payment (Optional - PDF, JPG, JPEG, PNG - Max 10MB)
+                          </label>
+                          <p className="text-xs text-gray-600 mb-2">
+                            If you've already paid via bank transfer, upload proof here. You can also upload it later from your dashboard.
+                          </p>
+                          <input
+                            type="file"
+                            accept=".pdf,.jpg,.jpeg,.png"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                if (file.size > 10 * 1024 * 1024) {
+                                  setError('File size must be less than 10MB');
+                                  return;
+                                }
+                                setPaymentProofFile(file);
+                              }
+                            }}
+                            className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                          />
+                          {paymentProofFile && (
+                            <div className="mt-2 flex items-center space-x-2 text-sm text-gray-600">
+                              <FileText size={16} />
+                              <span>{paymentProofFile.name}</span>
+                              <button
+                                type="button"
+                                onClick={() => setPaymentProofFile(null)}
+                                className="text-red-500 hover:text-red-700"
+                              >
+                                <X size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Declaration */}
                   <div className="border-t pt-6">
