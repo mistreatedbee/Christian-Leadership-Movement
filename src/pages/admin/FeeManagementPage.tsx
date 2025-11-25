@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { insforge } from '../../lib/insforge';
 import { auditActions } from '../../lib/auditLogger';
 import { useUser } from '@insforge/react';
+import { clearFeeCache } from '../../lib/feeHelpers';
 
 interface FeeSetting {
   id: string;
@@ -242,6 +243,9 @@ export function FeeManagementPage() {
       }
 
       setEditingFee(null);
+      
+      // Clear fee cache so user-facing pages get updated fees immediately
+      clearFeeCache();
     } catch (err: any) {
       console.error('Error updating fee:', err);
       setMessage({ 
@@ -339,6 +343,10 @@ export function FeeManagementPage() {
       });
 
       setEditingCourseFee(null);
+      
+      // Clear fee cache so user-facing pages get updated fees immediately
+      clearFeeCache();
+      
       await fetchCourseFees(); // Refresh to show updated fees
     } catch (err: any) {
       console.error('Error saving course fees:', err);

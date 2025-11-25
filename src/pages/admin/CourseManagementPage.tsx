@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
 import { insforge } from '../../lib/insforge';
+import { clearFeeCache } from '../../lib/feeHelpers';
 
 interface Course {
   id: string;
@@ -220,6 +221,10 @@ export function CourseManagementPage() {
       }
 
       setEditingFees(null);
+      
+      // Clear fee cache so user-facing pages get updated fees immediately
+      clearFeeCache();
+      
       fetchData(); // Refresh to show updated fees
       alert('Fees updated successfully!');
     } catch (error: any) {
