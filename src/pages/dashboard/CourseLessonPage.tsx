@@ -55,16 +55,10 @@ export function CourseLessonPage() {
       if (courseError) throw courseError;
       setCourse(courseData);
 
-      // Check access
-      const { data: paidApps } = await insforge.database
-        .from('applications')
-        .select('program_id')
-        .eq('user_id', user.id)
-        .eq('payment_status', 'confirmed')
-        .eq('status', 'approved')
-        .eq('program_id', courseId);
-
-      setHasAccess(paidApps && paidApps.length > 0);
+      // Check access using access control system
+      const { hasCourseAccess } = await import('../../lib/accessControl');
+      const access = await hasCourseAccess(user.id, courseId);
+      setHasAccess(access);
 
       // Fetch lessons
       const { data: lessonsData, error: lessonsError } = await insforge.database

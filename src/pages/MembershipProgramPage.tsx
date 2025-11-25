@@ -7,6 +7,7 @@ import { TopNav } from '../components/layout/TopNav';
 import { Footer } from '../components/layout/Footer';
 import { Users, BookOpen, Award, CheckCircle, ArrowRight, ArrowLeft, FileText, Lock, Unlock, Download, Clock } from 'lucide-react';
 import { getStorageUrl } from '../lib/connection';
+import { hasMembershipAccess } from '../lib/accessControl';
 
 interface Program {
   id: string;
@@ -51,21 +52,18 @@ export function MembershipProgramPage() {
   };
 
   const checkMembership = async () => {
-    if (!user) return;
+    if (!user) {
+      setHasMembership(false);
+      return;
+    }
 
     try {
-      const { data } = await insforge.database
-        .from('applications')
-        .select('status')
-        .eq('user_id', user.id)
-        .eq('program_type', 'membership')
-        .eq('status', 'approved')
-        .eq('payment_status', 'confirmed')
-        .maybeSingle();
-
-      setHasMembership(!!data);
+      // Use access control system
+      const access = await hasMembershipAccess(user.id);
+      setHasMembership(access);
     } catch (err) {
       console.error('Error checking membership:', err);
+      setHasMembership(false);
     }
   };
 

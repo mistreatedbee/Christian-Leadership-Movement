@@ -6,6 +6,7 @@ import { sendEmailNotification } from '../../lib/email';
 import { getStorageUrl } from '../../lib/connection';
 import { useUser } from '@insforge/react';
 import { checkAdminAccess } from '../../lib/auth';
+import { getAccessStatus } from '../../lib/accessControl';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
@@ -217,33 +218,56 @@ export function ApplicationManagementPage() {
 
   const handleStatusChange = async (applicationId: string, newStatus: string) => {
     try {
+      const app = applications.find(a => a.id === applicationId);
+      if (!app) {
+        console.error('Application not found');
+        return;
+      }
+
+      // Update application status
       await insforge.database
         .from('applications')
         .update({ status: newStatus, updated_at: new Date().toISOString() })
         .eq('id', applicationId);
 
-      // Create notification
-      const app = applications.find(a => a.id === applicationId);
-      if (app) {
-        const notification = {
-          user_id: app.user_id,
-          type: 'application',
-          title: `Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
-          message: `Your application for ${app.programs?.title || app.program_type} has been ${newStatus}.`,
-          related_id: applicationId
-        };
-
-        await insforge.database
-          .from('notifications')
-          .insert([notification]);
-
-        // Send email notification
-        await sendEmailNotification(app.user_id, {
-          type: `application_${newStatus}`,
-          subject: notification.title,
-          message: notification.message
-        });
+      // If approved, check if payment is confirmed and grant access
+      // The database trigger will handle this automatically, but we can also check here
+      if (newStatus === 'approved') {
+        // Check if payment is confirmed (or no payment required)
+        const paymentConfirmed = app.payment_status === 'confirmed' || 
+                                 !app.payment_status || 
+                                 app.payment_status === 'pending' && app.payment_method === null;
+        
+        if (paymentConfirmed) {
+          // Database trigger will automatically grant access
+          // But we can verify it was granted
+          console.log(`✅ Application approved. Access will be automatically granted for user ${app.user_id}`);
+        } else {
+          console.log(`⏳ Application approved but payment pending. Access will be granted when payment is confirmed.`);
+        }
       }
+
+      // Create notification
+      const notification = {
+        user_id: app.user_id,
+        type: 'application',
+        title: `Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: newStatus === 'approved'
+          ? `Your application for ${app.programs?.title || app.program_type} has been approved. ${app.payment_status === 'confirmed' ? 'You now have full access to all resources!' : 'Please complete payment to access resources.'}`
+          : `Your application for ${app.programs?.title || app.program_type} has been ${newStatus}.`,
+        related_id: applicationId
+      };
+
+      await insforge.database
+        .from('notifications')
+        .insert([notification]);
+
+      // Send email notification
+      await sendEmailNotification(app.user_id, {
+        type: `application_${newStatus}`,
+        subject: notification.title,
+        message: notification.message
+      });
 
       fetchApplications();
     } catch (err) {
@@ -253,22 +277,36 @@ export function ApplicationManagementPage() {
 
   const handlePOPVerification = async (applicationId: string, verificationStatus: 'verified' | 'rejected') => {
     try {
+      const app = applications.find(a => a.id === applicationId);
+      if (!app) {
+        console.error('Application not found');
+        return;
+      }
+
+      const newPaymentStatus = verificationStatus === 'verified' ? 'confirmed' : 'pending';
+      
+      // Update application payment status
       await insforge.database
         .from('applications')
         .update({ 
           pop_verification_status: verificationStatus,
-          payment_status: verificationStatus === 'verified' ? 'confirmed' : 'pending',
+          payment_status: newPaymentStatus,
           updated_at: new Date().toISOString() 
         })
         .eq('id', applicationId);
 
-      // Update payment status if POP is verified
-      const app = applications.find(a => a.id === applicationId);
-      if (app && app.payment_id && verificationStatus === 'verified') {
+      // Update payment record if POP is verified
+      if (app.payment_id && verificationStatus === 'verified') {
         await insforge.database
           .from('payments')
           .update({ status: 'confirmed' })
           .eq('id', app.payment_id);
+      }
+
+      // If payment is confirmed and application is approved, access will be automatically granted
+      // The database trigger handles this, but we log it
+      if (verificationStatus === 'verified' && app.status === 'approved') {
+        console.log(`✅ POP verified. Access automatically granted for user ${app.user_id}`);
       }
 
       // Create notification
@@ -1755,6 +1793,38 @@ export function ApplicationManagementPage() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Resource Access Status */}
+                  <div>
+                    <p className="text-sm text-gray-600">Resource Access Status</p>
+                    <div className="mt-2">
+                      {selectedApplication.status === 'approved' && selectedApplication.payment_status === 'confirmed' ? (
+                        <div className="flex items-center gap-2">
+                          <CheckCircle className="text-green-600" size={20} />
+                          <span className="text-green-700 font-medium">Access Granted</span>
+                          <span className="text-xs text-gray-500">
+                            (User has full access to {selectedApplication.program_type === 'bible_school' ? 'Bible School' : selectedApplication.program_type === 'membership' ? 'Membership' : 'Course'} resources)
+                          </span>
+                        </div>
+                      ) : selectedApplication.status === 'approved' && selectedApplication.payment_status !== 'confirmed' ? (
+                        <div className="flex items-center gap-2">
+                          <Clock className="text-amber-600" size={20} />
+                          <span className="text-amber-700 font-medium">Pending Payment</span>
+                          <span className="text-xs text-gray-500">
+                            (Access will be granted automatically when payment is confirmed)
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <XCircle className="text-gray-400" size={20} />
+                          <span className="text-gray-600 font-medium">No Access</span>
+                          <span className="text-xs text-gray-500">
+                            (Application must be approved and payment confirmed)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
 

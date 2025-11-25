@@ -9,6 +9,7 @@ import { BookOpen, Users, Video, FileText, Calendar, Clock, MapPin, Link as Link
 import { Link } from 'react-router-dom';
 import { getStorageUrl } from '../lib/connection';
 import { getUserRole } from '../lib/auth';
+import { hasBibleSchoolAccess } from '../lib/accessControl';
 
 type TabType = 'studies' | 'classes' | 'meetings' | 'resources';
 
@@ -27,13 +28,45 @@ export function BibleSchoolPage() {
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState<Record<string, boolean>>({});
   const [isAdmin, setIsAdmin] = useState(false);
+  const [hasAccess, setHasAccess] = useState(false);
+  const [accessLoading, setAccessLoading] = useState(true);
 
   useEffect(() => {
     if (isLoaded) {
       checkAdminStatus();
+      checkAccess();
       fetchData();
     }
   }, [activeTab, isLoaded, user]);
+
+  const checkAccess = async () => {
+    if (!user) {
+      setHasAccess(false);
+      setAccessLoading(false);
+      return;
+    }
+
+    try {
+      // Admins always have access
+      const role = await getUserRole(user.id);
+      const admin = role === 'admin' || role === 'super_admin';
+      
+      if (admin) {
+        setHasAccess(true);
+        setAccessLoading(false);
+        return;
+      }
+
+      // Check if user has Bible School access
+      const access = await hasBibleSchoolAccess(user.id);
+      setHasAccess(access);
+    } catch (err) {
+      console.error('Error checking access:', err);
+      setHasAccess(false);
+    } finally {
+      setAccessLoading(false);
+    }
+  };
 
   // Update active tab when URL parameter changes
   useEffect(() => {
@@ -120,28 +153,19 @@ export function BibleSchoolPage() {
           .select('*')
           .order('created_at', { ascending: false });
         
-        // Check if user has paid Bible School application
-        let hasBibleSchoolAccess = false;
+        // Use the access control system
+        let userHasAccess = false;
         if (user && !isAdmin) {
-          const { data: bibleSchoolApp } = await insforge.database
-            .from('applications')
-            .select('id')
-            .eq('user_id', user.id)
-            .eq('program_type', 'bible_school')
-            .eq('status', 'approved')
-            .eq('payment_status', 'confirmed')
-            .maybeSingle();
-          
-          hasBibleSchoolAccess = !!bibleSchoolApp;
+          userHasAccess = await hasBibleSchoolAccess(user.id);
         }
         
         // Non-admins only see public resources OR if they have paid access
         if (!isAdmin) {
-          if (hasBibleSchoolAccess) {
-            // Users with paid access see all resources (public and private)
+          if (userHasAccess || isAdmin) {
+            // Users with access see all resources (public and private)
             // No filter needed
           } else {
-            // Users without paid access only see public resources
+            // Users without access only see public resources
             query = query.eq('is_public', true);
           }
         }
@@ -312,6 +336,55 @@ export function BibleSchoolPage() {
               )}
             </div>
           </div>
+
+          {/* Access Status Banner */}
+          {!accessLoading && user && !isAdmin && !hasAccess && (
+            <div className="bg-amber-50 border-l-4 border-amber-500 rounded-card shadow-soft p-6 mb-8">
+              <div className="flex items-start">
+                <div className="flex-shrink-0">
+                  <CheckCircle className="text-amber-600" size={24} />
+                </div>
+                <div className="ml-3 flex-1">
+                  <h3 className="text-lg font-semibold text-amber-800 mb-2">
+                    Access Required
+                  </h3>
+                  <p className="text-amber-700 mb-4">
+                    To access all Bible School resources, materials, and content, please complete your application and payment.
+                    Once your application is approved and payment is confirmed, you'll automatically gain full access to all resources.
+                  </p>
+                  <div className="flex gap-3">
+                    <Link to="/apply/bible-school">
+                      <Button variant="primary" size="sm">
+                        Apply Now
+                      </Button>
+                    </Link>
+                    <Link to="/dashboard/applications">
+                      <Button variant="outline" size="sm">
+                        Check Application Status
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Access Granted Banner */}
+          {!accessLoading && user && !isAdmin && hasAccess && (
+            <div className="bg-green-50 border-l-4 border-green-500 rounded-card shadow-soft p-4 mb-8">
+              <div className="flex items-center">
+                <CheckCircle className="text-green-600 mr-3" size={24} />
+                <div>
+                  <h3 className="text-lg font-semibold text-green-800">
+                    Full Access Granted
+                  </h3>
+                  <p className="text-green-700 text-sm">
+                    You have full access to all Bible School resources, materials, and content.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* What You'll Gain Section */}
           <div className="bg-white rounded-card shadow-soft p-8 mb-8">

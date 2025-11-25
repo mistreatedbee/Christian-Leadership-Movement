@@ -111,19 +111,16 @@ export function CoursesPage() {
           });
           setHasAccess(accessMap);
         } else {
-          // Regular users need paid application
-          const { data: paidApps } = await insforge.database
-            .from('applications')
-            .select('program_id')
-            .eq('user_id', user.id)
-            .eq('payment_status', 'confirmed')
-            .eq('status', 'approved');
-
+          // Use access control system to check course access
+          const { hasCourseAccess } = await import('../../lib/accessControl');
           const accessMap: Record<string, boolean> = {};
-          coursesData?.forEach((course: Course) => {
-            const hasPaidAccess = paidApps?.some((app: any) => app.program_id === course.id) || false;
-            accessMap[course.id] = hasPaidAccess;
-          });
+          
+          // Check access for each course
+          for (const course of coursesData || []) {
+            const access = await hasCourseAccess(user.id, course.id);
+            accessMap[course.id] = access;
+          }
+          
           setHasAccess(accessMap);
         }
 

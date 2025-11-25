@@ -136,32 +136,46 @@ export async function handlePayFastITN(data: PayFastITNData): Promise<{ success:
         .single();
 
       if (payment?.application_id) {
+        // Get application details
+        const { data: application } = await insforge.database
+          .from('applications')
+          .select('user_id, status, program_type')
+          .eq('id', payment.application_id)
+          .single();
+
+        // Update application payment status
+        // Database trigger will automatically grant access if application is already approved
         await insforge.database
           .from('applications')
           .update({
             payment_status: 'confirmed',
-            status: 'pending' // Keep as pending for admin review
+            // Don't change application status - keep it as is (approved/pending)
+            updated_at: new Date().toISOString()
           })
           .eq('id', payment.application_id);
 
         // Create notification for user
-        const { data: application } = await insforge.database
-          .from('applications')
-          .select('user_id')
-          .eq('id', payment.application_id)
-          .single();
-
         if (application?.user_id) {
+          const isApproved = application.status === 'approved';
+          const message = isApproved
+            ? 'Your payment has been confirmed successfully. You now have full access to all resources!'
+            : 'Your payment has been confirmed successfully. Your application is now pending review.';
+
           await insforge.database
             .from('notifications')
             .insert([{
               user_id: application.user_id,
               type: 'payment',
               title: 'Payment Confirmed',
-              message: 'Your payment has been confirmed successfully. Your application is now pending review.',
+              message: message,
               related_id: paymentId,
               read: false
             }]);
+
+          // Log access grant if application is approved
+          if (isApproved) {
+            console.log(`✅ Payment confirmed for approved application. Access automatically granted for user ${application.user_id}`);
+          }
         }
       }
     }
@@ -220,32 +234,46 @@ export async function handleOzowWebhook(data: OzowWebhookData): Promise<{ succes
         .single();
 
       if (payment?.application_id) {
+        // Get application details
+        const { data: application } = await insforge.database
+          .from('applications')
+          .select('user_id, status, program_type')
+          .eq('id', payment.application_id)
+          .single();
+
+        // Update application payment status
+        // Database trigger will automatically grant access if application is already approved
         await insforge.database
           .from('applications')
           .update({
             payment_status: 'confirmed',
-            status: 'pending' // Keep as pending for admin review
+            // Don't change application status - keep it as is (approved/pending)
+            updated_at: new Date().toISOString()
           })
           .eq('id', payment.application_id);
 
         // Create notification for user
-        const { data: application } = await insforge.database
-          .from('applications')
-          .select('user_id')
-          .eq('id', payment.application_id)
-          .single();
-
         if (application?.user_id) {
+          const isApproved = application.status === 'approved';
+          const message = isApproved
+            ? 'Your payment has been confirmed successfully. You now have full access to all resources!'
+            : 'Your payment has been confirmed successfully. Your application is now pending review.';
+
           await insforge.database
             .from('notifications')
             .insert([{
               user_id: application.user_id,
               type: 'payment',
               title: 'Payment Confirmed',
-              message: 'Your payment has been confirmed successfully. Your application is now pending review.',
+              message: message,
               related_id: transactionRef,
               read: false
             }]);
+
+          // Log access grant if application is approved
+          if (isApproved) {
+            console.log(`✅ Payment confirmed for approved application. Access automatically granted for user ${application.user_id}`);
+          }
         }
       }
     }
