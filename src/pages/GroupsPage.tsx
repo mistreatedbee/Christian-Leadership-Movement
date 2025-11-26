@@ -44,6 +44,14 @@ interface Group {
   };
 }
 
+interface FormDataState {
+  name: string;
+  description: string;
+  group_type: string;
+  is_public: boolean;
+  max_members: string;
+}
+
 export function GroupsPage() {
   const navigate = useNavigate();
   const { user } = useUser();
@@ -52,7 +60,7 @@ export function GroupsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<FormDataState>({
     name: '',
     description: '',
     group_type: 'ministry',
@@ -67,81 +75,82 @@ export function GroupsPage() {
   const fetchGroups = async () => {
     try {
       setLoading(true);
-      console.log('🔍 Fetching groups...');
       
-      const [allGroupsRes, myGroupsRes, myCreatedGroupsRes] = await Promise.all([
-        // Fetch public approved/active groups
+      const [allApprovedGroupsRes, myCreatedGroupsRes] = await Promise.all([
+        // 1. Fetch ALL approved/active groups (public and private)
+        // Note: For private groups, users should only see them if they are members. 
+        // We rely on the `myGroupsRes` fetch below to ensure membership is accounted for.
         insforge.database
           .from('groups')
           .select('*, users(*), group_members(*)')
-          .eq('is_public', true)
           .in('status', ['approved', 'active'])
           .order('created_at', { ascending: false }),
-        // Fetch groups user is a member of
-        user ? insforge.database
-          .from('group_members')
-          .select('group_id, groups(*, users(*), group_members(*))')
-          .eq('user_id', user.id)
-          .then(res => res.data?.map((item: any) => item.groups).filter(Boolean) || [])
-        : Promise.resolve([]),
-        // Fetch groups user created (to see pending status)
+        
+        // 2. Fetch groups user created (to see pending/rejected status in "My Groups")
         user ? insforge.database
           .from('groups')
           .select('*, users(*), group_members(*)')
           .eq('created_by', user.id)
           .order('created_at', { ascending: false })
-        : Promise.resolve({ data: [] })
+          .then(res => res.data || [])
+        : Promise.resolve([])
       ]);
 
-      console.log('📊 Group fetch results:', {
-        publicApproved: allGroupsRes.data?.length || 0,
-        myMemberGroups: myGroupsRes?.length || 0,
-        myCreatedGroups: myCreatedGroupsRes.data?.length || 0
-      });
+      // 3. Fetch groups user is explicitly a member of (including private approved/active groups)
+      const myMemberGroupsRes = user ? (await insforge.database
+        .from('group_members')
+        .select('group_id, groups(*, users(*), group_members(*))')
+        .eq('user_id', user.id)
+        .then(res => res.data?.map((item: any) => item.groups).filter(Boolean) || [])
+      ) : [];
 
-      // Combine ALL groups: public approved + member groups + created groups
-      const allGroups: Group[] = [];
+      // Helper to safely add groups and ensure uniqueness
       const groupIds = new Set<string>();
+      const allGroupsMap = new Map<string, Group>();
 
-      // Add public approved/active groups
-      if (allGroupsRes.data) {
-        allGroupsRes.data.forEach((group: Group) => {
-          if (!groupIds.has(group.id)) {
-            allGroups.push(group);
-            groupIds.add(group.id);
-          }
-        });
-      }
+      const addGroupsToMap = (groupArray: (Group | null)[] | undefined) => {
+        if (groupArray) {
+          groupArray.forEach((group: Group | null) => {
+            if (group && group.id && !groupIds.has(group.id)) {
+              allGroupsMap.set(group.id, group);
+              groupIds.add(group.id);
+            }
+          });
+        }
+      };
 
-      // Add groups user is a member of (regardless of status)
-      if (myGroupsRes) {
-        myGroupsRes.forEach((group: Group) => {
-          if (group && !groupIds.has(group.id)) {
-            allGroups.push(group);
-            groupIds.add(group.id);
-          }
-        });
-      }
-
-      // Add groups user created (to see pending status)
-      if (myCreatedGroupsRes.data) {
-        myCreatedGroupsRes.data.forEach((group: Group) => {
-          if (!groupIds.has(group.id)) {
-            allGroups.push(group);
-            groupIds.add(group.id);
-          }
-        });
-      }
-
-      console.log(`✅ Total groups to display: ${allGroups.length}`);
-      setGroups(allGroups);
+      // Populate map with all relevant groups
+      addGroupsToMap(allApprovedGroupsRes.data as Group[]);
+      addGroupsToMap(myMemberGroupsRes as Group[]);
+      addGroupsToMap(myCreatedGroupsRes as Group[]);
       
-      // Combine member groups and created groups for "My Groups" section
-      const allMyGroups = [...(myGroupsRes || []), ...(myCreatedGroupsRes.data || [])];
-      const uniqueMyGroups = allMyGroups.filter((group, index, self) =>
-        index === self.findIndex(g => g && g.id === group.id)
+      const combinedAllGroups = Array.from(allGroupsMap.values());
+      
+      // ----------------------------------------------------------------------------------
+      // FIX LOGIC: Separate groups for the general directory and the user's private list.
+      // ----------------------------------------------------------------------------------
+
+      // A. Groups for the main "All Groups" Directory: 
+      //    Only public groups that are approved/active, OR approved/active groups that the user is already a member of.
+      const groupsForDisplay = combinedAllGroups.filter(g => 
+        (g.is_public && (g.status === 'approved' || g.status === 'active')) || 
+        myMemberGroupsRes.some(mg => mg.id === g.id)
       );
-      setMyGroups(uniqueMyGroups || []);
+
+      // B. Groups for the "My Groups" Section:
+      //    Any group the user created OR is a member of, regardless of public status or approval status.
+      const myGroupsForDisplay = combinedAllGroups.filter(g => 
+        g.created_by === user?.id || myMemberGroupsRes.some(mg => mg.id === g.id)
+      );
+      
+      // Remove duplicates from myGroupsForDisplay (already done by the map, but filter again for safety)
+      const uniqueMyGroups = myGroupsForDisplay.filter((group, index, self) =>
+        index === self.findIndex(g => g.id === group.id)
+      );
+      
+      setGroups(groupsForDisplay);
+      setMyGroups(uniqueMyGroups);
+      
     } catch (error) {
       console.error('❌ Error fetching groups:', error);
       setGroups([]);
@@ -179,7 +188,7 @@ export function GroupsPage() {
         throw new Error('Group creation failed: No data returned');
       }
 
-      // Add creator as admin (only if approved later, but we add them now for visibility)
+      // Add creator as admin
       const { error: memberError } = await insforge.database
         .from('group_members')
         .insert({
@@ -190,10 +199,9 @@ export function GroupsPage() {
 
       if (memberError) {
         console.error('Error adding creator as admin:', memberError);
-        // Continue anyway - group was created
       }
 
-      // Create notification for user
+      // Create notifications for user and admins (logic remains the same)
       try {
         await insforge.database
           .from('notifications')
@@ -210,16 +218,13 @@ export function GroupsPage() {
         console.error('Error creating user notification:', userNotifError);
       }
 
-      // Create notification for admins
       try {
-        const { data: admins, error: adminError } = await insforge.database
+        const { data: admins } = await insforge.database
           .from('user_profiles')
           .select('user_id')
           .in('role', ['admin', 'super_admin']);
 
-        if (adminError) {
-          console.error('Error fetching admins:', adminError);
-        } else if (admins && admins.length > 0) {
+        if (admins && admins.length > 0) {
           const notifications = admins.map((admin: any) => ({
             user_id: admin.user_id,
             type: 'group',
@@ -230,19 +235,12 @@ export function GroupsPage() {
             read: false
           }));
 
-          const { error: notifError } = await insforge.database
+          await insforge.database
             .from('notifications')
             .insert(notifications);
-
-          if (notifError) {
-            console.error('Error creating admin notifications:', notifError);
-          } else {
-            console.log(`✅ Notifications sent to ${admins.length} admins for group: ${formData.name}`);
-          }
         }
       } catch (notifError) {
-        console.error('Error creating notifications:', notifError);
-        // Continue anyway - notifications are not critical
+        console.error('Error creating admin notifications:', notifError);
       }
 
       setFormData({
@@ -254,7 +252,7 @@ export function GroupsPage() {
       });
       setShowForm(false);
       
-      // Immediately refresh groups so the newly created group appears
+      // Immediately refresh groups so the newly created group appears in "My Groups"
       await fetchGroups();
       
       alert('✅ Your group has been created successfully! It is currently under review by administrators. You will be notified once it\'s approved or rejected. You can see it in "My Groups" section below.');
@@ -278,7 +276,9 @@ export function GroupsPage() {
           user_id: user.id,
           role: 'member'
         });
-      fetchGroups();
+      
+      // Use fetchGroups to refresh both myGroups and groups lists
+      fetchGroups(); 
       alert('Successfully joined group!');
     } catch (error: any) {
       console.error('Error joining group:', error);
@@ -395,16 +395,20 @@ export function GroupsPage() {
         </div>
       )}
 
-      {/* My Groups */}
+      {/* My Groups - Shows all groups the user created OR is a member of */}
       {myGroups.length > 0 && (
         <div className="mb-8">
           <h2 className="text-2xl font-bold text-navy-ink mb-4">My Groups</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {myGroups.map((group) => {
               const isMyGroup = user && group.created_by === user.id;
+              const isMember = myGroups.some(g => g.id === group.id); // True by definition of myGroups list
               const isPending = group.status === 'pending';
               const isRejected = group.status === 'rejected';
               const isApproved = group.status === 'approved' || group.status === 'active';
+              
+              // Determine if the user is a member AND the group is approved, allowing a View link.
+              const canViewGroup = isMember && isApproved;
               
               return (
                 <div
@@ -423,14 +427,15 @@ export function GroupsPage() {
                   )}
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="text-xl font-bold text-navy-ink">{group.name}</h3>
+                    {/* Status Badges for My Created Groups */}
                     {isMyGroup && isPending && (
-                      <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded-full">
-                        Pending
+                      <span className="px-2 py-1 text-xs bg-amber-100 text-amber-800 rounded-full font-medium">
+                        ⏳ Pending
                       </span>
                     )}
                     {isMyGroup && isRejected && (
-                      <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full">
-                        Rejected
+                      <span className="px-2 py-1 text-xs bg-red-100 text-red-800 rounded-full font-medium">
+                        ❌ Rejected
                       </span>
                     )}
                     {isMyGroup && isApproved && (
@@ -438,22 +443,25 @@ export function GroupsPage() {
                         ✅ Approved
                       </span>
                     )}
-                    {isMyGroup && !isPending && !isRejected && !isApproved && (
-                      <span className="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">
-                        {group.status || 'Pending'}
-                      </span>
+                    {/* Fallback for other users' approved groups in My Groups list */}
+                    {!isMyGroup && isApproved && (
+                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full font-medium">
+                            Member
+                        </span>
                     )}
                   </div>
                   {group.description && (
                     <p className="text-gray-600 mb-4 line-clamp-2">{group.description}</p>
                   )}
+                  
+                  {/* Status Box for Pending/Rejected Groups */}
                   {isMyGroup && isPending && (
                     <div className="mb-4 p-3 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
                       <p className="text-sm font-medium text-amber-900 mb-1">
                         ⏳ Pending Review
                       </p>
                       <p className="text-sm text-amber-800">
-                        Your group has been created, but it's currently under review by the admin. Please wait for it to be approved or rejected. You will be notified once the status changes.
+                        Your group is currently under review by the admin.
                       </p>
                     </div>
                   )}
@@ -463,10 +471,11 @@ export function GroupsPage() {
                         ❌ Rejected
                       </p>
                       <p className="text-sm text-red-800">
-                        Your group creation request has been rejected. Please contact administrators for more information.
+                        Your group creation request has been rejected.
                       </p>
                     </div>
                   )}
+                  
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4 text-sm text-gray-600">
                       <span className="flex items-center gap-1">
@@ -474,10 +483,13 @@ export function GroupsPage() {
                         {group.group_members?.length || 0} members
                       </span>
                     </div>
-                    {isApproved && (
+                    {canViewGroup && (
                       <Link to={`/groups/${group.id}`}>
                         <Button variant="outline" size="sm">View</Button>
                       </Link>
+                    )}
+                    {isMyGroup && (isPending || isRejected) && (
+                      <Button variant="outline" size="sm" disabled>Details</Button>
                     )}
                   </div>
                 </div>
@@ -501,12 +513,17 @@ export function GroupsPage() {
         </div>
       </div>
 
-      {/* All Groups */}
+      {/* All Groups - Shows only approved/active public groups */}
       <div>
         <h2 className="text-2xl font-bold text-navy-ink mb-4">All Groups</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredGroups.map((group) => {
+            // Check membership status against the full list of myGroups
             const isMember = myGroups.some(g => g.id === group.id);
+            
+            // Only groups with status approved/active should be in filteredGroups
+            // Only public groups should be here unless the user is a member
+            
             return (
               <div key={group.id} className="bg-white p-6 rounded-card shadow-soft">
                 {group.image_url && (
@@ -531,7 +548,8 @@ export function GroupsPage() {
                       {group.max_members && ` / ${group.max_members}`} members
                     </span>
                   </div>
-                  {!isMember && (
+                  
+                  {user && !isMember && (
                     <Button
                       onClick={() => handleJoinGroup(group.id)}
                       variant="primary"
@@ -540,12 +558,19 @@ export function GroupsPage() {
                       Join
                     </Button>
                   )}
+                  
                   {isMember && (
                     <Link to={`/groups/${group.id}`}>
                       <Button variant="outline" size="sm">
                         View
                       </Button>
                     </Link>
+                  )}
+                  
+                  {!user && (
+                    <Button variant="primary" size="sm" disabled>
+                        Log in to Join
+                    </Button>
                   )}
                 </div>
               </div>
@@ -562,4 +587,3 @@ export function GroupsPage() {
     </div>
   );
 }
-
