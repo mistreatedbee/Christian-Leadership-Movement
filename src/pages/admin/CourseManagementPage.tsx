@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Users, Clock, BookOpen, X, Save, FileText, Video, Upload, DollarSign } from 'lucide-react';
+import { Plus, Edit, Trash2, Users, Clock, BookOpen, X, Save, Upload, DollarSign } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
 import { insforge } from '../../lib/insforge';
 import { clearFeeCache } from '../../lib/feeHelpers';
 
+// --- Interface Fixes ---
 interface Course {
   id: string;
   title: string;
@@ -30,6 +31,9 @@ interface Lesson {
   resources_url: string | null;
   scheduled_date: string | null;
   meeting_link: string | null;
+  // --- Missing properties added to fix TS2339 errors ---
+  video_key: string | null; 
+  resources_key: string | null;
 }
 
 interface CourseFormData {
@@ -47,6 +51,12 @@ interface LessonFormData {
   meeting_link: string;
 }
 
+// Interface for fee state
+interface FeeAmounts {
+  application_fee: string;
+  registration_fee: string;
+}
+
 export function CourseManagementPage() {
   const { user } = useUser();
   const [courses, setCourses] = useState<Course[]>([]);
@@ -61,6 +71,12 @@ export function CourseManagementPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [resourcesFile, setResourcesFile] = useState<File | null>(null);
   const [imageFile, setImageFile] = useState<File | null>(null);
+  
+  // --- Missing state declarations added here ---
+  const [feeAmounts, setFeeAmounts] = useState<Record<string, FeeAmounts>>({});
+  const [editingFees, setEditingFees] = useState<string | null>(null);
+  // ---------------------------------------------
+  
   const [stats, setStats] = useState({
     total: 0,
     active: 0,
@@ -95,16 +111,17 @@ export function CourseManagementPage() {
       ]);
 
       // Map courses with fees
-      const coursesWithFees = (coursesData.data || []).map((course: any) => ({
+      const coursesWithFees: Course[] = (coursesData.data || []).map((course: any) => ({
         ...course,
-        course_fees: course.course_fees?.[0] || { application_fee: 0, registration_fee: 0 }
+        // Ensure course_fees is mapped correctly, assuming it's an array of one
+        course_fees: course.course_fees?.[0] || { application_fee: 0, registration_fee: 0 } 
       }));
 
       setCourses(coursesWithFees);
       setPrograms(programsData.data || []);
 
-      // Initialize fee amounts
-      const feeMap: Record<string, { application_fee: string; registration_fee: string }> = {};
+      // Initialize fee amounts state (Fixes TS2304 for setFeeAmounts in useEffect)
+      const feeMap: Record<string, FeeAmounts> = {};
       coursesWithFees.forEach((course: Course) => {
         feeMap[course.id] = {
           application_fee: (course.course_fees?.application_fee || 0).toString(),
@@ -121,16 +138,24 @@ export function CourseManagementPage() {
           .select('*')
           .eq('course_id', course.id)
           .order('order_index', { ascending: true });
-        lessonsMap[course.id] = lessonsData || [];
+        // Lessons data will not have video_key and resources_key unless you selected them.
+        // For robustness, ensure the Lesson interface matches the database schema if those keys are used.
+        // Assuming your DB query returns video_key and resources_key, but if it doesn't, 
+        // they will be undefined and TS will complain if not set to null or added to the interface.
+        // Since I added them to the interface, we'll cast it to Lesson[].
+        lessonsMap[course.id] = lessonsData as Lesson[] || [];
       }
       setLessons(lessonsMap);
 
       // Calculate stats
+      // ... (stats calculation logic remains the same)
       const { data: enrollments } = await insforge.database
         .from('user_course_progress')
-        .select('course_id');
+        .select('user_id'); // Select user_id to count unique students
 
-      const uniqueStudents = new Set(enrollments?.map((e: any) => e.user_id) || []);
+      // Fix: enrollments array items may not have user_id property unless explicitly selected. 
+      // The original code was fine if 'user_id' was selected.
+      const uniqueStudents = new Set((enrollments || []).map((e: any) => e.user_id));
 
       setStats({
         total: coursesData.data?.length || 0,
@@ -159,9 +184,9 @@ export function CourseManagementPage() {
     setEditingCourse(course);
     setImageFile(null);
     
-    // Set fee amounts for editing
+    // Set fee amounts for editing (Fixes TS2304 for setFeeAmounts here)
     if (course.course_fees) {
-      setFeeAmounts(prev => ({
+      setFeeAmounts(prev => ({ // Fixes TS7006 (Implicit 'any' type) by inferring type from declaration
         ...prev,
         [course.id]: {
           application_fee: (course.course_fees?.application_fee || 0).toString(),
@@ -173,13 +198,14 @@ export function CourseManagementPage() {
     setShowCourseForm(true);
   };
 
+  // --- Fee Management Handlers (Fixes TS2304 and TS7006) ---
   const handleEditFees = (courseId: string) => {
     setEditingFees(courseId);
   };
 
   const handleSaveFees = async (courseId: string) => {
     try {
-      const fees = feeAmounts[courseId];
+      const fees = feeAmounts[courseId]; // Fixes TS2304 for feeAmounts
       if (!fees) return;
 
       const applicationFee = parseFloat(fees.application_fee) || 0;
@@ -220,7 +246,7 @@ export function CourseManagementPage() {
           });
       }
 
-      setEditingFees(null);
+      setEditingFees(null); // Fixes TS2304 for setEditingFees
       
       // Clear fee cache so user-facing pages get updated fees immediately
       clearFeeCache();
@@ -234,11 +260,11 @@ export function CourseManagementPage() {
   };
 
   const handleCancelFees = (courseId: string) => {
-    setEditingFees(null);
+    setEditingFees(null); // Fixes TS2304 for setEditingFees
     // Reset to original values
     const course = courses.find(c => c.id === courseId);
     if (course) {
-      setFeeAmounts(prev => ({
+      setFeeAmounts(prev => ({ // Fixes TS2304 for setFeeAmounts
         ...prev,
         [courseId]: {
           application_fee: (course.course_fees?.application_fee || 0).toString(),
@@ -247,6 +273,7 @@ export function CourseManagementPage() {
       }));
     }
   };
+  // -----------------------------------------------------------------
 
   const handleDeleteCourse = async (courseId: string) => {
     if (!confirm('Are you sure you want to delete this course? All lessons will be deleted.')) return;
@@ -291,8 +318,9 @@ export function CourseManagementPage() {
           console.error('Image upload error:', uploadError);
           throw new Error(`Failed to upload image: ${uploadError.message}`);
         }
-        imageUrl = uploadData.url;
-        imageKey = uploadData.key;
+        // Fix TS18047: check if uploadData is null/undefined before accessing properties
+        imageUrl = uploadData?.url || null; 
+        imageKey = uploadData?.key || null; 
 
         if (editingCourse?.image_key) {
           try {
@@ -303,7 +331,7 @@ export function CourseManagementPage() {
         }
       }
 
-      const courseData: any = {
+      const courseData: any = { // Keeping 'any' here as per your original code, but could be typed more strictly
         title: data.title,
         description: data.description || null,
         instructor: data.instructor || null,
@@ -313,7 +341,7 @@ export function CourseManagementPage() {
         created_by: user?.id
       };
 
-      let savedCourse;
+      let savedCourse: any; // Explicitly typing to 'any' to resolve TS7034 (implicitly has type 'any')
       if (editingCourse) {
         const { data: updated, error: updateError } = await insforge.database
           .from('courses')
@@ -348,7 +376,7 @@ export function CourseManagementPage() {
           const { data: enrolledUsers } = await insforge.database
             .from('user_course_progress')
             .select('user_id')
-            .eq('course_id', savedCourse.id);
+            .eq('course_id', savedCourse.id); // Fixes TS7005 (implicitly has an 'any' type)
 
           if (enrolledUsers && enrolledUsers.length > 0) {
             const uniqueUserIds = Array.from(new Set(enrolledUsers.map((e: any) => e.user_id)));
@@ -442,6 +470,7 @@ export function CourseManagementPage() {
 
     try {
       const lesson = Object.values(lessons).flat().find(l => l.id === lessonId);
+      // Fix TS2339: The Lesson interface now includes video_key and resources_key
       if (lesson?.video_key) {
         await insforge.storage.from('courses').remove(lesson.video_key);
       }
@@ -466,9 +495,9 @@ export function CourseManagementPage() {
 
     try {
       let videoUrl = editingLesson?.video_url || null;
-      let videoKey = editingLesson?.video_key || null;
+      let videoKey = editingLesson?.video_key || null; // Fix TS2339
       let resourcesUrl = editingLesson?.resources_url || null;
-      let resourcesKey = editingLesson?.resources_key || null;
+      let resourcesKey = editingLesson?.resources_key || null; // Fix TS2339
 
       if (videoFile) {
         const { data: uploadData, error: uploadError } = await insforge.storage
@@ -479,10 +508,12 @@ export function CourseManagementPage() {
           console.error('Video upload error:', uploadError);
           throw new Error(`Failed to upload video: ${uploadError.message}`);
         }
-        videoUrl = uploadData.url;
-        videoKey = uploadData.key;
-
-        if (editingLesson?.video_key) {
+        // Fix TS18047
+        videoUrl = uploadData?.url || null; 
+        videoKey = uploadData?.key || null; // Fix TS18047
+        
+        // Fix TS2339
+        if (editingLesson?.video_key) { 
           try {
             await insforge.storage.from('courses').remove(editingLesson.video_key);
           } catch (removeErr) {
@@ -500,9 +531,11 @@ export function CourseManagementPage() {
           console.error('Resources upload error:', uploadError);
           throw new Error(`Failed to upload resources: ${uploadError.message}`);
         }
-        resourcesUrl = uploadData.url;
-        resourcesKey = uploadData.key;
+        // Fix TS18047
+        resourcesUrl = uploadData?.url || null;
+        resourcesKey = uploadData?.key || null; // Fix TS18047
 
+        // Fix TS2339
         if (editingLesson?.resources_key) {
           try {
             await insforge.storage.from('courses').remove(editingLesson.resources_key);
@@ -512,7 +545,7 @@ export function CourseManagementPage() {
         }
       }
 
-      const lessonData: any = {
+      const lessonData: any = { // Keeping 'any' here as per your original code
         course_id: selectedCourse,
         title: data.title,
         description: data.description || null,
@@ -525,7 +558,7 @@ export function CourseManagementPage() {
         meeting_link: data.meeting_link || null
       };
 
-      let savedLesson;
+      let savedLesson: any; // Explicitly typing to 'any' to resolve TS7034 (implicitly has type 'any')
       if (editingLesson) {
         const { data: updated, error: updateError } = await insforge.database
           .from('course_lessons')
@@ -560,7 +593,7 @@ export function CourseManagementPage() {
           const { data: enrolledUsers } = await insforge.database
             .from('user_course_progress')
             .select('user_id')
-            .eq('course_id', selectedCourse!);
+            .eq('course_id', selectedCourse);
 
           if (enrolledUsers && enrolledUsers.length > 0) {
             const uniqueUserIds = Array.from(new Set(enrolledUsers.map((e: any) => e.user_id)));
@@ -599,397 +632,398 @@ export function CourseManagementPage() {
       alert(err.message || 'Failed to save lesson. Please try again.');
     }
   };
+  
   return <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-navy-ink mb-2">
-            Course Management
-          </h1>
-          <p className="text-gray-600">
-            Create and manage educational programs
-          </p>
+    <div className="flex justify-between items-center">
+      <div>
+        <h1 className="text-3xl font-bold text-navy-ink mb-2">
+          Course Management
+        </h1>
+        <p className="text-gray-600">
+          Create and manage educational programs
+        </p>
+      </div>
+      <Button variant="primary" onClick={handleCreateCourse}>
+        <Plus size={20} className="mr-2" />
+        Create Course
+      </Button>
+    </div>
+    {/* Course Form Modal */}
+    {showCourseForm && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-card shadow-soft p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-navy-ink">
+              {editingCourse ? 'Edit Course' : 'Create New Course'}
+            </h2>
+            <button onClick={() => setShowCourseForm(false)} className="text-gray-400 hover:text-gray-600">
+              <X size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleCourseSubmit(onCourseSubmit)} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Title *</label>
+              <input
+                type="text"
+                {...registerCourse('title', { required: 'Title is required' })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+              {courseErrors.title && <p className="text-red-500 text-sm mt-1">{courseErrors.title.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Description</label>
+              <textarea
+                {...registerCourse('description')}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Instructor</label>
+                <input
+                  type="text"
+                  {...registerCourse('instructor')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Program</label>
+                <select
+                  {...registerCourse('program_id')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                >
+                  <option value="">Select Program (Optional)</option>
+                  {programs.map(prog => (
+                    <option key={prog.id} value={prog.id}>{prog.title}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Course Image</label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(e) => setImageFile(e.target.files?.[0] || null)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <Button type="submit" variant="primary">
+                <Save className="mr-2" size={16} />
+                {editingCourse ? 'Update Course' : 'Create Course'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowCourseForm(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
         </div>
+      </div>
+    )}
+
+    {/* Lesson Form Modal */}
+    {showLessonForm && selectedCourse && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-card shadow-soft p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-navy-ink">
+              {editingLesson ? 'Edit Lesson' : 'Create New Lesson'}
+            </h2>
+            <button onClick={() => setShowLessonForm(false)} className="text-gray-400 hover:text-gray-600">
+              <X size={24} />
+            </button>
+          </div>
+
+          <form onSubmit={handleLessonSubmit(onLessonSubmit)} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Title *</label>
+              <input
+                type="text"
+                {...registerLesson('title', { required: 'Title is required' })}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+              {lessonErrors.title && <p className="text-red-500 text-sm mt-1">{lessonErrors.title.message}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Description</label>
+              <textarea
+                {...registerLesson('description')}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Order Index *</label>
+                <input
+                  type="number"
+                  {...registerLesson('order_index', { required: 'Order is required' })}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+                {lessonErrors.order_index && <p className="text-red-500 text-sm mt-1">{lessonErrors.order_index.message}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-navy-ink mb-2">Scheduled Date</label>
+                <input
+                  type="datetime-local"
+                  {...registerLesson('scheduled_date')}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Meeting Link</label>
+              <input
+                type="url"
+                {...registerLesson('meeting_link')}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+                placeholder="https://zoom.us/j/..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Video File</label>
+              <input
+                type="file"
+                accept="video/*"
+                onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">Resources File</label>
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setResourcesFile(e.target.files?.[0] || null)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <Button type="submit" variant="primary">
+                <Save className="mr-2" size={16} />
+                {editingLesson ? 'Update Lesson' : 'Create Lesson'}
+              </Button>
+              <Button type="button" variant="outline" onClick={() => setShowLessonForm(false)}>
+                Cancel
+              </Button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )}
+
+    {/* Stats */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="bg-white p-6 rounded-card shadow-soft">
+        <div className="flex items-center justify-between mb-2">
+          <BookOpen className="text-blue-500" size={32} />
+        </div>
+        <p className="text-gray-600 text-sm">Total Courses</p>
+        <p className="text-2xl font-bold text-navy-ink">{stats.total}</p>
+      </div>
+      <div className="bg-white p-6 rounded-card shadow-soft">
+        <div className="flex items-center justify-between mb-2">
+          <Users className="text-green-500" size={32} />
+        </div>
+        <p className="text-gray-600 text-sm">Total Students</p>
+        <p className="text-2xl font-bold text-navy-ink">{stats.totalStudents}</p>
+      </div>
+      <div className="bg-white p-6 rounded-card shadow-soft">
+        <div className="flex items-center justify-between mb-2">
+          <Clock className="text-amber-500" size={32} />
+        </div>
+        <p className="text-gray-600 text-sm">Active Courses</p>
+        <p className="text-2xl font-bold text-navy-ink">{stats.active}</p>
+      </div>
+    </div>
+
+    {/* Courses Grid */}
+    {loading ? (
+      <div className="text-center py-12">
+        <p className="text-gray-600">Loading courses...</p>
+      </div>
+    ) : courses.length === 0 ? (
+      <div className="text-center py-12">
+        <p className="text-gray-600 mb-4">No courses created yet.</p>
         <Button variant="primary" onClick={handleCreateCourse}>
-          <Plus size={20} className="mr-2" />
-          Create Course
+          Create Your First Course
         </Button>
       </div>
-      {/* Course Form Modal */}
-      {showCourseForm && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-card shadow-soft p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-navy-ink">
-                {editingCourse ? 'Edit Course' : 'Create New Course'}
-              </h2>
-              <button onClick={() => setShowCourseForm(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleCourseSubmit(onCourseSubmit)} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Title *</label>
-                <input
-                  type="text"
-                  {...registerCourse('title', { required: 'Title is required' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-                {courseErrors.title && <p className="text-red-500 text-sm mt-1">{courseErrors.title.message}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Description</label>
-                <textarea
-                  {...registerCourse('description')}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-navy-ink mb-2">Instructor</label>
-                  <input
-                    type="text"
-                    {...registerCourse('instructor')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  />
+    ) : (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {courses.map(course => {
+          const courseLessons = lessons[course.id] || [];
+          return (
+            <div key={course.id} className="bg-white rounded-card shadow-soft overflow-hidden">
+              {course.image_url ? (
+                <div className="h-32 overflow-hidden">
+                  <img src={course.image_url} alt={course.title} className="w-full h-full object-cover" />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-navy-ink mb-2">Program</label>
-                  <select
-                    {...registerCourse('program_id')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  >
-                    <option value="">Select Program (Optional)</option>
-                    {programs.map(prog => (
-                      <option key={prog.id} value={prog.id}>{prog.title}</option>
-                    ))}
-                  </select>
+              ) : (
+                <div className="h-32 bg-gradient-to-r from-brand-dark-blue to-navy-ink"></div>
+              )}
+              <div className="p-6">
+                <div className="flex items-start justify-between mb-3">
+                  <h3 className="text-lg font-bold text-navy-ink">{course.title}</h3>
                 </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Course Image</label>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => setImageFile(e.target.files?.[0] || null)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <Button type="submit" variant="primary">
-                  <Save className="mr-2" size={16} />
-                  {editingCourse ? 'Update Course' : 'Create Course'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowCourseForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Lesson Form Modal */}
-      {showLessonForm && selectedCourse && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-card shadow-soft p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-2xl font-bold text-navy-ink">
-                {editingLesson ? 'Edit Lesson' : 'Create New Lesson'}
-              </h2>
-              <button onClick={() => setShowLessonForm(false)} className="text-gray-400 hover:text-gray-600">
-                <X size={24} />
-              </button>
-            </div>
-
-            <form onSubmit={handleLessonSubmit(onLessonSubmit)} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Title *</label>
-                <input
-                  type="text"
-                  {...registerLesson('title', { required: 'Title is required' })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-                {lessonErrors.title && <p className="text-red-500 text-sm mt-1">{lessonErrors.title.message}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Description</label>
-                <textarea
-                  {...registerLesson('description')}
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-navy-ink mb-2">Order Index *</label>
-                  <input
-                    type="number"
-                    {...registerLesson('order_index', { required: 'Order is required' })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  />
-                  {lessonErrors.order_index && <p className="text-red-500 text-sm mt-1">{lessonErrors.order_index.message}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-navy-ink mb-2">Scheduled Date</label>
-                  <input
-                    type="datetime-local"
-                    {...registerLesson('scheduled_date')}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Meeting Link</label>
-                <input
-                  type="url"
-                  {...registerLesson('meeting_link')}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                  placeholder="https://zoom.us/j/..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Video File</label>
-                <input
-                  type="file"
-                  accept="video/*"
-                  onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-navy-ink mb-2">Resources File</label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={(e) => setResourcesFile(e.target.files?.[0] || null)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold"
-                />
-              </div>
-
-              <div className="flex space-x-4">
-                <Button type="submit" variant="primary">
-                  <Save className="mr-2" size={16} />
-                  {editingLesson ? 'Update Lesson' : 'Create Lesson'}
-                </Button>
-                <Button type="button" variant="outline" onClick={() => setShowLessonForm(false)}>
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-card shadow-soft">
-          <div className="flex items-center justify-between mb-2">
-            <BookOpen className="text-blue-500" size={32} />
-          </div>
-          <p className="text-gray-600 text-sm">Total Courses</p>
-          <p className="text-2xl font-bold text-navy-ink">{stats.total}</p>
-        </div>
-        <div className="bg-white p-6 rounded-card shadow-soft">
-          <div className="flex items-center justify-between mb-2">
-            <Users className="text-green-500" size={32} />
-          </div>
-          <p className="text-gray-600 text-sm">Total Students</p>
-          <p className="text-2xl font-bold text-navy-ink">{stats.totalStudents}</p>
-        </div>
-        <div className="bg-white p-6 rounded-card shadow-soft">
-          <div className="flex items-center justify-between mb-2">
-            <Clock className="text-amber-500" size={32} />
-          </div>
-          <p className="text-gray-600 text-sm">Active Courses</p>
-          <p className="text-2xl font-bold text-navy-ink">{stats.active}</p>
-        </div>
-      </div>
-
-      {/* Courses Grid */}
-      {loading ? (
-        <div className="text-center py-12">
-          <p className="text-gray-600">Loading courses...</p>
-        </div>
-      ) : courses.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-600 mb-4">No courses created yet.</p>
-          <Button variant="primary" onClick={handleCreateCourse}>
-            Create Your First Course
-          </Button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {courses.map(course => {
-            const courseLessons = lessons[course.id] || [];
-            return (
-              <div key={course.id} className="bg-white rounded-card shadow-soft overflow-hidden">
-                {course.image_url ? (
-                  <div className="h-32 overflow-hidden">
-                    <img src={course.image_url} alt={course.title} className="w-full h-full object-cover" />
-                  </div>
-                ) : (
-                  <div className="h-32 bg-gradient-to-r from-brand-dark-blue to-navy-ink"></div>
+                <p className="text-gray-600 text-sm mb-4">{course.description}</p>
+                {course.instructor && (
+                  <p className="text-sm text-gray-500 mb-2">Instructor: {course.instructor}</p>
                 )}
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-3">
-                    <h3 className="text-lg font-bold text-navy-ink">{course.title}</h3>
+                <p className="text-sm text-gray-500 mb-4">
+                  {courseLessons.length} lesson{courseLessons.length !== 1 ? 's' : ''}
+                </p>
+                
+                {/* Course Fees Display/Edit */}
+                <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-navy-ink">Course Fees</span>
+                    {editingFees !== course.id && ( // Fix TS2304 for editingFees
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditFees(course.id)}
+                      >
+                        <Edit size={14} />
+                      </Button>
+                    )}
                   </div>
-                  <p className="text-gray-600 text-sm mb-4">{course.description}</p>
-                  {course.instructor && (
-                    <p className="text-sm text-gray-500 mb-2">Instructor: {course.instructor}</p>
-                  )}
-                  <p className="text-sm text-gray-500 mb-4">
-                    {courseLessons.length} lesson{courseLessons.length !== 1 ? 's' : ''}
-                  </p>
-                  
-                  {/* Course Fees Display/Edit */}
-                  <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-navy-ink">Course Fees</span>
-                      {editingFees !== course.id && (
+                  {editingFees === course.id ? ( // Fix TS2304 for editingFees
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-xs text-gray-600">Application Fee (ZAR)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={feeAmounts[course.id]?.application_fee || '0'} // Fix TS2304 for feeAmounts
+                          onChange={(e) => setFeeAmounts(prev => ({ // Fix TS2304 for setFeeAmounts
+                            ...prev,
+                            [course.id]: {
+                              ...prev[course.id],
+                              application_fee: e.target.value
+                            }
+                          }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-600">Registration Fee (ZAR)</label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          value={feeAmounts[course.id]?.registration_fee || '0'} // Fix TS2304 for feeAmounts
+                          onChange={(e) => setFeeAmounts(prev => ({ // Fix TS2304 for setFeeAmounts
+                            ...prev,
+                            [course.id]: {
+                              ...prev[course.id],
+                              registration_fee: e.target.value
+                            }
+                          }))}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
+                        />
+                      </div>
+                      <div className="flex space-x-2">
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          className="flex-1"
+                          onClick={() => handleSaveFees(course.id)}
+                        >
+                          <Save size={14} className="mr-1" />
+                          Save
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleEditFees(course.id)}
+                          className="flex-1"
+                          onClick={() => handleCancelFees(course.id)}
                         >
-                          <Edit size={14} />
+                          <X size={14} />
                         </Button>
-                      )}
+                      </div>
                     </div>
-                    {editingFees === course.id ? (
-                      <div className="space-y-2">
-                        <div>
-                          <label className="text-xs text-gray-600">Application Fee (ZAR)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={feeAmounts[course.id]?.application_fee || '0'}
-                            onChange={(e) => setFeeAmounts(prev => ({
-                              ...prev,
-                              [course.id]: {
-                                ...prev[course.id],
-                                application_fee: e.target.value
-                              }
-                            }))}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-xs text-gray-600">Registration Fee (ZAR)</label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            value={feeAmounts[course.id]?.registration_fee || '0'}
-                            onChange={(e) => setFeeAmounts(prev => ({
-                              ...prev,
-                              [course.id]: {
-                                ...prev[course.id],
-                                registration_fee: e.target.value
-                              }
-                            }))}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded"
-                          />
-                        </div>
-                        <div className="flex space-x-2">
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleSaveFees(course.id)}
-                          >
-                            <Save size={14} className="mr-1" />
-                            Save
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1"
-                            onClick={() => handleCancelFees(course.id)}
-                          >
-                            <X size={14} />
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-gray-600 space-y-1">
-                        <div>Application: R{(course.course_fees?.application_fee || 0).toFixed(2)}</div>
-                        <div>Registration: R{(course.course_fees?.registration_fee || 0).toFixed(2)}</div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full"
-                      onClick={() => handleCreateLesson(course.id)}
-                    >
-                      <Plus size={16} className="mr-1" />
-                      Add Lesson
-                    </Button>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditCourse(course)}>
-                        <Edit size={16} className="mr-1" />
-                        Edit
-                      </Button>
-                      <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDeleteCourse(course.id)}>
-                        <Trash2 size={16} className="mr-1" />
-                        Delete
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Lessons List */}
-                  {courseLessons.length > 0 && (
-                    <div className="mt-4 pt-4 border-t">
-                      <p className="text-sm font-medium text-navy-ink mb-2">Lessons:</p>
-                      <div className="space-y-1">
-                        {courseLessons.map(lesson => (
-                          <div key={lesson.id} className="flex items-center justify-between p-2 bg-muted-gray rounded-card">
-                            <div className="flex items-center space-x-2">
-                              <span className="text-xs text-gray-500">{lesson.order_index}.</span>
-                              <span className="text-sm text-navy-ink">{lesson.title}</span>
-                            </div>
-                            <div className="flex space-x-1">
-                              <button
-                                onClick={() => handleEditLesson(lesson)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded"
-                                title="Edit"
-                              >
-                                <Edit size={14} />
-                              </button>
-                              <button
-                                onClick={() => handleDeleteLesson(lesson.id)}
-                                className="p-1 text-red-600 hover:bg-red-50 rounded"
-                                title="Delete"
-                              >
-                                <Trash2 size={14} />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                  ) : (
+                    <div className="text-xs text-gray-600 space-y-1">
+                      <div>Application: R{(course.course_fees?.application_fee || 0).toFixed(2)}</div>
+                      <div>Registration: R{(course.course_fees?.registration_fee || 0).toFixed(2)}</div>
                     </div>
                   )}
                 </div>
+
+                <div className="space-y-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    onClick={() => handleCreateLesson(course.id)}
+                  >
+                    <Plus size={16} className="mr-1" />
+                    Add Lesson
+                  </Button>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditCourse(course)}>
+                      <Edit size={16} className="mr-1" />
+                      Edit
+                    </Button>
+                    <Button variant="outline" size="sm" className="flex-1" onClick={() => handleDeleteCourse(course.id)}>
+                      <Trash2 size={16} className="mr-1" />
+                      Delete
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Lessons List */}
+                {courseLessons.length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <p className="text-sm font-medium text-navy-ink mb-2">Lessons:</p>
+                    <div className="space-y-1">
+                      {courseLessons.map(lesson => (
+                        <div key={lesson.id} className="flex items-center justify-between p-2 bg-muted-gray rounded-card">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">{lesson.order_index}.</span>
+                            <span className="text-sm text-navy-ink">{lesson.title}</span>
+                          </div>
+                          <div className="flex space-x-1">
+                            <button
+                              onClick={() => handleEditLesson(lesson)}
+                              className="p-1 text-blue-600 hover:bg-blue-50 rounded"
+                              title="Edit"
+                            >
+                              <Edit size={14} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteLesson(lesson.id)}
+                              className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              title="Delete"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            );
-          })}
-        </div>
-      )}
-    </div>;
+            </div>
+          );
+        })}
+      </div>
+    )}
+  </div>;
 }
