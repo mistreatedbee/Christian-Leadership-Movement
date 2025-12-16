@@ -246,12 +246,36 @@ export function CourseManagementPage() {
           });
       }
 
+      // Update local state immediately so UI reflects saved fees without waiting
+      setFeeAmounts(prev => ({
+        ...prev,
+        [courseId]: {
+          application_fee: applicationFee.toString(),
+          registration_fee: registrationFee.toString()
+        }
+      }));
+
+      setCourses(prev =>
+        prev.map(course =>
+          course.id === courseId
+            ? {
+                ...course,
+                course_fees: {
+                  application_fee: applicationFee,
+                  registration_fee: registrationFee
+                }
+              }
+            : course
+        )
+      );
+
       setEditingFees(null); // Fixes TS2304 for setEditingFees
       
       // Clear fee cache so user-facing pages get updated fees immediately
       clearFeeCache();
       
-      fetchData(); // Refresh to show updated fees
+      // Optional full refresh for consistency with backend
+      fetchData();
       alert('Fees updated successfully!');
     } catch (error: any) {
       console.error('Error saving fees:', error);
@@ -901,7 +925,7 @@ export function CourseManagementPage() {
                       </Button>
                     )}
                   </div>
-                  {editingFees === course.id ? ( // Fix TS2304 for editingFees
+                  {editingFees === course.id ? ( // Edit mode: show inputs
                     <div className="space-y-2">
                       <div>
                         <label className="text-xs text-gray-600">Application Fee (ZAR)</label>
@@ -958,9 +982,27 @@ export function CourseManagementPage() {
                       </div>
                     </div>
                   ) : (
+                    // View mode: show the last saved/loaded values from feeAmounts,
+                    // falling back to course.course_fees or 0.00.
                     <div className="text-xs text-gray-600 space-y-1">
-                      <div>Application: R{(course.course_fees?.application_fee || 0).toFixed(2)}</div>
-                      <div>Registration: R{(course.course_fees?.registration_fee || 0).toFixed(2)}</div>
+                      <div>
+                        Application: R
+                        {(
+                          parseFloat(
+                            feeAmounts[course.id]?.application_fee ??
+                              (course.course_fees?.application_fee ?? 0).toString()
+                          ) || 0
+                        ).toFixed(2)}
+                      </div>
+                      <div>
+                        Registration: R
+                        {(
+                          parseFloat(
+                            feeAmounts[course.id]?.registration_fee ??
+                              (course.course_fees?.registration_fee ?? 0).toString()
+                          ) || 0
+                        ).toFixed(2)}
+                      </div>
                     </div>
                   )}
                 </div>
