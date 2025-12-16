@@ -8,7 +8,7 @@ interface Partner {
   name: string;
   logo_url: string | null;
   logo_key: string | null;
-}
+  }
 
 export function PartnersSection() {
   const [partners, setPartners] = useState<Partner[]>([]);
@@ -87,22 +87,22 @@ export function PartnersSection() {
               : partner.logo_url || 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
             
             return (
-              <div
-                key={partner.id}
-                className="bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow-soft hover:shadow-lg transform hover:scale-105 transition-transform transition-shadow duration-300 flex flex-col items-center text-center"
-              >
-                <img
+            <div
+              key={partner.id}
+              className="bg-gradient-to-br from-white to-gray-100 p-6 rounded-2xl shadow-soft hover:shadow-lg transform hover:scale-105 transition-transform transition-shadow duration-300 flex flex-col items-center text-center"
+            >
+              <img
                   src={logoUrl}
-                  alt={partner.name}
-                  className="max-h-16 mb-4 object-contain"
+                alt={partner.name}
+                className="max-h-16 mb-4 object-contain"
                   onError={(e) => {
                     (e.target as HTMLImageElement).src = 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
                   }}
-                />
-                <h3 className="text-lg font-semibold text-navy-ink">
-                  {partner.name}
-                </h3>
-              </div>
+              />
+              <h3 className="text-lg font-semibold text-navy-ink">
+                {partner.name}
+              </h3>
+            </div>
             );
           })}
         </div>

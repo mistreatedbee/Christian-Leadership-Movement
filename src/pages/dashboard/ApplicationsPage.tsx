@@ -193,7 +193,7 @@ export function ApplicationsPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-4">
+      <div className="space-y-4">
           {applications.map(application => {
             const programName = application.program_type.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
             const formData = application.form_data || {};
@@ -201,14 +201,14 @@ export function ApplicationsPage() {
             
             return (
               <div key={application.id} className="bg-white p-6 rounded-card shadow-soft">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-start space-x-4">
-                    {getStatusIcon(application.status)}
-                    <div>
-                      <h3 className="text-xl font-bold text-navy-ink mb-1">
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex items-start space-x-4">
+                {getStatusIcon(application.status)}
+                <div>
+                  <h3 className="text-xl font-bold text-navy-ink mb-1">
                         {programName}
-                      </h3>
-                      <p className="text-sm text-gray-600">
+                  </h3>
+                  <p className="text-sm text-gray-600">
                         Submitted on {new Date(application.created_at).toLocaleDateString()}
                       </p>
                       <p className="text-sm text-gray-500 mt-1">
@@ -219,25 +219,25 @@ export function ApplicationsPage() {
                         }`}>
                           {application.payment_status?.charAt(0).toUpperCase() + application.payment_status?.slice(1) || 'N/A'}
                         </span>
-                      </p>
-                    </div>
-                  </div>
-                  {getStatusBadge(application.status)}
+                  </p>
                 </div>
+              </div>
+              {getStatusBadge(application.status)}
+            </div>
                 {application.updated_at && (
                   <p className="text-sm text-gray-600 mb-4">
                     Last updated: {new Date(application.updated_at).toLocaleDateString()}
                   </p>
                 )}
-                <div className="flex space-x-3">
+            <div className="flex space-x-3">
                   <Button 
                     variant="outline" 
                     size="sm"
                     onClick={() => handleViewDetails(application)}
                   >
                     <Eye className="mr-2" size={16} />
-                    View Details
-                  </Button>
+                View Details
+              </Button>
                   {application.status === 'pending' && (
                     <Button 
                       variant="primary" 
@@ -250,14 +250,14 @@ export function ApplicationsPage() {
                   )}
                   {application.status === 'approved' && (
                     <Button variant="primary" size="sm">
-                      Accept Offer
+                  Accept Offer
                     </Button>
                   )}
                 </div>
-              </div>
+            </div>
             );
           })}
-        </div>
+      </div>
       )}
 
       {/* Details Modal */}

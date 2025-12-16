@@ -89,8 +89,6 @@ export function ApplyMembershipPage() {
   const [paymentProofFile, setPaymentProofFile] = useState<File | null>(null);
   const [autoSaveStatus, setAutoSaveStatus] = useState<string>('');
   const [applicationFee, setApplicationFee] = useState<number>(0);
-  const paymentMethod = watch('paymentMethod');
-
   const {
     register,
     handleSubmit,
@@ -105,6 +103,9 @@ export function ApplyMembershipPage() {
       ministryTypeNotApplicable: false
     }
   });
+
+  // watch must be called after useForm is initialized
+  const paymentMethod = watch('paymentMethod');
 
   const disabilityNone = watch('disabilityNone');
   const hasDisability = watch('disabilitySight') || watch('disabilityHearing') || 

@@ -75,7 +75,6 @@ export function ApplyBibleSchoolPage() {
   const [registrationFees, setRegistrationFees] = useState({ withACRP: 0, withoutACRP: 0 });
   const [editingApplicationId, setEditingApplicationId] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
-  const paymentMethod = watch('paymentMethod');
 
   const {
     register,
@@ -94,6 +93,9 @@ export function ApplyBibleSchoolPage() {
       leadershipRoles: []
     }
   });
+
+  // watch must be called after useForm is initialized
+  const paymentMethod = watch('paymentMethod');
 
   const { fields, append, remove } = useFieldArray({
     control,

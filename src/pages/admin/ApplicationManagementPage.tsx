@@ -37,7 +37,7 @@ export function ApplicationManagementPage() {
       checkAdminAccess(user.id).then(admin => {
         setIsAdmin(admin);
         if (admin) {
-          fetchApplications();
+    fetchApplications();
           fetchStatistics();
         } else {
           console.error('❌ User is not an admin. Cannot access applications.');
@@ -248,26 +248,26 @@ export function ApplicationManagementPage() {
       }
 
       // Create notification
-      const notification = {
-        user_id: app.user_id,
-        type: 'application',
-        title: `Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+        const notification = {
+          user_id: app.user_id,
+          type: 'application',
+          title: `Application ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
         message: newStatus === 'approved'
           ? `Your application for ${app.programs?.title || app.program_type} has been approved. ${app.payment_status === 'confirmed' ? 'You now have full access to all resources!' : 'Please complete payment to access resources.'}`
           : `Your application for ${app.programs?.title || app.program_type} has been ${newStatus}.`,
-        related_id: applicationId
-      };
+          related_id: applicationId
+        };
 
-      await insforge.database
-        .from('notifications')
-        .insert([notification]);
+        await insforge.database
+          .from('notifications')
+          .insert([notification]);
 
-      // Send email notification
-      await sendEmailNotification(app.user_id, {
-        type: `application_${newStatus}`,
-        subject: notification.title,
-        message: notification.message
-      });
+        // Send email notification
+        await sendEmailNotification(app.user_id, {
+          type: `application_${newStatus}`,
+          subject: notification.title,
+          message: notification.message
+        });
 
       fetchApplications();
     } catch (err) {
@@ -476,7 +476,7 @@ export function ApplicationManagementPage() {
       }
       
       // Also show the combined disabilities array if available
-      if (application.disabilities && Array.isArray(application.disabilities) && application.disabilities.length > 0) {
+    if (application.disabilities && Array.isArray(application.disabilities) && application.disabilities.length > 0) {
         disabilityFields.push(['Disabilities (Combined):', application.disabilities.join(', ')]);
       }
       
@@ -821,7 +821,7 @@ export function ApplicationManagementPage() {
           <div className="bg-muted-gray p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Total Users</p>
             <p className="text-2xl font-bold text-navy-ink">{stats.totalUsers}</p>
-          </div>
+            </div>
           <div className="bg-amber-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Pending Apps</p>
             <p className="text-2xl font-bold text-amber-600">{stats.pending}</p>
@@ -829,11 +829,11 @@ export function ApplicationManagementPage() {
           <div className="bg-green-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Approved</p>
             <p className="text-2xl font-bold text-green-600">{stats.approved}</p>
-          </div>
+        </div>
           <div className="bg-red-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Rejected</p>
             <p className="text-2xl font-bold text-red-600">{stats.rejected}</p>
-          </div>
+            </div>
           <div className="bg-blue-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Bible School</p>
             <p className="text-2xl font-bold text-blue-600">{stats.bibleSchool}</p>
@@ -841,17 +841,17 @@ export function ApplicationManagementPage() {
           <div className="bg-purple-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Membership</p>
             <p className="text-2xl font-bold text-purple-600">{stats.membership}</p>
-          </div>
+        </div>
           <div className="bg-green-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Approved Members</p>
             <p className="text-2xl font-bold text-green-600">{stats.approvedMembers}</p>
-          </div>
+            </div>
           <div className="bg-blue-50 p-4 rounded-card">
             <p className="text-gray-600 text-xs mb-1">Bible School Students</p>
             <p className="text-2xl font-bold text-blue-600">{stats.bibleSchoolStudents}</p>
           </div>
         </div>
-      </div>
+            </div>
 
       {/* Tabs */}
       <div className="bg-white p-6 rounded-card shadow-soft">
@@ -978,41 +978,41 @@ export function ApplicationManagementPage() {
               ) : (
                 <>
                   {applications
-                    .filter(app => {
-                      if (!searchTerm) return true;
-                      const search = searchTerm.toLowerCase();
+                  .filter(app => {
+                    if (!searchTerm) return true;
+                    const search = searchTerm.toLowerCase();
                       const fullName = app.full_name || app.form_data?.fullName || app.form_data?.firstName + ' ' + app.form_data?.lastName || '';
                       const email = app.email || app.form_data?.email || '';
-                      return (
+                    return (
                         fullName.toLowerCase().includes(search) ||
                         email.toLowerCase().includes(search) ||
-                        app.programs?.title?.toLowerCase().includes(search)
-                      );
-                    })
+                      app.programs?.title?.toLowerCase().includes(search)
+                    );
+                  })
                     .map(app => {
                       const fullName = app.full_name || app.form_data?.fullName || app.form_data?.firstName + ' ' + app.form_data?.lastName || 'Unknown';
                       const email = app.email || app.form_data?.email || 'N/A';
                       return (
-                        <tr key={app.id} className="hover:bg-muted-gray/50">
-                          <td className="px-6 py-4">
-                            <div className="flex items-center">
-                              <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
+                    <tr key={app.id} className="hover:bg-muted-gray/50">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center">
+                      <div className="w-10 h-10 rounded-full bg-gold flex items-center justify-center text-white font-bold mr-3">
                                 {fullName.charAt(0).toUpperCase() || 'A'}
-                              </div>
-                              <div>
-                                <p className="font-medium text-navy-ink">
+                      </div>
+                      <div>
+                        <p className="font-medium text-navy-ink">
                                   {fullName}
-                                </p>
+                        </p>
                                 <p className="text-sm text-gray-600">{email}</p>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 text-gray-600">
-                            {app.programs?.title || app.program_type}
-                          </td>
-                          <td className="px-6 py-4 text-gray-600">
-                            {new Date(app.created_at).toLocaleDateString()}
-                          </td>
+                      </div>
+                    </div>
+                  </td>
+                      <td className="px-6 py-4 text-gray-600">
+                        {app.programs?.title || app.program_type}
+                      </td>
+                  <td className="px-6 py-4 text-gray-600">
+                        {new Date(app.created_at).toLocaleDateString()}
+                  </td>
                           <td className="px-6 py-4">
                             <span className="text-sm text-gray-600">
                               {app.payment_method === 'manual' ? 'Manual (POP)' :
@@ -1021,15 +1021,15 @@ export function ApplicationManagementPage() {
                                'N/A'}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className={`px-2 py-1 text-xs rounded-full ${
-                              app.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
-                              app.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
-                              'bg-red-100 text-red-800'
-                            }`}>
+                  <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          app.payment_status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                          app.payment_status === 'pending' ? 'bg-amber-100 text-amber-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
                               {app.payment_status || 'N/A'}
-                            </span>
-                          </td>
+                        </span>
+                  </td>
                           <td className="px-6 py-4">
                             {app.payment_method === 'manual' ? (
                               <span className={`px-2 py-1 text-xs rounded-full ${
@@ -1045,47 +1045,47 @@ export function ApplicationManagementPage() {
                               <span className="text-xs text-gray-400">N/A</span>
                             )}
                           </td>
-                          <td className="px-6 py-4">{getStatusBadge(app.status)}</td>
-                          <td className="px-6 py-4">
-                            <div className="flex space-x-2">
+                  <td className="px-6 py-4">{getStatusBadge(app.status)}</td>
+                  <td className="px-6 py-4">
+                    <div className="flex space-x-2">
+                          <button
+                            onClick={() => exportToPDF(app)}
+                            className="p-2 text-purple-600 hover:bg-purple-50 rounded-card"
+                            title="Download PDF"
+                          >
+                            <FileText size={18} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedApplication(app);
+                              setShowDetailsModal(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
+                            title="View Details"
+                          >
+                            <Eye size={18} />
+                          </button>
+                          {app.status === 'pending' && (
+                            <>
                               <button
-                                onClick={() => exportToPDF(app)}
-                                className="p-2 text-purple-600 hover:bg-purple-50 rounded-card"
-                                title="Download PDF"
+                                onClick={() => handleStatusChange(app.id, 'approved')}
+                                className="p-2 text-green-600 hover:bg-green-50 rounded-card"
+                                title="Approve"
                               >
-                                <FileText size={18} />
+                                <CheckCircle size={18} />
                               </button>
                               <button
-                                onClick={() => {
-                                  setSelectedApplication(app);
-                                  setShowDetailsModal(true);
-                                }}
-                                className="p-2 text-blue-600 hover:bg-blue-50 rounded-card"
-                                title="View Details"
+                                onClick={() => handleStatusChange(app.id, 'rejected')}
+                                className="p-2 text-red-600 hover:bg-red-50 rounded-card"
+                                title="Reject"
                               >
-                                <Eye size={18} />
+                                <XCircle size={18} />
                               </button>
-                              {app.status === 'pending' && (
-                                <>
-                                  <button
-                                    onClick={() => handleStatusChange(app.id, 'approved')}
-                                    className="p-2 text-green-600 hover:bg-green-50 rounded-card"
-                                    title="Approve"
-                                  >
-                                    <CheckCircle size={18} />
-                                  </button>
-                                  <button
-                                    onClick={() => handleStatusChange(app.id, 'rejected')}
-                                    className="p-2 text-red-600 hover:bg-red-50 rounded-card"
-                                    title="Reject"
-                                  >
-                                    <XCircle size={18} />
-                                  </button>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                            </>
+                          )}
+                    </div>
+                  </td>
+                    </tr>
                       );
                     })}
                 </>
@@ -1124,14 +1124,14 @@ export function ApplicationManagementPage() {
                   </div>
                   {selectedApplication.program_type === 'membership' && (
                     <>
-                      <div>
+                  <div>
                         <p className="text-sm text-gray-600">Title</p>
                         <p className="font-medium">{selectedApplication.title || 'N/A'}</p>
-                      </div>
-                      <div>
+                  </div>
+                  <div>
                         <p className="text-sm text-gray-600">First Name</p>
                         <p className="font-medium">{selectedApplication.first_name || 'N/A'}</p>
-                      </div>
+                  </div>
                       <div>
                         <p className="text-sm text-gray-600">Middle Name</p>
                         <p className="font-medium">{selectedApplication.middle_name || 'N/A'}</p>
@@ -1291,10 +1291,10 @@ export function ApplicationManagementPage() {
 
               {/* Spiritual Background - Bible School Only */}
               {selectedApplication.program_type === 'bible_school' && (
-                <div>
+              <div>
                   <h3 className="text-lg font-bold text-navy-ink mb-4">Spiritual Background</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
                       <p className="text-sm text-gray-600">Date Accepted Christ</p>
                       <p className="font-medium">
                         {selectedApplication.date_accepted_christ 
@@ -1303,8 +1303,8 @@ export function ApplicationManagementPage() {
                           ? new Date(selectedApplication.form_data.dateAcceptedChrist).toLocaleDateString()
                           : 'N/A'}
                       </p>
-                    </div>
-                    <div>
+                  </div>
+                  <div>
                       <p className="text-sm text-gray-600">Baptized</p>
                       <p className="font-medium">
                         {selectedApplication.is_baptized !== undefined 
@@ -1313,9 +1313,9 @@ export function ApplicationManagementPage() {
                           ? (selectedApplication.form_data.isBaptized ? 'Yes' : 'No')
                           : 'N/A'}
                       </p>
-                    </div>
+                  </div>
                     {(selectedApplication.is_baptized || selectedApplication.form_data?.isBaptized) && (
-                      <div>
+                  <div>
                         <p className="text-sm text-gray-600">Baptism Date</p>
                         <p className="font-medium">
                           {selectedApplication.baptism_date 
@@ -1324,9 +1324,9 @@ export function ApplicationManagementPage() {
                             ? new Date(selectedApplication.form_data.baptismDate).toLocaleDateString()
                             : 'N/A'}
                         </p>
-                      </div>
+                  </div>
                     )}
-                    <div>
+                  <div>
                       <p className="text-sm text-gray-600">Attends Local Church</p>
                       <p className="font-medium">
                         {selectedApplication.attends_local_church !== undefined
@@ -1335,17 +1335,17 @@ export function ApplicationManagementPage() {
                           ? (selectedApplication.form_data.attendsLocalChurch ? 'Yes' : 'No')
                           : 'N/A'}
                       </p>
-                    </div>
+                  </div>
                     {(selectedApplication.attends_local_church || selectedApplication.form_data?.attendsLocalChurch) && (
                       <>
                         <div>
                           <p className="text-sm text-gray-600">Church Name</p>
                           <p className="font-medium">{selectedApplication.church_name || selectedApplication.form_data?.churchName || 'N/A'}</p>
-                        </div>
+                </div>
                         <div>
                           <p className="text-sm text-gray-600">Denomination</p>
                           <p className="font-medium">{selectedApplication.denomination || selectedApplication.form_data?.denomination || 'N/A'}</p>
-                        </div>
+              </div>
                         <div>
                           <p className="text-sm text-gray-600">Pastor Name</p>
                           <p className="font-medium">{selectedApplication.pastor_name || selectedApplication.form_data?.pastorName || 'N/A'}</p>
@@ -1547,11 +1547,11 @@ export function ApplicationManagementPage() {
                     <div>
                       <p className="text-sm text-gray-600">Highest Other Qualification</p>
                       <p className="font-medium">{selectedApplication.highest_other_qualification || 'N/A'}</p>
-                    </div>
+                      </div>
                     <div>
                       <p className="text-sm text-gray-600">Other Training</p>
                       <p className="font-medium">{selectedApplication.other_training || 'N/A'}</p>
-                    </div>
+                      </div>
                   </div>
                 </div>
               )}
@@ -1563,7 +1563,7 @@ export function ApplicationManagementPage() {
                   <div className="grid grid-cols-2 gap-4">
                     {selectedApplication.program_type === 'bible_school' ? (
                       <>
-                        <div>
+                    <div>
                           <p className="text-sm text-gray-600">Referee Name</p>
                           <p className="font-medium">{selectedApplication.referee_name || 'N/A'}</p>
                         </div>
@@ -1585,15 +1585,15 @@ export function ApplicationManagementPage() {
                         <div>
                           <p className="text-sm text-gray-600">Reference Last Name</p>
                           <p className="font-medium">{selectedApplication.reference_last_name || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Reference Contact</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Reference Contact</p>
                           <p className="font-medium">{selectedApplication.reference_contact || 'N/A'}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-600">Reference Email</p>
-                          <p className="font-medium">{selectedApplication.reference_email || 'N/A'}</p>
-                        </div>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Reference Email</p>
+                      <p className="font-medium">{selectedApplication.reference_email || 'N/A'}</p>
+                    </div>
                         <div>
                           <p className="text-sm text-gray-600">Reference Title</p>
                           <p className="font-medium">{selectedApplication.reference_title || 'N/A'}</p>
@@ -1975,7 +1975,7 @@ export function ApplicationManagementPage() {
                     {selectedApplication.additional_documents_url && Array.isArray(selectedApplication.additional_documents_url) && selectedApplication.additional_documents_url.length > 0 && (
                       <div className="p-4 bg-gray-50 rounded-card border border-gray-200">
                         <p className="font-medium text-navy-ink mb-3">Additional Documents</p>
-                        <div className="space-y-2">
+                  <div className="space-y-2">
                           {selectedApplication.additional_documents_url.map((docUrl: string, idx: number) => (
                             <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
                               <div className="flex items-center space-x-2">
@@ -2014,8 +2014,8 @@ export function ApplicationManagementPage() {
                         <div className="space-y-2">
                           {selectedApplication.documents.map((doc: any, idx: number) => (
                             <div key={idx} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200">
-                              <span className="text-sm">{doc.name || doc.filename || `Document ${idx + 1}`}</span>
-                              {doc.url && (
+                          <span className="text-sm">{doc.name || doc.filename || `Document ${idx + 1}`}</span>
+                          {doc.url && (
                                 <div className="flex space-x-2">
                                   <a
                                     href={doc.url}
@@ -2035,8 +2035,8 @@ export function ApplicationManagementPage() {
                                     <span>Download</span>
                                   </a>
                                 </div>
-                              )}
-                            </div>
+                          )}
+                        </div>
                           ))}
                         </div>
                       </div>
