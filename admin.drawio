@@ -1,0 +1,140 @@
+<mxfile host="65bd71144e">
+    <diagram name="AdminWorkflow" id="0">
+        <mxGraphModel dx="1809" dy="916" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+            <root>
+                <mxCell id="0"/>
+                <mxCell id="1" parent="0"/>
+                <mxCell id="start" value="Start: Admin Logs In" style="ellipse;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#E6E6E6;" parent="1" vertex="1">
+                    <mxGeometry x="50" y="50" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="authCheck" value="System verifies admin credentials" style="rounded=1;strokeColor=#1B1C5F;fillColor=#FFFFFF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="250" y="40" width="200" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="loginSuccess" value="Is login successful?" style="rhombus;whiteSpace=wrap;html=1;strokeColor=#BD9E39;fillColor=#FFFACD;" parent="1" vertex="1">
+                    <mxGeometry x="550" y="40" width="160" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="loginError" value="Show error message &amp; retry login" style="rounded=1;strokeColor=#DC143C;fillColor=#FFFFFF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="530" y="170" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="dashboard" value="Dashboard Overview" style="rounded=1;strokeColor=#12133F;fillColor=#FFFFFF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="850" y="40" width="180" height="80" as="geometry"/>
+                </mxCell>
+                <mxCell id="mainMenu" value="Select Section:&#xa;User Mgmt / Apps / Bible School /&#xa;Partnerships / Events / Settings / Logout" style="rhombus;whiteSpace=wrap;html=1;strokeColor=#BD9E39;fillColor=#FFFACD;" parent="1" vertex="1">
+                    <mxGeometry x="1060" y="40" width="260" height="200" as="geometry"/>
+                </mxCell>
+                <mxCell id="viewUsers" value="User Management:&#xa;Load Users" style="rounded=1;strokeColor=#228B22;fillColor=#F0FFF0;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1420" y="10" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="userActions" value="User Actions:&#xa;View / Approve / Reject / Assign Role" style="rounded=1;strokeColor=#228B22;fillColor=#F0FFF0;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="100" width="200" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="viewApplications" value="Applications:&#xa;Load &amp; Review" style="rounded=1;strokeColor=#4169E1;fillColor=#F0F8FF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="200" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="bibleSchool" value="Bible School:&#xa;Load &amp; Review" style="rounded=1;strokeColor=#8A2BE2;fillColor=#F8F0FF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="280" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="viewPartners" value="Partnerships:&#xa;Load &amp; Review" style="rounded=1;strokeColor=#FF6347;fillColor=#FFF0F0;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="360" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="manageEvents" value="Events &amp; Content:&#xa;Manage Updates" style="rounded=1;strokeColor=#FFD700;fillColor=#FFFFF0;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="440" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="settings" value="Settings:&#xa;Update System" style="rounded=1;strokeColor=#708090;fillColor=#F5F5F5;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="1400" y="520" width="160" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="end" value="End: Admin Logs Out" style="ellipse;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#E6E6E6;" parent="1" vertex="1">
+                    <mxGeometry x="1100" y="600" width="120" height="60" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_start_auth" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#000000;" parent="1" source="start" target="authCheck" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_auth_decision" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#1B1C5F;" parent="1" source="authCheck" target="loginSuccess" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_success_dashboard" value="Yes" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#228B22;" parent="1" source="loginSuccess" target="dashboard" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_fail_error" value="No" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#DC143C;" parent="1" source="loginSuccess" target="loginError" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_error_start" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#DC143C;dashed=1;" parent="1" source="loginError" target="start" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_dashboard_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#12133F;" parent="1" source="dashboard" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_users" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#228B22;" parent="1" source="mainMenu" target="viewUsers" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_users_actions" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#228B22;" parent="1" source="viewUsers" target="userActions" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_actions_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#228B22;dashed=1;" parent="1" source="userActions" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_apps" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#4169E1;" parent="1" source="mainMenu" target="viewApplications" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1610" y="90"/>
+                            <mxPoint x="1610" y="230"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_apps_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#4169E1;dashed=1;" parent="1" source="viewApplications" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_bible" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#8A2BE2;" parent="1" source="mainMenu" target="bibleSchool" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1630" y="90"/>
+                            <mxPoint x="1630" y="310"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_bible_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#8A2BE2;dashed=1;" parent="1" source="bibleSchool" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_partners" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FF6347;" parent="1" source="mainMenu" target="viewPartners" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1640" y="90"/>
+                            <mxPoint x="1640" y="390"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_partners_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FF6347;dashed=1;" parent="1" source="viewPartners" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_events" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFD700;" parent="1" source="mainMenu" target="manageEvents" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1660" y="90"/>
+                            <mxPoint x="1660" y="470"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_events_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#FFD700;dashed=1;" parent="1" source="manageEvents" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_settings" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#708090;" parent="1" source="mainMenu" target="settings" edge="1">
+                    <mxGeometry relative="1" as="geometry">
+                        <Array as="points">
+                            <mxPoint x="1680" y="90"/>
+                            <mxPoint x="1680" y="550"/>
+                        </Array>
+                    </mxGeometry>
+                </mxCell>
+                <mxCell id="c_settings_menu" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#708090;dashed=1;" parent="1" source="settings" target="mainMenu" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="c_menu_end" style="edgeStyle=orthogonalEdgeStyle;rounded=0;strokeColor=#000000;" parent="1" source="mainMenu" target="end" edge="1">
+                    <mxGeometry relative="1" as="geometry"/>
+                </mxCell>
+                <mxCell id="summary" value="Admin Workflow: Login → Dashboard → Select Section (User Mgmt, Apps, Bible School, Partnerships, Events, Settings) → Actions → Back to Menu or Logout&#xa;&#xa;Includes error handling, loops, and notifications." style="rounded=1;strokeColor=#BD9E39;fillColor=#FFFFFF;html=1;" parent="1" vertex="1">
+                    <mxGeometry x="365" y="720" width="910" height="80" as="geometry"/>
+                </mxCell>
+            </root>
+        </mxGraphModel>
+    </diagram>
+</mxfile>
