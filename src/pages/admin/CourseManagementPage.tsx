@@ -105,27 +105,43 @@ export function CourseManagementPage() {
 
   const fetchData = async () => {
     try {
+      setLoading(true);
       const [coursesData, programsData] = await Promise.all([
-        insforge.database.from('courses').select('*, course_fees(application_fee, registration_fee)').order('created_at', { ascending: false }),
+        insforge.database.from('courses').select('*, course_fees(*)').order('created_at', { ascending: false }),
         insforge.database.from('programs').select('*')
       ]);
 
-      // Map courses with fees
-      const coursesWithFees: Course[] = (coursesData.data || []).map((course: any) => ({
-        ...course,
-        // Ensure course_fees is mapped correctly, assuming it's an array of one
-        course_fees: course.course_fees?.[0] || { application_fee: 0, registration_fee: 0 } 
-      }));
+      // Map courses with fees - ensure we properly extract fees from the array
+      const coursesWithFees: Course[] = (coursesData.data || []).map((course: any) => {
+        // course_fees comes as an array from Supabase join, extract the first item or use defaults
+        const fees = course.course_fees && Array.isArray(course.course_fees) && course.course_fees.length > 0
+          ? course.course_fees[0]
+          : null;
+        
+        return {
+          ...course,
+          course_fees: fees 
+            ? { 
+                application_fee: parseFloat(fees.application_fee) || 0, 
+                registration_fee: parseFloat(fees.registration_fee) || 0 
+              }
+            : { application_fee: 0, registration_fee: 0 }
+        };
+      });
 
       setCourses(coursesWithFees);
       setPrograms(programsData.data || []);
 
-      // Initialize fee amounts state (Fixes TS2304 for setFeeAmounts in useEffect)
+      // Initialize fee amounts state - CRITICAL: Always set from fetched data
       const feeMap: Record<string, FeeAmounts> = {};
       coursesWithFees.forEach((course: Course) => {
+        // Always use the course_fees from the fetched data
+        const appFee = course.course_fees?.application_fee || 0;
+        const regFee = course.course_fees?.registration_fee || 0;
+        
         feeMap[course.id] = {
-          application_fee: (course.course_fees?.application_fee || 0).toString(),
-          registration_fee: (course.course_fees?.registration_fee || 0).toString()
+          application_fee: appFee.toString(),
+          registration_fee: regFee.toString()
         };
       });
       setFeeAmounts(feeMap);
@@ -217,15 +233,21 @@ export function CourseManagementPage() {
       }
 
       // Check if fees exist
-      const { data: existingFees } = await insforge.database
+      const { data: existingFees, error: checkError } = await insforge.database
         .from('course_fees')
         .select('id')
         .eq('course_id', courseId)
         .maybeSingle();
 
+      if (checkError) {
+        console.error('Error checking existing fees:', checkError);
+        throw new Error(`Failed to check existing fees: ${checkError.message}`);
+      }
+
+      let saveError;
       if (existingFees) {
         // Update existing fees
-        await insforge.database
+        const { error } = await insforge.database
           .from('course_fees')
           .update({
             application_fee: applicationFee,
@@ -233,9 +255,10 @@ export function CourseManagementPage() {
             updated_at: new Date().toISOString()
           })
           .eq('course_id', courseId);
+        saveError = error;
       } else {
         // Create new fees
-        await insforge.database
+        const { error } = await insforge.database
           .from('course_fees')
           .insert({
             course_id: courseId,
@@ -244,47 +267,21 @@ export function CourseManagementPage() {
             currency: 'ZAR',
             is_active: true
           });
+        saveError = error;
       }
 
-      // Update local state immediately so UI reflects saved fees without waiting
-      setFeeAmounts(prev => ({
-        ...prev,
-        [courseId]: {
-          application_fee: applicationFee.toString(),
-          registration_fee: registrationFee.toString()
-        }
-      }));
+      if (saveError) {
+        console.error('Error saving fees:', saveError);
+        throw new Error(`Failed to save fees: ${saveError.message}`);
+      }
 
-      setCourses(prev =>
-        prev.map(course =>
-          course.id === courseId
-            ? {
-                ...course,
-                course_fees: {
-                  application_fee: applicationFee,
-                  registration_fee: registrationFee
-                }
-              }
-            : course
-        )
-      );
-
-      setEditingFees(null); // Fixes TS2304 for setEditingFees
-      
       // Clear fee cache so user-facing pages get updated fees immediately
       clearFeeCache();
       
-      // Refresh to show updated fees immediately
+      // CRITICAL: Refresh data from database to ensure we have the latest saved values
       await fetchData();
       
-      // Update the local state to reflect saved fees immediately
-      setFeeAmounts(prev => ({
-        ...prev,
-        [courseId]: {
-          application_fee: applicationFee.toString(),
-          registration_fee: registrationFee.toString()
-        }
-      }));
+      setEditingFees(null);
       
       alert('Fees updated successfully!');
     } catch (error: any) {
@@ -992,25 +989,18 @@ export function CourseManagementPage() {
                       </div>
                     </div>
                   ) : (
-                    // View mode: show the last saved/loaded values from feeAmounts,
-                    // falling back to course.course_fees or 0.00.
+                    // View mode: Always use feeAmounts state which is synced with database
                     <div className="text-xs text-gray-600 space-y-1">
                       <div>
-                        Application: R
+                        Application: R{' '}
                         {(
-                          parseFloat(
-                            feeAmounts[course.id]?.application_fee ??
-                              (course.course_fees?.application_fee ?? 0).toString()
-                          ) || 0
+                          parseFloat(feeAmounts[course.id]?.application_fee || '0') || 0
                         ).toFixed(2)}
                       </div>
                       <div>
-                        Registration: R
+                        Registration: R{' '}
                         {(
-                          parseFloat(
-                            feeAmounts[course.id]?.registration_fee ??
-                              (course.course_fees?.registration_fee ?? 0).toString()
-                          ) || 0
+                          parseFloat(feeAmounts[course.id]?.registration_fee || '0') || 0
                         ).toFixed(2)}
                       </div>
                     </div>

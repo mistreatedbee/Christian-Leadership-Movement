@@ -119,3 +119,4 @@ Write-Host ""
 Write-Host "=== Successfully pushed to GitHub! ===" -ForegroundColor Green
 Write-Host "Repository: https://github.com/mistreatedbee/Christian-Leadership-Movement" -ForegroundColor Cyan
 
+
