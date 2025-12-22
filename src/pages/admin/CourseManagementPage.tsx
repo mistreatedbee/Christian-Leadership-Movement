@@ -103,36 +103,64 @@ export function CourseManagementPage() {
     fetchData();
   }, []);
 
+  // Ensure feeAmounts stays in sync with courses after they're loaded
+  useEffect(() => {
+    if (courses.length > 0 && Object.keys(feeAmounts).length === 0) {
+      // If courses are loaded but feeAmounts is empty, initialize it
+      const feeMap: Record<string, FeeAmounts> = {};
+      courses.forEach((course: Course) => {
+        feeMap[course.id] = {
+          application_fee: (course.course_fees?.application_fee || 0).toString(),
+          registration_fee: (course.course_fees?.registration_fee || 0).toString()
+        };
+      });
+      setFeeAmounts(feeMap);
+    }
+  }, [courses]);
+
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch courses and programs
       const [coursesData, programsData] = await Promise.all([
-        insforge.database.from('courses').select('*, course_fees(*)').order('created_at', { ascending: false }),
+        insforge.database.from('courses').select('*').order('created_at', { ascending: false }),
         insforge.database.from('programs').select('*')
       ]);
 
-      // Map courses with fees - ensure we properly extract fees from the array
+      // Fetch ALL course fees separately to ensure we get them reliably
+      // Don't filter by is_active - admins should see all fees
+      const { data: allFeesData, error: feesError } = await insforge.database
+        .from('course_fees')
+        .select('course_id, application_fee, registration_fee');
+
+      if (feesError) {
+        console.error('Error fetching course fees:', feesError);
+      }
+
+      // Create a map of course_id -> fees for quick lookup
+      const feesMap: Record<string, { application_fee: number; registration_fee: number }> = {};
+      (allFeesData || []).forEach((fee: any) => {
+        feesMap[fee.course_id] = {
+          application_fee: parseFloat(fee.application_fee) || 0,
+          registration_fee: parseFloat(fee.registration_fee) || 0
+        };
+      });
+
+      // Map courses with fees from the separate fees query
       const coursesWithFees: Course[] = (coursesData.data || []).map((course: any) => {
-        // course_fees comes as an array from Supabase join, extract the first item or use defaults
-        const fees = course.course_fees && Array.isArray(course.course_fees) && course.course_fees.length > 0
-          ? course.course_fees[0]
-          : null;
+        const fees = feesMap[course.id];
         
         return {
           ...course,
-          course_fees: fees 
-            ? { 
-                application_fee: parseFloat(fees.application_fee) || 0, 
-                registration_fee: parseFloat(fees.registration_fee) || 0 
-              }
-            : { application_fee: 0, registration_fee: 0 }
+          course_fees: fees || { application_fee: 0, registration_fee: 0 }
         };
       });
 
       setCourses(coursesWithFees);
       setPrograms(programsData.data || []);
 
-      // Initialize fee amounts state - CRITICAL: Always set from fetched data
+      // Initialize fee amounts state - CRITICAL: Always set from fetched fees data
       const feeMap: Record<string, FeeAmounts> = {};
       coursesWithFees.forEach((course: Course) => {
         // Always use the course_fees from the fetched data
@@ -273,6 +301,28 @@ export function CourseManagementPage() {
       if (saveError) {
         console.error('Error saving fees:', saveError);
         throw new Error(`Failed to save fees: ${saveError.message}`);
+      }
+
+      // Verify the fees were saved by fetching them back
+      const { data: verifyFees, error: verifyError } = await insforge.database
+        .from('course_fees')
+        .select('application_fee, registration_fee')
+        .eq('course_id', courseId)
+        .maybeSingle();
+
+      if (verifyError) {
+        console.error('Error verifying saved fees:', verifyError);
+      } else if (verifyFees) {
+        // Verify the saved values match what we intended to save
+        const savedAppFee = parseFloat(verifyFees.application_fee) || 0;
+        const savedRegFee = parseFloat(verifyFees.registration_fee) || 0;
+        
+        if (Math.abs(savedAppFee - applicationFee) > 0.01 || Math.abs(savedRegFee - registrationFee) > 0.01) {
+          console.warn('Saved fees do not match intended values:', {
+            intended: { applicationFee, registrationFee },
+            saved: { savedAppFee, savedRegFee }
+          });
+        }
       }
 
       // Clear fee cache so user-facing pages get updated fees immediately
