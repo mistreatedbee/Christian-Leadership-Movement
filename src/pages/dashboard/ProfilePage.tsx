@@ -32,6 +32,7 @@ interface ProfileFormData {
   city: string;
   province: string;
   postalCode: string;
+  gender: string;
   bio: string;
 }
 
@@ -69,22 +70,150 @@ export function ProfilePage() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const nameParts = (userData?.nickname || user.name || '').split(' ') || [];
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+        // For existing users: Check applications for registration data
+        // This helps populate profile for users who registered before we saved to user_profiles
+        let applicationData: any = null;
+        try {
+          const { data: applications } = await insforge.database
+            .from('applications')
+            .select('form_data, first_name, last_name, email, phone, address, city, province, postal_code, date_of_birth, gender')
+            .eq('user_id', user.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (applications) {
+            applicationData = applications;
+          }
+        } catch (appErr) {
+          console.log('No application data found or error fetching:', appErr);
+        }
+
+        // Extract data from multiple sources with priority:
+        // 1. user_profiles (most recent/accurate)
+        // 2. applications form_data (for existing users)
+        // 3. applications individual columns
+        // 4. users table
+        const formData = applicationData?.form_data || {};
+        
+        // Get first_name and last_name with fallback chain
+        const firstName = profileData?.first_name || 
+          formData.firstName || 
+          formData.first_name ||
+          applicationData?.first_name ||
+          ((userData?.nickname || user.name || '').split(' ')[0] || '');
+        
+        const lastName = profileData?.last_name || 
+          formData.lastName || 
+          formData.last_name ||
+          applicationData?.last_name ||
+          ((userData?.nickname || user.name || '').split(' ').slice(1).join(' ') || '');
+
+        // Get email with fallback chain
+        const email = user.email || 
+          profileData?.email || 
+          formData.email || 
+          applicationData?.email || 
+          '';
+
+        // Get phone with fallback chain
+        const phone = profileData?.phone || 
+          formData.phone || 
+          formData.contactNumber ||
+          applicationData?.phone || 
+          '';
+
+        // Get date of birth with fallback chain
+        const dateOfBirth = profileData?.date_of_birth || 
+          formData.dateOfBirth || 
+          formData.date_of_birth ||
+          applicationData?.date_of_birth || 
+          '';
+
+        // Get address with fallback chain
+        const address = profileData?.address || 
+          formData.address || 
+          formData.physicalAddress ||
+          applicationData?.address || 
+          '';
+
+        // Get city with fallback chain
+        const city = profileData?.city || 
+          formData.city ||
+          applicationData?.city || 
+          '';
+
+        // Get province with fallback chain
+        const province = profileData?.province || 
+          formData.province ||
+          applicationData?.province || 
+          '';
+
+        // Get postal code with fallback chain
+        const postalCode = profileData?.postal_code || 
+          formData.postalCode ||
+          applicationData?.postal_code || 
+          '';
+
+        // Get gender with fallback chain
+        const gender = profileData?.gender || 
+          formData.gender ||
+          applicationData?.gender || 
+          '';
 
         reset({
           firstName,
           lastName,
-          email: user.email || '',
-          phone: profileData?.phone || '',
-          dateOfBirth: profileData?.date_of_birth || '',
-          address: profileData?.address || '',
-          city: profileData?.city || '',
-          province: profileData?.province || '',
-          postalCode: profileData?.postal_code || '',
+          email,
+          phone,
+          dateOfBirth,
+          address,
+          city,
+          province,
+          postalCode,
+          gender,
           bio: userData?.bio || ''
         });
+
+        // Auto-sync missing profile data from applications for existing users
+        // This ensures existing users' data is available on their profile
+        if (applicationData && !profileData?.first_name && !profileData?.last_name) {
+          try {
+            // Only sync if we have data from applications and profile is missing it
+            const syncData: any = {
+              user_id: user.id,
+              email: email || null,
+              first_name: firstName || null,
+              last_name: lastName || null,
+              phone: phone || null,
+              address: address || null,
+              city: city || null,
+              province: province || null,
+              postal_code: postalCode || null,
+              date_of_birth: dateOfBirth || null,
+              gender: gender || null,
+              role: profileData?.role || 'user'
+            };
+
+            if (profileData) {
+              // Update existing profile
+              await insforge.database
+                .from('user_profiles')
+                .update(syncData)
+                .eq('user_id', user.id);
+              console.log('✅ Synced existing user data from applications to profile');
+            } else {
+              // Create new profile with synced data
+              await insforge.database
+                .from('user_profiles')
+                .insert([syncData]);
+              console.log('✅ Created profile with synced data from applications');
+            }
+          } catch (syncErr) {
+            console.log('Note: Could not auto-sync profile data (non-critical):', syncErr);
+            // Non-critical error - continue anyway
+          }
+        }
 
         if (userData?.avatar_url) {
           const publicUrl = getPublicAvatarUrl(userData.avatar_url);
@@ -218,12 +347,15 @@ export function ProfilePage() {
       const profileData = {
         user_id: user.id,
         email: userData?.email || user.email || null, // Sync email to profile
+        first_name: data.firstName || null, // Save first name to profile
+        last_name: data.lastName || null, // Save last name to profile
         phone: data.phone || null,
         address: data.address || null,
         city: data.city || null,
         province: data.province || null,
         postal_code: data.postalCode || null,
-        date_of_birth: data.dateOfBirth || null
+        date_of_birth: data.dateOfBirth || null,
+        gender: data.gender || null // Save gender to profile
       };
 
       // Check if profile exists - use a simple query that won't trigger recursion
@@ -284,7 +416,7 @@ export function ProfilePage() {
 
       const { data: verifyProfile, error: verifyProfileError } = await insforge.database
         .from('user_profiles')
-        .select('phone, address, city, province, postal_code, date_of_birth')
+        .select('phone, address, city, province, postal_code, date_of_birth, gender, first_name, last_name')
         .eq('user_id', user.id)
         .single();
 
@@ -303,6 +435,7 @@ export function ProfilePage() {
         city: verifyProfile?.city || data.city || '',
         province: verifyProfile?.province || data.province || '',
         postalCode: verifyProfile?.postal_code || data.postalCode || '',
+        gender: verifyProfile?.gender || data.gender || '',
         bio: verifyUser?.bio || data.bio || ''
       });
 
@@ -444,13 +577,27 @@ export function ProfilePage() {
               </div>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-navy-ink mb-2">
-              Date of Birth
-            </label>
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input type="date" {...register('dateOfBirth')} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">
+                Date of Birth
+              </label>
+              <div className="relative">
+                <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                <input type="date" {...register('dateOfBirth')} className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-navy-ink mb-2">
+                Gender
+              </label>
+              <select {...register('gender')} className="w-full px-4 py-2 border border-gray-300 rounded-card focus:outline-none focus:ring-2 focus:ring-gold">
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+                <option value="Prefer not to say">Prefer not to say</option>
+              </select>
             </div>
           </div>
           <div>

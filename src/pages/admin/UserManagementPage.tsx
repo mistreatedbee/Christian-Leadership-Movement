@@ -24,6 +24,15 @@ interface User {
   updated_at: string;
   avatar_url?: string | null;
   bio?: string | null;
+  // Additional registration fields
+  first_name?: string | null;
+  last_name?: string | null;
+  gender?: string | null;
+  nationality?: string | null;
+  country?: string | null;
+  home_language?: string | null;
+  population_group?: string | null;
+  residential_status?: string | null;
 }
 
 interface UserApplication {
@@ -81,20 +90,19 @@ export function UserManagementPage() {
       }
 
       // Combine users with their profiles
-      // CRITICAL: Email is stored in users table, NOT in user_profiles table
-      // Always fetch email from users.email (where it's actually saved during registration)
+      // Get email from BOTH sources - users table (primary) and user_profiles (backup)
       const usersData = (allUsers || []).map((user: any) => {
         const profile = profiles?.find((p: any) => p.user_id === user.id);
         
-        // EMAIL: Get ONLY from users table (where emails are actually saved)
-        // Do NOT use user_profiles.email as it's not being saved there
-        const userEmail = user.email || null;
+        // EMAIL: Get from users table first, then fallback to user_profiles.email
+        // Both should have email, but users.email is the primary source
+        const userEmail = user.email || profile?.email || null;
         
         return {
           id: profile?.id || user.id,
           user_id: user.id,
-          nickname: user.nickname || null,
-          email: userEmail, // CRITICAL: Email from users table ONLY (where emails are saved)
+          nickname: user.nickname || user.name || null,
+          email: userEmail, // Email from users table (primary) or user_profiles (backup)
           phone: profile?.phone || null,
           city: profile?.city || null,
           province: profile?.province || null,
@@ -105,7 +113,16 @@ export function UserManagementPage() {
           created_at: user.created_at,
           updated_at: profile?.updated_at || user.updated_at,
           avatar_url: user.avatar_url || null,
-          bio: user.bio || null
+          bio: user.bio || null,
+          // Include ALL profile fields for complete information
+          first_name: profile?.first_name || null,
+          last_name: profile?.last_name || null,
+          gender: profile?.gender || null,
+          nationality: profile?.nationality || null,
+          country: profile?.country || null,
+          home_language: profile?.home_language || null,
+          population_group: profile?.population_group || null,
+          residential_status: profile?.residential_status || null
         };
       });
 
@@ -336,16 +353,13 @@ export function UserManagementPage() {
         }
       }
 
-      // Combine data
-      // CRITICAL: Email is stored in users table, NOT in user_profiles table
-      // Always use email from users table (userData.email or user.email from list)
-      // Fallback to application form_data if email not in users table
+      // Combine data from ALL sources: users table, user_profiles, and applications
+      // This ensures we get ALL registration information
       const enriched: any = {
         ...(profileData || {}),
-        // EMAIL: Get ONLY from users table (where emails are actually saved)
-        // Priority: userData.email (from direct query) > user.email (from list) > application form_data > null
-        email: userEmail,
-        nickname: userData?.nickname || profileData?.nickname || user.nickname || null,
+        // EMAIL: Priority: userData.email (from direct query) > user.email (from list) > profileData.email > application form_data > null
+        email: userEmail || profileData?.email || null,
+        nickname: userData?.nickname || userData?.name || profileData?.nickname || user.nickname || null,
         avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
         bio: userData?.bio || profileData?.bio || user.bio || null,
         user_id: user.user_id,
@@ -353,27 +367,75 @@ export function UserManagementPage() {
         role: profileData?.role || user.role || 'user',
         created_at: user.created_at,
         updated_at: profileData?.updated_at || user.updated_at,
-        phone: profileData?.phone || null,
-        address: profileData?.address || null,
-        city: profileData?.city || null,
-        province: profileData?.province || null,
-        postal_code: profileData?.postal_code || null,
-        date_of_birth: profileData?.date_of_birth || null,
+        // Get ALL profile fields
+        phone: profileData?.phone || user.phone || null,
+        address: profileData?.address || user.address || null,
+        city: profileData?.city || user.city || null,
+        province: profileData?.province || user.province || null,
+        postal_code: profileData?.postal_code || user.postal_code || null,
+        date_of_birth: profileData?.date_of_birth || user.date_of_birth || null,
+        first_name: profileData?.first_name || user.first_name || null,
+        last_name: profileData?.last_name || user.last_name || null,
+        gender: profileData?.gender || user.gender || null,
+        nationality: profileData?.nationality || user.nationality || null,
+        country: profileData?.country || user.country || null,
+        home_language: profileData?.home_language || user.home_language || null,
+        population_group: profileData?.population_group || user.population_group || null,
+        residential_status: profileData?.residential_status || user.residential_status || null,
       };
 
-      // If applications exist, merge additional fields (only if registration data is missing)
+      // If applications exist, extract ALL data from form_data (for existing users)
+      // This ensures admins can see ALL registration information even if not in user_profiles
       if (applications && applications.length > 0) {
         const mostRecentApp = applications[0];
-        // Only use application data if registration data is missing
-        enriched.id_number = enriched.id_number || mostRecentApp.id_number || null;
-        enriched.nationality = enriched.nationality || mostRecentApp.nationality || null;
-        enriched.gender = enriched.gender || mostRecentApp.gender || null;
-        enriched.marital_status = enriched.marital_status || mostRecentApp.marital_status || null;
-        enriched.country = enriched.country || mostRecentApp.country || null;
-        enriched.full_name = enriched.full_name || mostRecentApp.full_name || enriched.nickname || null;
-        enriched.first_name = enriched.first_name || mostRecentApp.first_name || null;
-        enriched.middle_name = enriched.middle_name || mostRecentApp.middle_name || null;
-        enriched.last_name = enriched.last_name || mostRecentApp.last_name || null;
+        const formData = mostRecentApp.form_data || {};
+        
+        // Extract ALL fields from form_data with fallback to application columns
+        // Priority: enriched (from profile) > form_data > application columns
+        
+        // Personal Information
+        enriched.id_number = enriched.id_number || formData.idNumber || formData.id_number || mostRecentApp.id_number || null;
+        enriched.nationality = enriched.nationality || formData.nationality || mostRecentApp.nationality || null;
+        enriched.gender = enriched.gender || formData.gender || mostRecentApp.gender || null;
+        enriched.marital_status = enriched.marital_status || formData.maritalStatus || formData.marital_status || mostRecentApp.marital_status || null;
+        enriched.country = enriched.country || formData.country || mostRecentApp.country || null;
+        
+        // Names - extract from form_data
+        enriched.first_name = enriched.first_name || formData.firstName || formData.first_name || mostRecentApp.first_name || null;
+        enriched.middle_name = enriched.middle_name || formData.middleName || formData.middle_name || mostRecentApp.middle_name || null;
+        enriched.last_name = enriched.last_name || formData.lastName || formData.last_name || mostRecentApp.last_name || null;
+        enriched.full_name = enriched.full_name || formData.fullName || formData.full_name || mostRecentApp.full_name || 
+          (enriched.first_name && enriched.last_name ? `${enriched.first_name} ${enriched.last_name}` : null) ||
+          enriched.nickname || null;
+        enriched.preferred_name = enriched.preferred_name || formData.preferredName || formData.preferred_name || null;
+        enriched.initials = enriched.initials || formData.initials || null;
+        enriched.title = enriched.title || formData.title || null;
+        
+        // Contact Information
+        enriched.phone = enriched.phone || formData.phone || formData.contactNumber || mostRecentApp.phone || null;
+        enriched.email = enriched.email || formData.email || formData.Email || formData.EMAIL || mostRecentApp.email || userEmail || null;
+        
+        // Address Information
+        enriched.address = enriched.address || formData.address || formData.physicalAddress || mostRecentApp.address || null;
+        enriched.city = enriched.city || formData.city || mostRecentApp.city || null;
+        enriched.province = enriched.province || formData.province || mostRecentApp.province || null;
+        enriched.postal_code = enriched.postal_code || formData.postalCode || formData.postal_code || mostRecentApp.postal_code || null;
+        
+        // Date of Birth
+        enriched.date_of_birth = enriched.date_of_birth || formData.dateOfBirth || formData.date_of_birth || mostRecentApp.date_of_birth || null;
+        
+        // Additional fields from applications
+        enriched.home_language = enriched.home_language || formData.homeLanguage || formData.home_language || null;
+        enriched.population_group = enriched.population_group || formData.populationGroup || formData.population_group || null;
+        enriched.residential_status = enriched.residential_status || formData.residentialStatus || formData.residential_status || null;
+        
+        // Ministry Information (if available in applications)
+        enriched.current_ministry_name = enriched.current_ministry_name || formData.currentMinistryName || formData.current_ministry_name || null;
+        enriched.denomination = enriched.denomination || formData.denomination || null;
+        enriched.ministry_position = enriched.ministry_position || formData.ministryPosition || formData.ministry_position || null;
+        
+        // Store the complete form_data for reference
+        enriched.form_data = formData;
       }
 
       setEnrichedUserData(enriched);
@@ -435,21 +497,108 @@ export function UserManagementPage() {
       yPos += 8;
       doc.setFont(undefined, 'normal');
       
-      doc.text(`Full Name / Nickname: ${user.nickname || 'N/A'}`, 14, yPos);
+      // Fetch enriched data for PDF export to get ALL information
+      let enrichedDataForPDF = user;
+      try {
+        const { data: profileData } = await insforge.database
+          .from('user_profiles')
+          .select('*')
+          .eq('user_id', user.user_id)
+          .maybeSingle();
+        
+        const { data: applications } = await insforge.database
+          .from('applications')
+          .select('*, form_data')
+          .eq('user_id', user.user_id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (applications?.form_data) {
+          const formData = applications.form_data;
+          enrichedDataForPDF = {
+            ...user,
+            ...profileData,
+            first_name: user.first_name || profileData?.first_name || formData.firstName || formData.first_name || null,
+            last_name: user.last_name || profileData?.last_name || formData.lastName || formData.last_name || null,
+            email: user.email || profileData?.email || formData.email || null,
+            phone: user.phone || profileData?.phone || formData.phone || formData.contactNumber || null,
+            address: user.address || profileData?.address || formData.address || formData.physicalAddress || null,
+            city: user.city || profileData?.city || formData.city || null,
+            province: user.province || profileData?.province || formData.province || null,
+            postal_code: user.postal_code || profileData?.postal_code || formData.postalCode || formData.postal_code || null,
+            date_of_birth: user.date_of_birth || profileData?.date_of_birth || formData.dateOfBirth || formData.date_of_birth || null,
+            gender: user.gender || profileData?.gender || formData.gender || null,
+            nationality: user.nationality || profileData?.nationality || formData.nationality || null,
+            country: user.country || profileData?.country || formData.country || null,
+            home_language: user.home_language || profileData?.home_language || formData.homeLanguage || formData.home_language || null,
+            population_group: user.population_group || profileData?.population_group || formData.populationGroup || formData.population_group || null,
+            residential_status: user.residential_status || profileData?.residential_status || formData.residentialStatus || formData.residential_status || null,
+            id_number: formData.idNumber || formData.id_number || null
+          };
+        } else {
+          enrichedDataForPDF = { ...user, ...profileData };
+        }
+      } catch (err) {
+        console.log('Could not fetch enriched data for PDF, using basic user data');
+      }
+      
+      // Full name from first_name + last_name or nickname
+      const fullName = (enrichedDataForPDF.first_name && enrichedDataForPDF.last_name) 
+        ? `${enrichedDataForPDF.first_name} ${enrichedDataForPDF.last_name}` 
+        : enrichedDataForPDF.nickname || 'N/A';
+      doc.text(`Full Name: ${fullName}`, 14, yPos);
       yPos += 7;
-      doc.text(`Email Address: ${user.email || 'N/A'}`, 14, yPos);
+      if (enrichedDataForPDF.first_name) {
+        doc.text(`First Name: ${enrichedDataForPDF.first_name}`, 14, yPos);
+        yPos += 7;
+      }
+      if (enrichedDataForPDF.last_name) {
+        doc.text(`Last Name: ${enrichedDataForPDF.last_name}`, 14, yPos);
+        yPos += 7;
+      }
+      if (enrichedDataForPDF.id_number) {
+        doc.text(`ID Number: ${enrichedDataForPDF.id_number}`, 14, yPos);
+        yPos += 7;
+      }
+      doc.text(`Email Address: ${enrichedDataForPDF.email || user.email || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Phone Number: ${user.phone || 'N/A'}`, 14, yPos);
+      doc.text(`Phone Number: ${enrichedDataForPDF.phone || user.phone || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Date of Birth: ${user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString() : 'N/A'}`, 14, yPos);
+      if (enrichedDataForPDF.gender || user.gender) {
+        doc.text(`Gender: ${enrichedDataForPDF.gender || user.gender}`, 14, yPos);
+        yPos += 7;
+      }
+      if (enrichedDataForPDF.nationality || user.nationality) {
+        doc.text(`Nationality: ${enrichedDataForPDF.nationality || user.nationality}`, 14, yPos);
+        yPos += 7;
+      }
+      doc.text(`Date of Birth: ${(enrichedDataForPDF.date_of_birth || user.date_of_birth) ? new Date(enrichedDataForPDF.date_of_birth || user.date_of_birth).toLocaleDateString() : 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Physical Address: ${user.address || 'N/A'}`, 14, yPos);
+      doc.text(`Physical Address: ${enrichedDataForPDF.address || user.address || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`City: ${user.city || 'N/A'}`, 14, yPos);
+      doc.text(`City: ${enrichedDataForPDF.city || user.city || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Province: ${user.province || 'N/A'}`, 14, yPos);
+      doc.text(`Province: ${enrichedDataForPDF.province || user.province || 'N/A'}`, 14, yPos);
       yPos += 7;
-      doc.text(`Postal Code: ${user.postal_code || 'N/A'}`, 14, yPos);
+      if (enrichedDataForPDF.country || user.country) {
+        doc.text(`Country: ${enrichedDataForPDF.country || user.country}`, 14, yPos);
+        yPos += 7;
+      }
+      doc.text(`Postal Code: ${enrichedDataForPDF.postal_code || user.postal_code || 'N/A'}`, 14, yPos);
+      yPos += 7;
+      if (enrichedDataForPDF.home_language || user.home_language) {
+        doc.text(`Home Language: ${enrichedDataForPDF.home_language || user.home_language}`, 14, yPos);
+        yPos += 7;
+      }
+      if (enrichedDataForPDF.population_group || user.population_group) {
+        doc.text(`Population Group: ${enrichedDataForPDF.population_group || user.population_group}`, 14, yPos);
+        yPos += 7;
+      }
+      if (enrichedDataForPDF.residential_status || user.residential_status) {
+        doc.text(`Residential Status: ${enrichedDataForPDF.residential_status || user.residential_status}`, 14, yPos);
+        yPos += 7;
+      }
       yPos += 7;
       doc.text(`User Role: ${user.role.charAt(0).toUpperCase() + user.role.slice(1)}`, 14, yPos);
       yPos += 7;
@@ -777,21 +926,29 @@ export function UserManagementPage() {
                           {user.avatar_url ? (
                             <img 
                               src={user.avatar_url.startsWith('http') ? user.avatar_url : getStorageUrl('avatars', user.avatar_url)} 
-                              alt={user.nickname || 'User'} 
+                              alt={user.nickname || user.first_name || 'User'} 
                               className="w-full h-full object-cover"
                               onError={(e) => {
                                 const target = e.target as HTMLImageElement;
                                 target.style.display = 'none';
-                                target.parentElement!.textContent = user.nickname?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U';
+                                const displayName = user.nickname || user.first_name || user.email || 'U';
+                                target.parentElement!.textContent = displayName.charAt(0).toUpperCase();
                               }}
                             />
                           ) : (
-                            user.nickname?.charAt(0)?.toUpperCase() || user.email?.charAt(0)?.toUpperCase() || 'U'
+                            (user.nickname || user.first_name || user.email || 'U').charAt(0).toUpperCase()
                           )}
                         </div>
                         <div>
-                          <p className="font-medium text-navy-ink">{user.nickname || 'No name'}</p>
+                          <p className="font-medium text-navy-ink">
+                            {user.first_name && user.last_name 
+                              ? `${user.first_name} ${user.last_name}` 
+                              : user.nickname || user.first_name || user.last_name || 'No name'}
+                          </p>
                           <p className="text-sm text-gray-600 break-all">{user.email || 'No email'}</p>
+                          {user.phone && (
+                            <p className="text-xs text-gray-500">{user.phone}</p>
+                          )}
                         </div>
                       </div>
                     </td>
@@ -807,7 +964,15 @@ export function UserManagementPage() {
                     </td>
                     <td className="px-6 py-4">
                       <div className="text-sm">
-                        <p className="text-gray-600">{user.city || 'N/A'}, {user.province || 'N/A'}</p>
+                        {user.address && (
+                          <p className="text-gray-600 text-xs mb-1 truncate max-w-xs" title={user.address}>
+                            {user.address}
+                          </p>
+                        )}
+                        <p className="text-gray-600">
+                          {user.city || 'N/A'}{user.province ? `, ${user.province}` : ''}
+                          {user.country && !user.province && `, ${user.country}`}
+                        </p>
                         {user.postal_code && (
                           <p className="text-gray-500 text-xs">{user.postal_code}</p>
                         )}
@@ -990,9 +1155,31 @@ export function UserManagementPage() {
                     </div>
                   )}
                   <div>
-                    <p className="text-sm text-gray-600">Full Name / Nickname</p>
-                    <p className="font-medium">{enrichedUserData?.full_name || enrichedUserData?.nickname || selectedUser.nickname || 'N/A'}</p>
+                    <p className="text-sm text-gray-600">Full Name</p>
+                    <p className="font-medium">
+                      {enrichedUserData?.first_name && enrichedUserData?.last_name
+                        ? `${enrichedUserData.first_name} ${enrichedUserData.last_name}`
+                        : enrichedUserData?.full_name || enrichedUserData?.nickname || selectedUser.nickname || selectedUser.first_name || 'N/A'}
+                    </p>
                   </div>
+                  {enrichedUserData?.first_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">First Name</p>
+                      <p className="font-medium">{enrichedUserData.first_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.last_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">Last Name</p>
+                      <p className="font-medium">{enrichedUserData.last_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.nickname && enrichedUserData?.nickname !== `${enrichedUserData?.first_name || ''} ${enrichedUserData?.last_name || ''}`.trim() && (
+                    <div>
+                      <p className="text-sm text-gray-600">Nickname / Preferred Name</p>
+                      <p className="font-medium">{enrichedUserData.nickname}</p>
+                    </div>
+                  )}
                   <div>
                     <p className="text-sm text-gray-600">Email Address</p>
                     <p className="font-medium break-all text-blue-600">
@@ -1106,6 +1293,30 @@ export function UserManagementPage() {
                     <div>
                       <p className="text-sm text-gray-600">Residential Status</p>
                       <p className="font-medium">{enrichedUserData.residential_status}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.id_number && (
+                    <div>
+                      <p className="text-sm text-gray-600">ID Number</p>
+                      <p className="font-medium">{enrichedUserData.id_number}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.current_ministry_name && (
+                    <div>
+                      <p className="text-sm text-gray-600">Current Ministry</p>
+                      <p className="font-medium">{enrichedUserData.current_ministry_name}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.denomination && (
+                    <div>
+                      <p className="text-sm text-gray-600">Denomination</p>
+                      <p className="font-medium">{enrichedUserData.denomination}</p>
+                    </div>
+                  )}
+                  {enrichedUserData?.ministry_position && (
+                    <div>
+                      <p className="text-sm text-gray-600">Ministry Position</p>
+                      <p className="font-medium">{enrichedUserData.ministry_position}</p>
                     </div>
                   )}
                   <div>

@@ -114,20 +114,23 @@ export function RegisterPage() {
           // Continue - user might already exist
         }
         
-        // Create user profile with ALL registration information (including email)
-        // Email is saved to user_profiles so admins can access it with same RLS logic as other fields
+        // Create user profile with ALL registration information (including email, first_name, last_name, gender)
+        // This ensures all registration data is saved and visible on the profile page
         try {
           const { error: profileError } = await insforge.database
             .from('user_profiles')
             .insert([{
               user_id: result.user.id,
               email: data.email, // Save email to user_profiles - admins can access it with same RLS logic
+              first_name: data.firstName, // Save first name from registration
+              last_name: data.lastName, // Save last name from registration
               phone: data.phone,
               address: data.address || null,
               city: data.city || null,
               province: data.province || null,
               postal_code: data.postalCode || null,
               date_of_birth: data.dateOfBirth || null,
+              gender: data.gender || null, // Save gender from registration
               role: 'user'
             }]);
           
@@ -139,19 +142,22 @@ export function RegisterPage() {
                 .from('user_profiles')
                 .update({
                   email: data.email, // Update email in user_profiles as well
+                  first_name: data.firstName, // Update first name
+                  last_name: data.lastName, // Update last name
                   phone: data.phone,
                   address: data.address || null,
                   city: data.city || null,
                   province: data.province || null,
                   postal_code: data.postalCode || null,
-                  date_of_birth: data.dateOfBirth || null
+                  date_of_birth: data.dateOfBirth || null,
+                  gender: data.gender || null // Update gender
                 })
                 .eq('user_id', result.user.id);
             } catch (updateErr) {
               console.error('Error updating profile:', updateErr);
             }
           } else {
-            console.log('User profile created with all registration data');
+            console.log('User profile created with all registration data including first_name, last_name, and gender');
           }
         } catch (profileErr) {
           console.error('Exception creating profile:', profileErr);
