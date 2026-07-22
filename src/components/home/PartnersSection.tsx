@@ -82,9 +82,9 @@ export function PartnersSection() {
         {/* Partner Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
           {partners.map(partner => {
-            const logoUrl = partner.logo_key 
-              ? getStorageUrl('gallery', partner.logo_key) 
-              : partner.logo_url || 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
+            const logoUrl = partner.logo_url 
+              || (partner.logo_key ? getStorageUrl('gallery', partner.logo_key) : null)
+              || 'https://placehold.co/200x100/1B1C5F/FFFFFF?text=Partner';
             
             return (
             <div

@@ -376,7 +376,7 @@ export function MentorManagementPage() {
                   <div className="flex items-center gap-4">
                     {mentorProfile.profile_image_url ? (
                       <img
-                        src={getStorageUrl('avatars', mentorProfile.profile_image_key || mentorProfile.profile_image_url)}
+                        src={mentorProfile.profile_image_url || (mentorProfile.profile_image_key ? getStorageUrl('avatars', mentorProfile.profile_image_key) : '')}
                         alt="Profile"
                         className="w-24 h-24 rounded-full object-cover"
                       />

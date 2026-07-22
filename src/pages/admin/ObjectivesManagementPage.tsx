@@ -703,7 +703,7 @@ export function ObjectivesManagementPage() {
                             {objectiveGallery.map((img) => (
                               <div key={img.id} className="relative group">
                                 <img
-                                  src={img.image_key ? getStorageUrl('gallery', img.image_key) : img.image_url}
+                                  src={img.image_url || (img.image_key ? getStorageUrl('gallery', img.image_key) : '')}
                                   alt="Gallery"
                                   className="w-full h-24 object-cover rounded-card"
                                 />
@@ -760,7 +760,7 @@ export function ObjectivesManagementPage() {
                       <div className="flex items-start space-x-4">
                         {obj.image_url && (
                           <img
-                            src={obj.image_key ? getStorageUrl('gallery', obj.image_key) : obj.image_url}
+                            src={obj.image_url || (obj.image_key ? getStorageUrl('gallery', obj.image_key) : '')}
                             alt={obj.title}
                             className="w-24 h-24 object-cover rounded-card flex-shrink-0"
                             onError={(e) => {
@@ -896,7 +896,7 @@ export function ObjectivesManagementPage() {
                         <div className="flex-1 flex items-start space-x-4">
                           {work.image_url && (
                             <img
-                              src={work.image_key ? getStorageUrl('gallery', work.image_key) : work.image_url}
+                              src={work.image_url || (work.image_key ? getStorageUrl('gallery', work.image_key) : '')}
                               alt={work.title}
                               className="w-24 h-24 object-cover rounded-card flex-shrink-0"
                               onError={(e) => {

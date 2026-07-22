@@ -116,17 +116,9 @@ export function GallerySection() {
                         className="overflow-hidden rounded-card border border-white/10 shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                       >
                         <img
-                          src={img.image_key 
-                            ? getStorageUrl('gallery', img.image_key) 
-                            : img.image_url}
+                          src={img.image_url || (img.image_key ? getStorageUrl('gallery', img.image_key) : '')}
                           alt={img.caption || 'Gallery image'}
                           className="w-full h-64 object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (img.image_key && target.src !== img.image_url) {
-                              target.src = img.image_url;
-                            }
-                          }}
                         />
                         {img.caption && (
                           <div className="p-3 bg-white/5">
@@ -153,17 +145,9 @@ export function GallerySection() {
                         className="overflow-hidden rounded-card border border-white/10 shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300"
                       >
                         <img
-                          src={img.image_key 
-                            ? getStorageUrl('gallery', img.image_key) 
-                            : img.image_url}
+                          src={img.image_url || (img.image_key ? getStorageUrl('gallery', img.image_key) : '')}
                           alt={img.caption || 'Gallery image'}
                           className="w-full h-64 object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            if (img.image_key && target.src !== img.image_url) {
-                              target.src = img.image_url;
-                            }
-                          }}
                         />
                         {img.caption && (
                           <div className="p-3 bg-white/5">
@@ -185,17 +169,9 @@ export function GallerySection() {
                 className="overflow-hidden rounded-card border border-white/10 shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-300"
               >
                 <img
-                  src={img.image_key 
-                    ? getStorageUrl('gallery', img.image_key) 
-                    : img.image_url}
+                  src={img.image_url || (img.image_key ? getStorageUrl('gallery', img.image_key) : '')}
                   alt={img.caption || 'Gallery image'}
                   className="w-full h-64 object-cover"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    if (img.image_key && target.src !== img.image_url) {
-                      target.src = img.image_url;
-                    }
-                  }}
                 />
                 {img.caption && (
                   <div className="p-3 bg-white/5">

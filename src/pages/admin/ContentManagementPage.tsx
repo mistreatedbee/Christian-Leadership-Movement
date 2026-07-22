@@ -420,7 +420,7 @@ export function ContentManagementPage() {
                         {categoryImages.map((img) => (
                           <div key={img.id} className="relative group">
                             <img
-                              src={img.image_key ? getStorageUrl('gallery', img.image_key) : img.image_url}
+                              src={img.image_url || (img.image_key ? getStorageUrl('gallery', img.image_key) : '')}
                               alt={img.caption || 'Gallery image'}
                               className="w-full h-48 object-cover rounded-card"
                               onError={(e) => {
@@ -482,7 +482,7 @@ export function ContentManagementPage() {
             <div className="space-y-4">
               <div>
                 <img
-                  src={editingImage.image_key ? getStorageUrl('gallery', editingImage.image_key) : editingImage.image_url}
+                  src={editingImage.image_url || (editingImage.image_key ? getStorageUrl('gallery', editingImage.image_key) : '')}
                   alt="Preview"
                   className="w-full h-64 object-cover rounded-card mb-4"
                   onError={(e) => {
