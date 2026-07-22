@@ -8,7 +8,7 @@
  * Falls back to default if not set
  */
 export function getInsForgeBaseUrl(): string {
-  return import.meta.env.VITE_INSFORGE_BASE_URL || 'https://75x5aysj.us-east.insforge.app';
+  return import.meta.env.VITE_INSFORGE_BASE_URL || 'https://7z4w9s3s.us-east.insforge.app';
 }
 
 /**
