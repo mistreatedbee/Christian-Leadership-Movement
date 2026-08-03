@@ -1,15 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  BookOpen, 
-  Users, 
-  Heart, 
-  Home, 
-  UserCheck, 
-  GraduationCap, 
-  Globe,
-  ArrowRight
-} from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
 
@@ -23,8 +14,13 @@ interface StrategicObjective {
   image_url: string | null;
 }
 
-const defaultIcons = [
-  BookOpen, Users, Heart, Home, UserCheck, GraduationCap, Globe
+const placeholderImages = [
+  '/assets/images/gallery1.jpeg',
+  '/assets/images/gallery2.jpeg',
+  '/assets/images/gallery3.jpeg',
+  '/assets/images/gallery4.jpeg',
+  '/assets/images/gallery5.jpeg',
+  '/assets/images/gallery6.jpeg',
 ];
 
 export function StrategicObjectivesSection() {
@@ -88,8 +84,6 @@ export function StrategicObjectivesSection() {
         {/* Objectives Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           {objectives.map((objective, idx) => {
-            const IconComponent = defaultIcons[idx % defaultIcons.length];
-            
             return (
               <Link
                 key={objective.id}
@@ -99,17 +93,20 @@ export function StrategicObjectivesSection() {
                 <div className="bg-white rounded-2xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-2 h-full flex flex-col">
                   {/* Image or Icon */}
                   <div className="mb-6 flex justify-center">
-                    {objective.image_url ? (
-                      <div className="w-full h-48 rounded-xl overflow-hidden mb-4">
-                        <img
-                          src={objective.image_url.startsWith('http') 
-                            ? objective.image_url 
-                            : getStorageUrl('gallery', objective.image_url)}
-                          alt={objective.title}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            // Fallback to icon if image fails to load
-                            const target = e.target as HTMLImageElement;
+                    <div className="w-full h-48 rounded-xl overflow-hidden mb-4">
+                      <img
+                        src={objective.image_url
+                          ? (objective.image_url.startsWith('http')
+                              ? objective.image_url
+                              : getStorageUrl('gallery', objective.image_url))
+                          : placeholderImages[idx % placeholderImages.length]}
+                        alt={objective.title}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          const fallback = placeholderImages[idx % placeholderImages.length];
+                          if (target.src.endsWith(fallback)) {
+                            // Local placeholder also failed - fall back to icon
                             target.style.display = 'none';
                             const parent = target.parentElement;
                             if (parent) {
@@ -121,14 +118,12 @@ export function StrategicObjectivesSection() {
                                 </div>
                               `;
                             }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="bg-gold/10 p-4 rounded-2xl group-hover:bg-gold/20 transition-colors">
-                        <IconComponent className="text-gold" size={40} />
-                      </div>
-                    )}
+                          } else {
+                            target.src = fallback;
+                          }
+                        }}
+                      />
+                    </div>
                   </div>
 
                   {/* Title */}
