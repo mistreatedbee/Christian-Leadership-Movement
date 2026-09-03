@@ -10,10 +10,10 @@ export async function testConnection() {
   console.log('Has Anon Key:', !!import.meta.env.VITE_INSFORGE_ANON_KEY);
   
   try {
-    // Test 1: Check if we can query users table
-    console.log('\n📊 Test 1: Querying users table...');
+    // Test 1: Check if we can query user_profiles table
+    console.log('\n📊 Test 1: Querying user_profiles table...');
     const { data: users, error: usersError } = await insforge.database
-      .from('users')
+      .from('user_profiles')
       .select('id, email')
       .limit(1);
     

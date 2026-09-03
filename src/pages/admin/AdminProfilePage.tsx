@@ -52,21 +52,14 @@ export function AdminProfilePage() {
 
     const fetchProfile = async () => {
       try {
-        const { data: userData } = await insforge.database
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
         const { data: profileData } = await insforge.database
           .from('user_profiles')
           .select('*')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        const nameParts = (userData?.nickname || user.name || '').split(' ') || [];
-        const firstName = nameParts[0] || '';
-        const lastName = nameParts.slice(1).join(' ') || '';
+        const firstName = profileData?.first_name || (user.name || '').split(' ')[0] || '';
+        const lastName = profileData?.last_name || (user.name || '').split(' ').slice(1).join(' ') || '';
 
         reset({
           firstName,
@@ -78,11 +71,11 @@ export function AdminProfilePage() {
           city: profileData?.city || '',
           province: profileData?.province || '',
           postalCode: profileData?.postal_code || '',
-          bio: userData?.bio || ''
+          bio: profileData?.bio || ''
         });
 
-        if (userData?.avatar_url) {
-          const publicUrl = getPublicAvatarUrl(userData.avatar_url);
+        if (profileData?.avatar_url) {
+          const publicUrl = getPublicAvatarUrl(profileData.avatar_url);
           if (publicUrl) {
             setAvatarPreview(publicUrl);
           }
@@ -120,15 +113,15 @@ export function AdminProfilePage() {
       await ensureUserExists(user.id, user.email || null, user.name || null);
 
       let avatarUrl = null;
-      
-      const { data: currentUserData } = await insforge.database
-        .from('users')
+
+      const { data: currentProfileData } = await insforge.database
+        .from('user_profiles')
         .select('avatar_url')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
-      
-      avatarUrl = currentUserData?.avatar_url || null;
-      
+
+      avatarUrl = currentProfileData?.avatar_url || null;
+
       if (avatarFile) {
         const filePath = `${user.id}/avatar_${Date.now()}_${avatarFile.name}`;
         
@@ -149,21 +142,12 @@ export function AdminProfilePage() {
         }
       }
 
-      const { error: userUpdateError } = await insforge.database
-        .from('users')
-        .update({
-          nickname: `${data.firstName} ${data.lastName}`,
-          bio: data.bio || null,
-          avatar_url: avatarUrl
-        })
-        .eq('id', user.id);
-
-      if (userUpdateError) {
-        throw new Error(`Failed to update user information: ${userUpdateError.message}`);
-      }
-
       const profileData = {
         user_id: user.id,
+        first_name: data.firstName || null,
+        last_name: data.lastName || null,
+        bio: data.bio || null,
+        avatar_url: avatarUrl,
         phone: data.phone || null,
         address: data.address || null,
         city: data.city || null,

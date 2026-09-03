@@ -97,48 +97,24 @@ export function GroupsManagementPage() {
           const groupsWithCreators = await Promise.all(
             fallbackData.map(async (group: any) => {
               try {
-                // Fetch from users table
-                const { data: creatorData } = await insforge.database
-                  .from('users')
-                  .select('id, nickname, email, avatar_url')
-                  .eq('id', group.created_by)
+                const { data: profileData } = await insforge.database
+                  .from('user_profiles')
+                  .select('user_id, first_name, last_name, email, avatar_url')
+                  .eq('user_id', group.created_by)
                   .maybeSingle();
-                
-                // If no nickname, try to get from user_profiles
-                let creatorName = creatorData?.nickname || creatorData?.email;
-                if (!creatorName || creatorName === 'Unknown') {
-                  try {
-                    const { data: profileData } = await insforge.database
-                      .from('user_profiles')
-                      .select('*')
-                      .eq('user_id', group.created_by)
-                      .maybeSingle();
-                    
-                    // Try to get name from profile (could be in different fields)
-                    if (profileData) {
-                      // Check if there's a name field or combine first/last name
-                      const firstName = (profileData as any).first_name || (profileData as any).firstName || '';
-                      const lastName = (profileData as any).last_name || (profileData as any).lastName || '';
-                      if (firstName || lastName) {
-                        creatorName = `${firstName} ${lastName}`.trim();
-                      }
-                    }
-                  } catch (profileErr) {
-                    console.warn('Could not fetch profile for creator:', profileErr);
-                  }
-                }
-                
+
+                const creatorName = [profileData?.first_name, profileData?.last_name]
+                  .filter(Boolean)
+                  .join(' ')
+                  .trim() || profileData?.email || 'Unknown';
+
                 // Combine creator data with name
-                const enrichedCreatorData = creatorData ? {
-                  ...creatorData,
-                  nickname: creatorName || creatorData.nickname || creatorData.email || 'Unknown',
-                  displayName: creatorName || creatorData.nickname || creatorData.email || 'Unknown'
-                } : {
-                  id: group.created_by,
-                  nickname: creatorName || 'Unknown',
-                  email: null,
-                  avatar_url: null,
-                  displayName: creatorName || 'Unknown'
+                const enrichedCreatorData = {
+                  id: profileData?.user_id || group.created_by,
+                  nickname: creatorName,
+                  email: profileData?.email || null,
+                  avatar_url: profileData?.avatar_url || null,
+                  displayName: creatorName
                 };
                 
                 const { data: membersData } = await insforge.database

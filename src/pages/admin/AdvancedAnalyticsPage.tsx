@@ -51,9 +51,9 @@ export function AdvancedAnalyticsPage() {
       
       // User Engagement
       const [allUsers, recentUsers, userProfiles] = await Promise.all([
-        insforge.database.from('users').select('*', { count: 'exact' }),
+        insforge.database.from('user_profiles').select('*', { count: 'exact' }),
         insforge.database
-          .from('users')
+          .from('user_profiles')
           .select('*', { count: 'exact' })
           .gte('created_at', dateRange.start)
           .lte('created_at', dateRange.end),

@@ -44,7 +44,7 @@ export function AdminDashboardHome() {
           prayerRequestsRes,
           pendingGroupsRes
         ] = await Promise.allSettled([
-          insforge.database.from('users').select('id', { count: 'exact', head: true }),
+          insforge.database.from('user_profiles').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
           insforge.database.from('applications').select('id', { count: 'exact', head: true }).eq('program_type', 'bible_school'),
@@ -149,7 +149,7 @@ export function AdminDashboardHome() {
         const fetchRecentUsers = async () => {
           try {
             const result = await insforge.database
-              .from('users')
+              .from('user_profiles')
               .select('*')
               .order('created_at', { ascending: false })
               .limit(10);
@@ -233,17 +233,17 @@ export function AdminDashboardHome() {
             allRecentActivity.push({
               id: newUser.id,
               type: 'user',
-              name: newUser.nickname || newUser.email || 'Unknown',
+              name: newUser.email || 'Unknown',
               email: newUser.email,
-              phone: null,
+              phone: newUser.phone,
               program: 'User Registration',
               programType: 'user',
               date: newUser.created_at,
               status: 'registered',
               paymentStatus: null,
               idNumber: null,
-              address: null,
-              userId: newUser.id
+              address: newUser.address,
+              userId: newUser.user_id
             });
           });
         }

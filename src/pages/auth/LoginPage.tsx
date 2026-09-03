@@ -78,67 +78,16 @@ export function LoginPage() {
           if (!profile) {
             try {
               // CRITICAL: Get email from InsForge's auth (result.user.email) - this is the source of truth
-              // Then ensure it's synced to public.users table
               const userEmail = result.user.email || null;
-              
-              // Ensure email is synced to public.users table
-              if (userEmail) {
-                const { data: existingUser } = await insforge.database
-                  .from('users')
-                  .select('email')
-                  .eq('id', result.user.id)
-                  .maybeSingle();
-                
-                // If user exists in public.users but email is missing, update it
-                if (existingUser && (!existingUser.email || existingUser.email !== userEmail)) {
-                  await insforge.database
-                    .from('users')
-                    .update({ email: userEmail })
-                    .eq('id', result.user.id);
-                } else if (!existingUser) {
-                  // If user doesn't exist in public.users, create it
-                  // Use upsert to handle race conditions
-                  const emailPrefix = userEmail ? userEmail.split('@')[0] : null;
-                  const { error: upsertError } = await insforge.database
-                    .from('users')
-                    .upsert([{ 
-                      id: result.user.id, 
-                      email: userEmail,
-                      nickname: result.user.user_metadata?.nickname || result.user.user_metadata?.name || emailPrefix,
-                      name: result.user.user_metadata?.name || emailPrefix
-                    }], {
-                      onConflict: 'id'
-                    });
-                  
-                  if (upsertError) {
-                    console.error('Error upserting user:', upsertError);
-                    // Try insert as fallback
-                    try {
-                      await insforge.database
-                        .from('users')
-                        .insert([{ 
-                          id: result.user.id, 
-                          email: userEmail,
-                          nickname: result.user.user_metadata?.nickname || null
-                        }]);
-                    } catch (insertErr: any) {
-                      // If duplicate, that's okay
-                      if (insertErr.code !== '23505' && !insertErr.message?.includes('duplicate')) {
-                        console.error('Error creating user record:', insertErr);
-                      }
-                    }
-                  }
-                }
-              }
-              
+
               const { error: insertError } = await insforge.database
                 .from('user_profiles')
-                .insert([{ 
-                  user_id: result.user.id, 
+                .insert([{
+                  user_id: result.user.id,
                   role: 'user',
                   email: userEmail // Include email when creating profile during login
                 }]);
-              
+
               if (insertError) {
                 console.error('Error creating profile:', insertError);
                 // Continue anyway - user can still log in
@@ -147,21 +96,13 @@ export function LoginPage() {
               console.error('Exception creating profile:', insertErr);
               // Continue anyway
             }
-          } else if (profile && !profile.email) {
-            // If profile exists but email is missing, sync it from users table
+          } else if (profile && !profile.email && result.user.email) {
+            // If profile exists but email is missing, backfill it from the authenticated session
             try {
-              const { data: userData } = await insforge.database
-                .from('users')
-                .select('email')
-                .eq('id', result.user.id)
-                .maybeSingle();
-              
-              if (userData?.email) {
-                await insforge.database
-                  .from('user_profiles')
-                  .update({ email: userData.email })
-                  .eq('user_id', result.user.id);
-              }
+              await insforge.database
+                .from('user_profiles')
+                .update({ email: result.user.email })
+                .eq('user_id', result.user.id);
             } catch (syncErr) {
               console.error('Exception syncing email to profile:', syncErr);
               // Continue anyway

@@ -347,12 +347,12 @@ export function EventManagementPage() {
           // If it's a new event, notify all users
           if (!editingEvent) {
             const { data: allUsers } = await insforge.database
-              .from('users')
-              .select('id');
+              .from('user_profiles')
+              .select('user_id');
 
             if (allUsers && allUsers.length > 0) {
               const notifications = allUsers.map((u: any) => ({
-                user_id: u.id,
+                user_id: u.user_id,
                 type: 'event',
                 title: 'New Event Available',
                 message: `A new event "${savedEvent.title}" is now available. Event date: ${new Date(savedEvent.event_date).toLocaleDateString()}`,

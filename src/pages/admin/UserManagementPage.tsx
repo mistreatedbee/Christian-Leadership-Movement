@@ -67,64 +67,43 @@ export function UserManagementPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // SIMPLIFIED LOGIC: Same as Application Management - fetch all columns including email
-      // Use select('*') to get all columns - RLS policies should allow admins to see email
-      const { data: allUsers, error: usersError } = await insforge.database
-        .from('users')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (usersError) {
-        console.error('Error fetching users:', usersError);
-        throw usersError;
-      }
-
-      // Fetch all user profiles (includes email if saved during registration)
+      // user_profiles is the single source of truth for registered users
+      // (there is no separate public.users table - registration/login write here directly)
       const { data: profiles, error: profilesError } = await insforge.database
         .from('user_profiles')
-        .select('*');
+        .select('*')
+        .order('created_at', { ascending: false });
 
       if (profilesError) {
         console.error('Error fetching profiles:', profilesError);
         throw profilesError;
       }
 
-      // Combine users with their profiles
-      // Get email from BOTH sources - users table (primary) and user_profiles (backup)
-      const usersData = (allUsers || []).map((user: any) => {
-        const profile = profiles?.find((p: any) => p.user_id === user.id);
-        
-        // EMAIL: Get from users table first, then fallback to user_profiles.email
-        // Both should have email, but users.email is the primary source
-        const userEmail = user.email || profile?.email || null;
-        
-        return {
-          id: profile?.id || user.id,
-          user_id: user.id,
-          nickname: user.nickname || user.name || null,
-          email: userEmail, // Email from users table (primary) or user_profiles (backup)
-          phone: profile?.phone || null,
-          city: profile?.city || null,
-          province: profile?.province || null,
-          postal_code: profile?.postal_code || null,
-          address: profile?.address || null,
-          date_of_birth: profile?.date_of_birth || null,
-          role: profile?.role || 'user',
-          created_at: user.created_at,
-          updated_at: profile?.updated_at || user.updated_at,
-          avatar_url: user.avatar_url || null,
-          bio: user.bio || null,
-          // Include ALL profile fields for complete information
-          first_name: profile?.first_name || null,
-          last_name: profile?.last_name || null,
-          gender: profile?.gender || null,
-          nationality: profile?.nationality || null,
-          country: profile?.country || null,
-          home_language: profile?.home_language || null,
-          population_group: profile?.population_group || null,
-          residential_status: profile?.residential_status || null
-        };
-      });
+      const usersData = (profiles || []).map((profile: any) => ({
+        id: profile.id,
+        user_id: profile.user_id,
+        nickname: [profile.first_name, profile.last_name].filter(Boolean).join(' ') || null,
+        email: profile.email || null,
+        phone: profile.phone || null,
+        city: profile.city || null,
+        province: profile.province || null,
+        postal_code: profile.postal_code || null,
+        address: profile.address || null,
+        date_of_birth: profile.date_of_birth || null,
+        role: profile.role || 'user',
+        created_at: profile.created_at,
+        updated_at: profile.updated_at,
+        avatar_url: profile.avatar_url || null,
+        bio: profile.bio || null,
+        first_name: profile.first_name || null,
+        last_name: profile.last_name || null,
+        gender: profile.gender || null,
+        nationality: profile.nationality || null,
+        country: profile.country || null,
+        home_language: profile.home_language || null,
+        population_group: profile.population_group || null,
+        residential_status: profile.residential_status || null
+      }));
 
       setUsers(usersData);
     } catch (err: any) {
@@ -139,84 +118,43 @@ export function UserManagementPage() {
     setSyncingEmails(true);
     setMessage(null);
     try {
-      // First, get all users to check current state
-      const { data: allUsers } = await insforge.database
-        .from('users')
-        .select('id, email')
-        .order('created_at', { ascending: false });
-      
-      // Email column doesn't exist in applications - always use form_data JSONB
-      // Don't try to select email column as it causes 400 errors
-      console.log('Fetching emails from applications.form_data...');
-      let applications: any[] = [];
-      
+      // Registration/login now write email onto user_profiles directly, so this only
+      // needs to backfill profiles for users who signed up before that was in place,
+      // using whatever email shows up in their application form_data.
+      const { data: profilesMissingEmail } = await insforge.database
+        .from('user_profiles')
+        .select('user_id, email');
+
       const { data: appsWithFormData, error: formDataError } = await insforge.database
         .from('applications')
         .select('user_id, form_data')
         .not('user_id', 'is', null)
         .not('form_data', 'is', null);
-      
+
       if (formDataError) {
-        setMessage({ 
-          type: 'error', 
-          text: 'Cannot sync emails: Failed to fetch applications form_data. Please ensure applications have form_data with email fields.' 
+        setMessage({
+          type: 'error',
+          text: 'Cannot sync emails: Failed to fetch applications form_data. Please ensure applications have form_data with email fields.'
         });
         setSyncingEmails(false);
         return;
       }
-      
+
       // Extract email from form_data JSONB
-      applications = (appsWithFormData || []).map((app: any) => ({
+      const applications = (appsWithFormData || []).map((app: any) => ({
         user_id: app.user_id,
         email: app.form_data?.email || app.form_data?.Email || app.form_data?.EMAIL || null
       })).filter((app: any) => app.email);
-      
-      // If no applications with emails, check if emails are already in public.users table
-      // Emails should be saved there during registration
-      if (!applications || applications.length === 0) {
-        console.log('No emails found in applications, checking public.users table...');
-        
-        // Check if users already have emails in public.users table
-        const { data: usersWithEmails, error: usersError } = await insforge.database
-          .from('users')
-          .select('id, email')
-          .not('email', 'is', null)
-          .neq('email', '');
-        
-        if (usersError) {
-          console.error('Error checking users table:', usersError);
-          setMessage({ 
-            type: 'error', 
-            text: `Error checking users table: ${usersError.message}` 
-          });
-          setSyncingEmails(false);
-          return;
-        }
-        
-        const usersWithEmailCount = usersWithEmails?.length || 0;
-        const totalUsers = allUsers?.length || 0;
-        
-        if (usersWithEmailCount === totalUsers && totalUsers > 0) {
-          setMessage({ 
-            type: 'success', 
-            text: `All ${totalUsers} users already have emails in the users table. No sync needed.` 
-          });
-        } else if (usersWithEmailCount > 0) {
-          setMessage({ 
-            type: 'info', 
-            text: `Found ${usersWithEmailCount} users with emails in users table. ${totalUsers - usersWithEmailCount} users are missing emails. Emails are stored in InsForge's managed auth table and should be synced during login.` 
-          });
-        } else {
-          setMessage({ 
-            type: 'warning', 
-            text: `No emails found in public.users table. Emails are stored in InsForge's managed auth table (visible in dashboard). They will be synced to public.users when users log in. For existing users, you may need to manually sync or wait for them to log in.` 
-          });
-        }
-        
+
+      if (applications.length === 0) {
+        setMessage({
+          type: 'info',
+          text: 'No emails found in application form_data to sync.'
+        });
         setSyncingEmails(false);
         return;
       }
-      
+
       // Create a map of user_id to email (most recent email per user)
       const emailMap = new Map<string, string>();
       applications.forEach((app: any) => {
@@ -224,40 +162,36 @@ export function UserManagementPage() {
           emailMap.set(app.user_id, app.email);
         }
       });
-      
-      // Update users table with emails
+
+      const profilesById = new Map((profilesMissingEmail || []).map((p: any) => [p.user_id, p]));
+
+      // Update profiles with emails
       let updatedCount = 0;
       let errorCount = 0;
-      
+
       for (const [userId, email] of emailMap.entries()) {
-        try {
-          // Check if user already has email
-          const { data: existingUser } = await insforge.database
-            .from('users')
-            .select('email')
-            .eq('id', userId)
-            .maybeSingle();
-          
-          // Only update if email is missing
-          if (!existingUser?.email) {
+        const existingProfile = profilesById.get(userId);
+        // Only update if email is missing
+        if (existingProfile && !existingProfile.email) {
+          try {
             const { error: updateError } = await insforge.database
-              .from('users')
+              .from('user_profiles')
               .update({ email })
-              .eq('id', userId);
-            
+              .eq('user_id', userId);
+
             if (updateError) {
               console.error(`Failed to update email for user ${userId}:`, updateError);
               errorCount++;
             } else {
               updatedCount++;
             }
+          } catch (userErr: any) {
+            console.error(`Error updating user ${userId}:`, userErr);
+            errorCount++;
           }
-        } catch (userErr: any) {
-          console.error(`Error updating user ${userId}:`, userErr);
-          errorCount++;
         }
       }
-      
+
       if (updatedCount > 0) {
         setMessage({ 
           type: 'success', 
@@ -296,32 +230,9 @@ export function UserManagementPage() {
     setMessage(null);
 
     try {
-      // CRITICAL: Email is stored in users table
-      // First, use email from the user object (from the list) - this was fetched by fetchUsers from users table
-      // This is the most reliable source since fetchUsers already got it with select('*')
+      // Email lives on user_profiles - start with what's already in the list,
+      // it'll be refined below once we fetch the full profile row.
       let userEmail = user.email || null;
-      
-      // Also fetch from users table directly to ensure we have the latest
-      const { data: userData, error: userDataError } = await insforge.database
-        .from('users')
-        .select('*')
-        .eq('id', user.user_id)
-        .maybeSingle();
-
-      // Debug: Log what we got
-      console.log('🔍 User Details Debug:', {
-        'user.email (from list)': user.email,
-        'userData?.email (from query)': userData?.email,
-        'userData object keys': userData ? Object.keys(userData) : null,
-        'userDataError': userDataError
-      });
-
-      // Use email from direct query if available, otherwise use email from list
-      if (userData?.email) {
-        userEmail = userData.email;
-      } else if (user.email) {
-        userEmail = user.email; // Use email from list if direct query didn't return it
-      }
 
       // Fetch from user_profiles table (registration data)
       const { data: profileData } = await insforge.database
@@ -329,6 +240,10 @@ export function UserManagementPage() {
         .select('*')
         .eq('user_id', user.user_id)
         .maybeSingle();
+
+      if (profileData?.email) {
+        userEmail = profileData.email;
+      }
 
       // Fetch user's applications (may contain email in form_data)
       const { data: applications } = await insforge.database
@@ -353,15 +268,15 @@ export function UserManagementPage() {
         }
       }
 
-      // Combine data from ALL sources: users table, user_profiles, and applications
+      // Combine data from ALL sources: user_profiles and applications
       // This ensures we get ALL registration information
       const enriched: any = {
         ...(profileData || {}),
-        // EMAIL: Priority: userData.email (from direct query) > user.email (from list) > profileData.email > application form_data > null
+        // EMAIL: Priority: profileData.email (from direct query) > user.email (from list) > application form_data > null
         email: userEmail || profileData?.email || null,
-        nickname: userData?.nickname || userData?.name || profileData?.nickname || user.nickname || null,
-        avatar_url: userData?.avatar_url || profileData?.avatar_url || user.avatar_url || null,
-        bio: userData?.bio || profileData?.bio || user.bio || null,
+        nickname: profileData?.nickname || user.nickname || null,
+        avatar_url: profileData?.avatar_url || user.avatar_url || null,
+        bio: profileData?.bio || user.bio || null,
         user_id: user.user_id,
         id: user.id,
         role: profileData?.role || user.role || 'user',
@@ -714,14 +629,6 @@ export function UserManagementPage() {
           });
 
         if (error) throw error;
-      }
-
-      // Update users table if nickname changed
-      if (editForm.nickname) {
-        await insforge.database
-          .from('users')
-          .update({ nickname: editForm.nickname })
-          .eq('id', userId);
       }
 
       // Log audit event

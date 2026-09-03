@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { Button } from '../../components/ui/Button';
 import { User, Mail, Lock, Phone, Eye, EyeOff, MapPin, Calendar } from 'lucide-react';
-import { useAuth } from '@insforge/react';
 import { insforge } from '../../lib/insforge';
 
 interface RegisterFormData {
@@ -24,7 +23,6 @@ interface RegisterFormData {
 
 export function RegisterPage() {
   const navigate = useNavigate();
-  const { signUp } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -44,10 +42,18 @@ export function RegisterPage() {
     setError(null);
     try {
       console.log('Attempting to sign up user:', data.email);
-      
-      // Sign up user - signUp takes (email, password) as separate arguments
-      const result = await signUp(data.email, data.password);
-      
+
+      // Sign up via our own configured client (carries the anon key the
+      // @insforge/react provider's internal client doesn't attach - see
+      // AGENTS.md / the auth fix notes for why this can't go through useAuth().signUp).
+      const { data: signUpData, error: signUpError } = await insforge.auth.signUp({
+        email: data.email,
+        password: data.password,
+        name: `${data.firstName} ${data.lastName}`
+      });
+
+      const result: any = signUpError ? { error: signUpError.message } : signUpData;
+
       console.log('SignUp result:', result);
       
       // Check if result has error property (failed signup)
@@ -75,65 +81,26 @@ export function RegisterPage() {
       
       console.log('User created, ID:', result.user.id);
       
-        // CRITICAL: Create user record in public.users FIRST (before profile)
-        // This ensures the user exists for storage foreign key constraints
-        try {
-          const { error: userCreateError } = await insforge.database
-            .from('users')
-            .insert([{
-              id: result.user.id,
-              email: data.email,
-              nickname: `${data.firstName} ${data.lastName}`,
-              name: `${data.firstName} ${data.lastName}`
-            }]);
-          
-          if (userCreateError) {
-            // If user already exists (race condition), that's okay
-            if (userCreateError.code !== '23505' && !userCreateError.message?.includes('duplicate')) {
-              console.error('Error creating user record:', userCreateError);
-            } else {
-              console.log('User record already exists, updating...');
-              // Update existing record with all available data
-              await insforge.database
-                .from('users')
-                .update({ 
-                  email: data.email,
-                  nickname: `${data.firstName} ${data.lastName}`,
-                  name: `${data.firstName} ${data.lastName}`
-                })
-                .eq('id', result.user.id);
-            }
-          } else {
-            console.log('User record created in public.users');
-          }
-          
-          // Wait to ensure user record is committed (important for storage foreign keys)
-          await new Promise(resolve => setTimeout(resolve, 300));
-        } catch (userErr) {
-          console.error('Exception creating user record:', userErr);
-          // Continue - user might already exist
-        }
-        
-        // Create user profile with ALL registration information (including email, first_name, last_name, gender)
-        // This ensures all registration data is saved and visible on the profile page
+        // Create user profile with the registration information.
+        // NOTE: first_name/last_name/gender are collected on the form but user_profiles
+        // has no columns for them yet (migrations/20260903075214_add-missing-user-profile-columns.sql
+        // is written but blocked on an InsForge table-ownership issue - see feedback 1e2cb56a-f134-44b8-9da5-37a54f34acf3).
+        // Once that migration applies, add first_name/last_name/gender back into these payloads.
         try {
           const { error: profileError } = await insforge.database
             .from('user_profiles')
             .insert([{
               user_id: result.user.id,
               email: data.email, // Save email to user_profiles - admins can access it with same RLS logic
-              first_name: data.firstName, // Save first name from registration
-              last_name: data.lastName, // Save last name from registration
               phone: data.phone,
               address: data.address || null,
               city: data.city || null,
               province: data.province || null,
               postal_code: data.postalCode || null,
               date_of_birth: data.dateOfBirth || null,
-              gender: data.gender || null, // Save gender from registration
               role: 'user'
             }]);
-          
+
           if (profileError) {
             console.error('Error creating profile:', profileError);
             // Try to update if insert fails (profile might already exist)
@@ -142,22 +109,19 @@ export function RegisterPage() {
                 .from('user_profiles')
                 .update({
                   email: data.email, // Update email in user_profiles as well
-                  first_name: data.firstName, // Update first name
-                  last_name: data.lastName, // Update last name
                   phone: data.phone,
                   address: data.address || null,
                   city: data.city || null,
                   province: data.province || null,
                   postal_code: data.postalCode || null,
-                  date_of_birth: data.dateOfBirth || null,
-                  gender: data.gender || null // Update gender
+                  date_of_birth: data.dateOfBirth || null
                 })
                 .eq('user_id', result.user.id);
             } catch (updateErr) {
               console.error('Error updating profile:', updateErr);
             }
           } else {
-            console.log('User profile created with all registration data including first_name, last_name, and gender');
+            console.log('User profile created with registration data');
           }
         } catch (profileErr) {
           console.error('Exception creating profile:', profileErr);

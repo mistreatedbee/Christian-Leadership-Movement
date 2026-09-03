@@ -1,50 +1,48 @@
 import { insforge } from './insforge';
 
 /**
- * Ensures the user exists in the users table before file uploads.
- * This prevents foreign key constraint violations in _storage table.
- * 
+ * Ensures the user has a user_profiles row before file uploads.
+ * Storage's foreign key is actually against auth.users (already populated by
+ * the auth system), so this just makes sure a profile row exists too.
+ *
  * @param userId - The user ID to ensure exists
  * @param userEmail - Optional user email
- * @param userName - Optional user name/nickname
+ * @param userName - Optional user name/nickname (no dedicated column yet - ignored)
  * @returns Promise that resolves when user is guaranteed to exist
  */
 export async function ensureUserExists(
   userId: string,
   userEmail?: string | null,
-  userName?: string | null
+  _userName?: string | null
 ): Promise<void> {
   try {
-    // First, check if user already exists
+    // First, check if a profile already exists
     const { data: existingUser, error: checkError } = await insforge.database
-      .from('users')
+      .from('user_profiles')
       .select('id')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
-    
+
     if (checkError && checkError.code !== 'PGRST116') {
       console.error('Error checking user:', checkError);
       // Continue anyway - might be a permission issue
     }
-    
-    // If user doesn't exist, try to insert
+
+    // If profile doesn't exist, try to insert
     if (!existingUser) {
       try {
-        // Only include fields that definitely exist in the users table
+        // Only include fields that definitely exist in user_profiles
         const userData: any = {
-          id: userId
+          user_id: userId
         };
-        
+
         // Only add optional fields if they have values
         if (userEmail) {
           userData.email = userEmail;
         }
-        if (userName) {
-          userData.nickname = userName;
-        }
-        
+
         const { error: insertError } = await insforge.database
-          .from('users')
+          .from('user_profiles')
           .insert([userData]);
         
         if (insertError) {

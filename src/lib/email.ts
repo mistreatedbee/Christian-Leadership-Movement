@@ -11,9 +11,9 @@ export async function sendEmailNotification(userId: string, email: EmailNotifica
   try {
     // Get user email
     const { data: user } = await insforge.database
-      .from('users')
+      .from('user_profiles')
       .select('email')
-      .eq('id', userId)
+      .eq('user_id', userId)
       .single();
 
     if (!user?.email) return;

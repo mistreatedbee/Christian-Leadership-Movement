@@ -481,12 +481,12 @@ export function CourseManagementPage() {
           // If it's a new course, notify all users
           if (!editingCourse) {
             const { data: allUsers } = await insforge.database
-              .from('users')
-              .select('id');
+              .from('user_profiles')
+              .select('user_id');
 
             if (allUsers && allUsers.length > 0) {
               const notifications = allUsers.map((u: any) => ({
-                user_id: u.id,
+                user_id: u.user_id,
                 type: 'course',
                 title: 'New Course Available',
                 message: `A new course "${savedCourse.title}" is now available for enrollment.`,

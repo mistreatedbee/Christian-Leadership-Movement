@@ -56,13 +56,6 @@ export function ProfilePage() {
 
     const fetchProfile = async () => {
       try {
-        // Fetch user data
-        const { data: userData } = await insforge.database
-          .from('users')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-
         // Fetch profile data
         const { data: profileData } = await insforge.database
           .from('user_profiles')
@@ -97,17 +90,17 @@ export function ProfilePage() {
         const formData = applicationData?.form_data || {};
         
         // Get first_name and last_name with fallback chain
-        const firstName = profileData?.first_name || 
-          formData.firstName || 
+        const firstName = profileData?.first_name ||
+          formData.firstName ||
           formData.first_name ||
           applicationData?.first_name ||
-          ((userData?.nickname || user.name || '').split(' ')[0] || '');
-        
-        const lastName = profileData?.last_name || 
-          formData.lastName || 
+          ((user.name || '').split(' ')[0] || '');
+
+        const lastName = profileData?.last_name ||
+          formData.lastName ||
           formData.last_name ||
           applicationData?.last_name ||
-          ((userData?.nickname || user.name || '').split(' ').slice(1).join(' ') || '');
+          ((user.name || '').split(' ').slice(1).join(' ') || '');
 
         // Get email with fallback chain
         const email = user.email || 
@@ -172,7 +165,7 @@ export function ProfilePage() {
           province,
           postalCode,
           gender,
-          bio: userData?.bio || ''
+          bio: profileData?.bio || ''
         });
 
         // Auto-sync missing profile data from applications for existing users
@@ -215,8 +208,8 @@ export function ProfilePage() {
           }
         }
 
-        if (userData?.avatar_url) {
-          const publicUrl = getPublicAvatarUrl(userData.avatar_url);
+        if (profileData?.avatar_url) {
+          const publicUrl = getPublicAvatarUrl(profileData.avatar_url);
           if (publicUrl) {
             setAvatarPreview(publicUrl);
           }
@@ -250,55 +243,25 @@ export function ProfilePage() {
     setMessage(null);
 
     try {
-      // CRITICAL: Ensure user exists in users table BEFORE any upload
+      // CRITICAL: Ensure the user has a profile row BEFORE any upload
       // This prevents foreign key constraint violations in _storage table
       await ensureUserExists(user.id, user.email || null, user.name || null);
 
-      // Upload avatar if changed - user is guaranteed to exist now
+      // Upload avatar if changed - profile row is guaranteed to exist now
       let avatarUrl = null;
-      
+
       // First, get current avatar URL if it exists (to preserve it if no new upload)
-      const { data: currentUserData } = await insforge.database
-        .from('users')
+      const { data: currentProfileData } = await insforge.database
+        .from('user_profiles')
         .select('avatar_url')
-        .eq('id', user.id)
+        .eq('user_id', user.id)
         .maybeSingle();
-      
-      avatarUrl = currentUserData?.avatar_url || null;
-      
+
+      avatarUrl = currentProfileData?.avatar_url || null;
+
       if (avatarFile) {
         console.log('Starting avatar upload for user:', user.id);
-        
-        // Ensure user exists in public.users table first (critical for storage foreign key)
-        try {
-          const { data: userCheck } = await insforge.database
-            .from('users')
-            .select('id')
-            .eq('id', user.id)
-            .maybeSingle();
-          
-          if (!userCheck) {
-            console.log('User not in public.users, creating record...');
-            const { error: createError } = await insforge.database
-              .from('users')
-              .insert([{
-                id: user.id,
-                email: user.email || null,
-                nickname: user.name || null
-              }]);
-            
-            if (createError && createError.code !== '23505') {
-              console.warn('Could not create user record (may already exist):', createError);
-            } else {
-              console.log('User record created, waiting for commit...');
-              // Wait for database commit
-              await new Promise(resolve => setTimeout(resolve, 300));
-            }
-          }
-        } catch (userErr) {
-          console.warn('Error checking/creating user (non-fatal):', userErr);
-        }
-        
+
         // Upload to public avatars bucket using helper function
         const filePath = `${user.id}/avatar_${Date.now()}_${avatarFile.name}`;
         
@@ -321,34 +284,14 @@ export function ProfilePage() {
         }
       }
 
-      // Update user table - check for errors
-      const { error: userUpdateError } = await insforge.database
-        .from('users')
-        .update({
-          nickname: `${data.firstName} ${data.lastName}`,
-          bio: data.bio || null,
-          avatar_url: avatarUrl
-        })
-        .eq('id', user.id);
-
-      if (userUpdateError) {
-        console.error('User update error:', userUpdateError);
-        throw new Error(`Failed to update user information: ${userUpdateError.message}`);
-      }
-
       // Update or create profile - check if exists first
-      // Get email from users table to sync to profile
-      const { data: userData } = await insforge.database
-        .from('users')
-        .select('email')
-        .eq('id', user.id)
-        .maybeSingle();
-      
       const profileData = {
         user_id: user.id,
-        email: userData?.email || user.email || null, // Sync email to profile
+        email: user.email || null, // Sync email to profile
         first_name: data.firstName || null, // Save first name to profile
         last_name: data.lastName || null, // Save last name to profile
+        bio: data.bio || null,
+        avatar_url: avatarUrl,
         phone: data.phone || null,
         address: data.address || null,
         city: data.city || null,
@@ -408,20 +351,14 @@ export function ProfilePage() {
       }
 
       // Verify the data was saved by re-fetching
-      const { data: verifyUser, error: verifyUserError } = await insforge.database
-        .from('users')
-        .select('nickname, bio, avatar_url')
-        .eq('id', user.id)
-        .single();
-
       const { data: verifyProfile, error: verifyProfileError } = await insforge.database
         .from('user_profiles')
-        .select('phone, address, city, province, postal_code, date_of_birth, gender, first_name, last_name')
+        .select('phone, address, city, province, postal_code, date_of_birth, gender, first_name, last_name, bio, avatar_url')
         .eq('user_id', user.id)
         .single();
 
-      if (verifyUserError || verifyProfileError) {
-        console.warn('Verification fetch had errors, but save may have succeeded:', verifyUserError, verifyProfileError);
+      if (verifyProfileError) {
+        console.warn('Verification fetch had errors, but save may have succeeded:', verifyProfileError);
       }
 
       // Reload the form with saved data
@@ -436,12 +373,12 @@ export function ProfilePage() {
         province: verifyProfile?.province || data.province || '',
         postalCode: verifyProfile?.postal_code || data.postalCode || '',
         gender: verifyProfile?.gender || data.gender || '',
-        bio: verifyUser?.bio || data.bio || ''
+        bio: verifyProfile?.bio || data.bio || ''
       });
 
       // IMPORTANT: Update avatar preview with the saved URL (not the data URL)
       // Use the verified URL from database, or fall back to the uploaded URL, or keep current preview if no change
-      const savedAvatarKey = verifyUser?.avatar_url || avatarUrl;
+      const savedAvatarKey = verifyProfile?.avatar_url || avatarUrl;
       
       // Convert to public URL for display
       const finalAvatarUrl = savedAvatarKey ? getPublicAvatarUrl(savedAvatarKey) : null;

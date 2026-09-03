@@ -97,11 +97,12 @@ export function MessagesPage() {
 
     try {
       // Find recipient by email
-      const { data: recipient } = await insforge.database
-        .from('users')
-        .select('id')
+      const { data: recipientProfile } = await insforge.database
+        .from('user_profiles')
+        .select('user_id')
         .eq('email', composeData.recipient_email)
         .single();
+      const recipient = recipientProfile ? { id: recipientProfile.user_id } : null;
 
       if (!recipient) {
         alert('User not found with that email address');

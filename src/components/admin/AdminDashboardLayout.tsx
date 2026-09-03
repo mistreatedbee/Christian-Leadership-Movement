@@ -28,26 +28,25 @@ export function AdminDashboardLayout() {
         }
       });
 
-      // Fetch admin's name and avatar
+      // Fetch admin's name and avatar from their profile
       const fetchAdminInfo = async () => {
         try {
-          const { data: userData } = await insforge.database
-            .from('users')
-            .select('nickname, avatar_url')
-            .eq('id', user.id)
+          const { data: profileData } = await insforge.database
+            .from('user_profiles')
+            .select('first_name, last_name, avatar_url')
+            .eq('user_id', user.id)
             .maybeSingle();
 
-          if (userData) {
-            setAdminName(userData.nickname || user.name || user.email || 'Admin User');
-            if (userData.avatar_url) {
-              // Convert avatar URL to full public URL if needed
-              const avatarUrl = userData.avatar_url.startsWith('http') 
-                ? userData.avatar_url 
-                : getStorageUrl('avatars', userData.avatar_url);
-              setAdminAvatar(avatarUrl);
-            }
-          } else {
-            setAdminName(user.name || user.email || 'Admin User');
+          const profileName = profileData
+            ? [profileData.first_name, profileData.last_name].filter(Boolean).join(' ')
+            : '';
+          setAdminName(profileName || user.name || user.email || 'Admin User');
+
+          if (profileData?.avatar_url) {
+            const avatarUrl = profileData.avatar_url.startsWith('http')
+              ? profileData.avatar_url
+              : getStorageUrl('avatars', profileData.avatar_url);
+            setAdminAvatar(avatarUrl);
           }
         } catch (error) {
           console.error('Error fetching admin info:', error);

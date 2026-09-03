@@ -193,8 +193,8 @@ export function BlogManagementPage() {
     try {
       // Get all users
       const { data: allUsers, error: usersError } = await insforge.database
-        .from('users')
-        .select('id');
+        .from('user_profiles')
+        .select('user_id');
 
       if (usersError) {
         console.error('Error fetching users for notifications:', usersError);
@@ -223,7 +223,7 @@ export function BlogManagementPage() {
 
       // Create notifications for all users
       const notifications = allUsers.map((u: any) => ({
-        user_id: u.id,
+        user_id: u.user_id,
         type: 'blog',
         title: notificationTitle,
         message: notificationMessage,
