@@ -1,4 +1,5 @@
 import { insforge } from './insforge';
+import { isInvalidTokenError } from './authError';
 
 export async function checkAdminAccess(userId: string): Promise<boolean> {
   try {
@@ -11,25 +12,30 @@ export async function checkAdminAccess(userId: string): Promise<boolean> {
 
     if (error) {
       console.error('Error checking admin access:', error);
+      // Invalid/expired session token: rethrow so callers (e.g. AdminRoute)
+      // can send the user to login instead of an "Access Denied" screen.
+      if (isInvalidTokenError(error)) {
+        throw error;
+      }
       // If it's an RLS error, try to work around it
       if (error.code === '42501' || error.message?.includes('permission') || error.message?.includes('policy')) {
         console.warn('RLS policy may be blocking admin check, trying alternative method');
-        // Return false but log the issue
-        return false;
       }
+      // Return false but log the issue
       return false;
     }
-    
+
     if (!profile) {
       console.log('No profile found for user:', userId);
       return false;
     }
-    
+
     // Check if user has admin role
     const isAdmin = profile.role === 'admin' || profile.role === 'super_admin';
     console.log('Admin check result:', { userId, role: profile.role, isAdmin });
     return isAdmin;
   } catch (err) {
+    if (isInvalidTokenError(err)) throw err;
     console.error('Error checking admin access:', err);
     return false;
   }
@@ -50,4 +56,3 @@ export async function getUserRole(userId: string): Promise<string | null> {
     return null;
   }
 }
-

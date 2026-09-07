@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Plus, Edit, Trash2, Upload, X, Save, Image as ImageIcon } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { useUser } from '@insforge/react';
 import { useForm } from 'react-hook-form';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
+import { handleAuthError } from '../../lib/authError';
 
 interface Partner {
   id: string;
@@ -35,6 +37,7 @@ interface PartnerFormData {
 
 export function PartnersManagementPage() {
   const { user } = useUser();
+  const navigate = useNavigate();
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -67,6 +70,7 @@ export function PartnersManagementPage() {
       setPartners(data || []);
     } catch (err: any) {
       console.error('Error fetching partners:', err);
+      if (await handleAuthError(err, navigate)) return;
       setMessage({ type: 'error', text: err.message || 'Failed to fetch partners' });
     } finally {
       setLoading(false);
@@ -128,6 +132,7 @@ export function PartnersManagementPage() {
       setTimeout(() => setMessage(null), 3000);
     } catch (err: any) {
       console.error('Error deleting partner:', err);
+      if (await handleAuthError(err, navigate)) return;
       setMessage({ type: 'error', text: err.message || 'Failed to delete partner' });
     }
   };
@@ -212,6 +217,7 @@ export function PartnersManagementPage() {
       fetchPartners();
     } catch (err: any) {
       console.error('Error saving partner:', err);
+      if (await handleAuthError(err, navigate)) return;
       setMessage({ type: 'error', text: err.message || 'Failed to save partner' });
     }
   };

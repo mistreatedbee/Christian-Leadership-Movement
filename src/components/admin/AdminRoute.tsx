@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { checkAdminAccess } from '../../lib/auth';
+import { handleAuthError } from '../../lib/authError';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -9,22 +10,31 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, isLoaded } = useUser();
+  const navigate = useNavigate();
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!isLoaded) return;
-    
+
     if (!user) {
       setIsAdmin(false);
       setLoading(false);
       return;
     }
 
-    checkAdminAccess(user.id).then(admin => {
-      setIsAdmin(admin);
-      setLoading(false);
-    });
+    checkAdminAccess(user.id)
+      .then(admin => {
+        setIsAdmin(admin);
+        setLoading(false);
+      })
+      .catch(async err => {
+        // Session token expired/invalid: send the user to login rather than
+        // showing "Access Denied" for a perfectly valid admin.
+        if (await handleAuthError(err, navigate)) return;
+        setIsAdmin(false);
+        setLoading(false);
+      });
   }, [user, isLoaded]);
 
   if (!isLoaded || loading) {
