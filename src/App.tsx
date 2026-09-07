@@ -99,6 +99,7 @@ import { ApplyMentorPage } from './pages/ApplyMentorPage';
 import { MentorManagementPage } from './pages/dashboard/MentorManagementPage';
 import { ApplyCoursePage } from './pages/ApplyCoursePage';
 import { AboutPage } from './pages/AboutPage';
+import { AuthTokenSync } from './components/AuthTokenSync';
 
 export function App() {
   return (
@@ -108,6 +109,7 @@ export function App() {
           baseUrl={getInsForgeBaseUrl()}
           anonKey={getInsForgeAnonKey()}
         >
+          <AuthTokenSync />
           <Router>
       <Routes>
         <Route path="/" element={<HomePage />} />

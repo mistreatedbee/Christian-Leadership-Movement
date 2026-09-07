@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, Outlet } from 'react-router-dom';
 import { LayoutDashboard, Users, FileText, BookOpen, Calendar, Award, BarChart3, MessageSquare, Settings, LogOut, Menu, X, ChevronDown, DollarSign, Target, Video, UserCheck, Mail, Shield, MessageSquare as SMSIcon, Bell, Receipt, FolderOpen, Home, UserCircle } from 'lucide-react';
-import { useUser } from '@insforge/react';
+import { useUser, useAuth } from '@insforge/react';
 import { getUserRole } from '../../lib/auth';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
@@ -9,6 +9,7 @@ import { getStorageUrl } from '../../lib/connection';
 export function AdminDashboardLayout() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const { signOut } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [adminRole, setAdminRole] = useState<string>('Admin');
   const [adminName, setAdminName] = useState<string>('Admin User');
@@ -101,7 +102,19 @@ export function AdminDashboardLayout() {
   }, [user]);
 
   const handleLogout = async () => {
-    // Use InsForge signOut if available
+    try {
+      await signOut();
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+    // Belt-and-braces: signOut() above is @insforge/react's own client;
+    // clear our app-wide client's session too so it doesn't keep using a
+    // now-invalid token (see AuthTokenSync for why the two can drift).
+    try {
+      await insforge.auth.signOut();
+    } catch {
+      // ignore
+    }
     navigate('/login');
   };
   const navItems = [{
