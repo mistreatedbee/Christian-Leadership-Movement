@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { BookOpen, Users, Award, Globe, Book, UserCheck, Shield } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 interface ContentSection {
   section_type: string;
@@ -20,21 +22,17 @@ export function MissionSection() {
   const [mission, setMission] = useState<string>('');
   const [strategicObjectives, setStrategicObjectives] = useState<StrategicObjective[]>([]);
   const [loading, setLoading] = useState(true);
+  const isAuthReady = useAuthReady();
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     const fetchContent = async () => {
       try {
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        const { data, error } = await runPublicQuery(() =>
+          insforge.database.from('content_sections').select('*')
         );
-        
-        const fetchPromise = insforge.database
-          .from('content_sections')
-          .select('*');
-        
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-        
+
         if (error) throw error;
         
         data?.forEach((section: ContentSection) => {
@@ -102,7 +100,7 @@ export function MissionSection() {
     };
     
     fetchContent();
-  }, []);
+  }, [isAuthReady]);
   return (
     <section className="py-16 bg-white">
       <div className="container mx-auto px-4">

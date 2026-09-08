@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { EventCard } from '../ui/EventCard';
 import { Button } from '../ui/Button';
 import { insforge } from '../../lib/insforge';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 interface Event {
   id: string;
@@ -17,36 +19,35 @@ export function UpcomingEventsSection() {
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [registrations, setRegistrations] = useState<Record<string, number>>({});
+  const isAuthReady = useAuthReady();
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     const fetchEvents = async () => {
       try {
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
-        
         const now = new Date().toISOString();
-        const fetchPromise = insforge.database
-          .from('events')
-          .select('*')
-          .gte('event_date', now)
-          .order('event_date', { ascending: true })
-          .limit(3);
-        
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-        
+        const { data, error } = await runPublicQuery(() =>
+          insforge.database
+            .from('events')
+            .select('*')
+            .gte('event_date', now)
+            .order('event_date', { ascending: true })
+            .limit(3)
+        );
+
         if (error) throw error;
         setEvents(data || []);
-        
-        // Fetch registration counts (non-blocking)
+
         if (data && data.length > 0) {
           try {
-            const eventIds = data.map((e: any) => e.id);
-            const { data: regData } = await insforge.database
-              .from('event_registrations')
-              .select('event_id')
-              .in('event_id', eventIds);
+            const eventIds = data.map((e: Event) => e.id);
+            const { data: regData } = await runPublicQuery(() =>
+              insforge.database
+                .from('event_registrations')
+                .select('event_id')
+                .in('event_id', eventIds)
+            );
             
             const counts: Record<string, number> = {};
             regData?.forEach((reg: any) => {
@@ -67,7 +68,7 @@ export function UpcomingEventsSection() {
     };
     
     fetchEvents();
-  }, []);
+  }, [isAuthReady]);
   return <section className="py-16 bg-muted-gray">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">

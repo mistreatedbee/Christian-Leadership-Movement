@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { useUser } from '@insforge/react';
 import { Button } from '../ui/Button';
 import { insforge } from '../../lib/insforge';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 import { GraduationCap, Award, Lock, CheckCircle, Users, Target, ArrowRight, FileText } from 'lucide-react';
 
 interface Program {
@@ -26,32 +28,33 @@ interface Course {
 export function ProgramsSection() {
   const navigate = useNavigate();
   const { user } = useUser();
+  const isAuthReady = useAuthReady();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [upCourses, setUpCourses] = useState<Course[]>([]);
   const [hasMembership, setHasMembership] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     const fetchData = async () => {
       try {
-        // Fetch only Bible School and Membership programs
-        const programsPromise = insforge.database
-          .from('programs')
-          .select('*')
-          .in('type', ['bible_school', 'membership'])
-          .order('created_at', { ascending: false });
-
-        // Fetch UP courses
-        const coursesPromise = insforge.database
-          .from('courses')
-          .select('id, title, description, is_up_endorsed, category')
-          .eq('is_up_endorsed', true)
-          .order('created_at', { ascending: false })
-          .limit(1);
-
         const [programsResult, coursesResult] = await Promise.all([
-          programsPromise,
-          coursesPromise
+          runPublicQuery(() =>
+            insforge.database
+              .from('programs')
+              .select('*')
+              .in('type', ['bible_school', 'membership'])
+              .order('created_at', { ascending: false })
+          ),
+          runPublicQuery(() =>
+            insforge.database
+              .from('courses')
+              .select('id, title, description, is_up_endorsed, category')
+              .eq('is_up_endorsed', true)
+              .order('created_at', { ascending: false })
+              .limit(1)
+          ),
         ]);
 
         if (programsResult.error) throw programsResult.error;
@@ -60,16 +63,17 @@ export function ProgramsSection() {
         if (coursesResult.error) throw coursesResult.error;
         setUpCourses(coursesResult.data || []);
 
-        // Check membership if user is logged in
         if (user) {
-          const { data: membership } = await insforge.database
-            .from('applications')
-            .select('status')
-            .eq('user_id', user.id)
-            .eq('program_type', 'membership')
-            .eq('status', 'approved')
-            .eq('payment_status', 'confirmed')
-            .maybeSingle();
+          const { data: membership } = await runPublicQuery(() =>
+            insforge.database
+              .from('applications')
+              .select('status')
+              .eq('user_id', user.id)
+              .eq('program_type', 'membership')
+              .eq('status', 'approved')
+              .eq('payment_status', 'confirmed')
+              .maybeSingle()
+          );
 
           setHasMembership(!!membership);
         }
@@ -83,7 +87,7 @@ export function ProgramsSection() {
     };
     
     fetchData();
-  }, [user]);
+  }, [user, isAuthReady]);
   return <section className="py-16 bg-muted-gray">
       <div className="container mx-auto px-4">
         <div className="text-center mb-12">

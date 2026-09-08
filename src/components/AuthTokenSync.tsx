@@ -27,15 +27,19 @@ export function AuthTokenSync() {
   const { user, isLoaded } = useUser();
 
   useEffect(() => {
-    if (!isLoaded || !user) return;
-    // Pulls the current session out of localStorage and applies it to this
-    // client's HTTP layer - a no-op if it's already in sync. We deliberately
-    // don't mirror the "no user" case with signOut() here: it would clear
-    // localStorage, which could race with @insforge/react's own (async)
-    // session restore on first load and wipe out a session it hasn't
-    // finished validating yet. Explicit sign-outs (handleAuthError, the
-    // logout button) already clear this client's session directly.
-    insforge.auth.getCurrentSession();
+    if (!isLoaded) return;
+
+    if (user) {
+      // Apply the validated session to the app-wide singleton so database calls
+      // use the same token as @insforge/react.
+      insforge.auth.getCurrentSession();
+      return;
+    }
+
+    // Session restore is complete and there is no user. Clear any stale token
+    // left in the singleton so public reads fall back to the anon key instead
+    // of sending an expired JWT (which the API rejects with 401).
+    void insforge.auth.signOut();
   }, [isLoaded, user?.id]);
 
   return null;

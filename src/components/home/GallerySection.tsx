@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 interface GalleryImage {
   id: string;
@@ -20,42 +22,34 @@ export function GallerySection() {
   const [galleryImages, setGalleryImages] = useState<GalleryImage[]>([]);
   const [categories, setCategories] = useState<GalleryCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const isAuthReady = useAuthReady();
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     const fetchGallery = async () => {
       try {
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
-        );
-        
-        const [galleryPromise, categoriesPromise] = await Promise.all([
-          insforge.database
-            .from('gallery')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(20),
-          insforge.database
-            .from('gallery_categories')
-            .select('*')
-            .order('name', { ascending: true })
+        const [galleryResult, categoriesResult] = await Promise.all([
+          runPublicQuery(() =>
+            insforge.database
+              .from('gallery')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(20)
+          ),
+          runPublicQuery(() =>
+            insforge.database
+              .from('gallery_categories')
+              .select('*')
+              .order('name', { ascending: true })
+          ),
         ]);
-        
-        const { data: galleryData, error: galleryError } = await Promise.race([
-          galleryPromise,
-          timeoutPromise
-        ]) as any;
-        
-        const { data: categoriesData, error: categoriesError } = await Promise.race([
-          categoriesPromise,
-          timeoutPromise
-        ]) as any;
-        
-        if (galleryError) throw galleryError;
-        if (categoriesError) throw categoriesError;
-        
-        setGalleryImages(galleryData || []);
-        setCategories(categoriesData || []);
+
+        if (galleryResult.error) throw galleryResult.error;
+        if (categoriesResult.error) throw categoriesResult.error;
+
+        setGalleryImages(galleryResult.data || []);
+        setCategories(categoriesResult.data || []);
       } catch (err: any) {
         console.error('Error fetching gallery:', err);
         // Fallback to local images if database fails
@@ -73,7 +67,7 @@ export function GallerySection() {
     };
     
     fetchGallery();
-  }, []);
+  }, [isAuthReady]);
 
   return (
     <section className="py-16 bg-brand-dark-blue text-white">

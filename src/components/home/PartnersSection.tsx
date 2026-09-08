@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { Button } from '../ui/Button';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 interface Partner {
   id: string;
@@ -13,21 +15,24 @@ interface Partner {
 export function PartnersSection() {
   const [partners, setPartners] = useState<Partner[]>([]);
   const [loading, setLoading] = useState(true);
+  const isAuthReady = useAuthReady();
 
   useEffect(() => {
+    if (!isAuthReady) return;
     fetchPartners();
-  }, []);
+  }, [isAuthReady]);
 
   const fetchPartners = async () => {
     try {
-      // Fetch active partners - public access, no authentication required
-      const { data, error } = await insforge.database
-        .from('partners')
-        .select('id, name, logo_url, logo_key, description, website_url')
-        .eq('is_active', true)
-        .order('display_order', { ascending: true })
-        .order('created_at', { ascending: false })
-        .limit(8);
+      const { data, error } = await runPublicQuery(() =>
+        insforge.database
+          .from('partners')
+          .select('id, name, logo_url, logo_key, description, website_url')
+          .eq('is_active', true)
+          .order('display_order', { ascending: true })
+          .order('created_at', { ascending: false })
+          .limit(8)
+      );
 
       if (error) {
         // If table doesn't exist, return empty array

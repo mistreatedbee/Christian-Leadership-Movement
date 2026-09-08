@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight } from 'lucide-react';
 import { insforge } from '../../lib/insforge';
 import { getStorageUrl } from '../../lib/connection';
+import { runPublicQuery } from '../../lib/publicDb';
+import { useAuthReady } from '../../hooks/useAuthReady';
 
 interface StrategicObjective {
   id: string;
@@ -26,27 +28,24 @@ const placeholderImages = [
 export function StrategicObjectivesSection() {
   const [objectives, setObjectives] = useState<StrategicObjective[]>([]);
   const [loading, setLoading] = useState(true);
+  const isAuthReady = useAuthReady();
 
   useEffect(() => {
+    if (!isAuthReady) return;
+
     const fetchObjectives = async () => {
       try {
-        // Add timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Request timeout')), 10000)
+        const { data, error } = await runPublicQuery(() =>
+          insforge.database
+            .from('strategic_objectives')
+            .select('*')
+            .order('created_at', { ascending: true })
         );
-        
-        const fetchPromise = insforge.database
-          .from('strategic_objectives')
-          .select('*')
-          .order('created_at', { ascending: true });
-
-        const { data, error } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
         if (error) throw error;
         setObjectives(data || []);
       } catch (err: any) {
         console.error('Error fetching objectives:', err);
-        // Fallback to empty array - page will still render
         setObjectives([]);
       } finally {
         setLoading(false);
@@ -54,7 +53,7 @@ export function StrategicObjectivesSection() {
     };
 
     fetchObjectives();
-  }, []);
+  }, [isAuthReady]);
 
   if (loading) {
     return (
